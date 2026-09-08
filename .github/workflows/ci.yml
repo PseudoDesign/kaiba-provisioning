@@ -164,7 +164,7 @@ jobs:
         uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342 # v31.11.0
         with:
           # GitHub's native ARM64 runners do not expose KVM; the AArch64 VM
-          # check selects QEMU TCG explicitly.
+          # check uses the NixOS test framework's QEMU TCG fallback.
           enable_kvm: false
           github_access_token: ${{ github.token }}
 
