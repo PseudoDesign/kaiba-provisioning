@@ -1,0 +1,43 @@
+stages:
+  - deploy
+
+variables:
+  NIX_CONFIG: |
+    experimental-features = nix-command flakes
+    extra-substituters = https://nixos-kaiba-network.cachix.org https://nixos-raspberrypi.cachix.org
+    extra-trusted-public-keys = nixos-kaiba-network.cachix.org-1:BCAt/P9Fo2JFexLB4T7eB3o0csSQI/Dy+hx+3RwzA8U= nixos-raspberrypi.cachix.org-1:4iMO9LXa8BqhU+Rpg6LQKiGa2lsNh/j2oiYLNOQ5sPI=
+
+deploy-pages:
+  stage: deploy
+  image:
+    name: nixos/nix:2.35.2@sha256:617d914dba5384bf75adf17081583b69371031ec7defce36c34c5fa14fc819b0
+    entrypoint: [""]
+  interruptible: true
+  script:
+    - |
+      pages_path="$(
+        nix --accept-flake-config build \
+          --no-link \
+          --print-out-paths \
+          .#packages.x86_64-linux.kaiba-provision-station-pages
+      )"
+      install -d public
+      cp -R --dereference "$pages_path"/. public/
+      for asset in \
+        index.html \
+        styles.css \
+        transport.js \
+        app.js \
+        runtime-config.json \
+        workflow-graph.json
+      do
+        test -s "public/$asset"
+      done
+  pages:
+    publish: public
+  environment:
+    name: gitlab-pages
+    url: $CI_PAGES_URL
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
