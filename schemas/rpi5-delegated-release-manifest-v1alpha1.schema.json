@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provisioning.kaiba.network/schemas/rpi5-delegated-release-manifest-v1alpha1.schema.json",
+  "title": "Kaiba Raspberry Pi 5 delegated release manifest v1alpha1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "release_id",
+    "device_class",
+    "cohort_id",
+    "policy_digest",
+    "security_epoch",
+    "slot_id",
+    "components",
+    "overlays",
+    "signatures"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "kaiba.provisioning.rpi5-delegated-release-manifest/v1alpha1"
+    },
+    "release_id": { "$ref": "#/$defs/identifier" },
+    "device_class": {
+      "const": "raspberry-pi-5-model-b-v1alpha1"
+    },
+    "cohort_id": { "$ref": "#/$defs/identifier" },
+    "policy_digest": { "$ref": "#/$defs/digest" },
+    "security_epoch": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 18446744073709551615
+    },
+    "slot_id": { "$ref": "#/$defs/identifier" },
+    "components": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "prefixItems": [
+        { "$ref": "#/$defs/kernel" },
+        { "$ref": "#/$defs/initramfs" },
+        { "$ref": "#/$defs/resolved_device_tree" },
+        { "$ref": "#/$defs/kernel_command_line" },
+        { "$ref": "#/$defs/root_image" },
+        { "$ref": "#/$defs/dm_verity_metadata" },
+        { "$ref": "#/$defs/slot_metadata" }
+      ],
+      "items": false
+    },
+    "overlays": {
+      "type": "array",
+      "maxItems": 64,
+      "items": { "$ref": "#/$defs/overlay" }
+    },
+    "signatures": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/signature" }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._:-]{0,127}$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "digest", "size_bytes"],
+      "properties": {
+        "role": {
+          "enum": [
+            "kernel",
+            "initramfs",
+            "resolved_device_tree",
+            "kernel_command_line",
+            "root_image",
+            "dm_verity_metadata",
+            "slot_metadata"
+          ]
+        },
+        "digest": { "$ref": "#/$defs/digest" },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 68719476736
+        }
+      }
+    },
+    "kernel": {
+      "allOf": [
+        { "$ref": "#/$defs/component" },
+        {
+          "properties": {
+            "role": { "const": "kernel" },
+            "size_bytes": { "maximum": 268435456 }
+          }
+        }
+      ]
+    },
+    "initramfs": {
+      "allOf": [
+        { "$ref": "#/$defs/component" },
+        {
+          "properties": {
+            "role": { "const": "initramfs" },
+            "size_bytes": { "maximum": 536870912 }
+          }
+        }
+      ]
+    },
+    "resolved_device_tree": {
+      "allOf": [
+        { "$ref": "#/$defs/component" },
+        {
+          "properties": {
+            "role": { "const": "resolved_device_tree" },
+            "size_bytes": { "maximum": 8388608 }
+          }
+        }
+      ]
+    },
+    "kernel_command_line": {
+      "allOf": [
+        { "$ref": "#/$defs/component" },
+        {
+          "properties": {
+            "role": { "const": "kernel_command_line" },
+            "size_bytes": { "maximum": 4096 }
+          }
+        }
+      ]
+    },
+    "root_image": {
+      "allOf": [
+        { "$ref": "#/$defs/component" },
+        { "properties": { "role": { "const": "root_image" } } }
+      ]
+    },
+    "dm_verity_metadata": {
+      "allOf": [
+        { "$ref": "#/$defs/component" },
+        {
+          "properties": {
+            "role": { "const": "dm_verity_metadata" },
+            "size_bytes": { "maximum": 1048576 }
+          }
+        }
+      ]
+    },
+    "slot_metadata": {
+      "allOf": [
+        { "$ref": "#/$defs/component" },
+        {
+          "properties": {
+            "role": { "const": "slot_metadata" },
+            "size_bytes": { "maximum": 4096 }
+          }
+        }
+      ]
+    },
+    "overlay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "digest", "size_bytes"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+        },
+        "digest": { "$ref": "#/$defs/digest" },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8388608
+        }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key_id", "algorithm", "value"],
+      "properties": {
+        "key_id": { "$ref": "#/$defs/identifier" },
+        "algorithm": { "const": "rsa-2048-sha256-pkcs1v15" },
+        "value": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9+/]{341}[AQgw]==$"
+        }
+      }
+    }
+  }
+}

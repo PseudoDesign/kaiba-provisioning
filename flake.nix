@@ -43,12 +43,17 @@
 
         schemas = {
           bootSigningPlanV1Alpha2 = ./schemas/rpi5-boot-signing-plan-v1alpha2.schema.json;
+          bootAuthorizationV1Alpha1 = ./schemas/rpi5-boot-authorization-v1alpha1.schema.json;
+          delegatedReleaseManifestV1Alpha1 = ./schemas/rpi5-delegated-release-manifest-v1alpha1.schema.json;
           eepromSigningPlanV1Alpha1 = ./schemas/rpi5-eeprom-signing-plan-v1alpha1.schema.json;
           hardwareQualificationV1Alpha1 = ./schemas/rpi5-hardware-qualification-v1alpha1.schema.json;
           manualLaneQualificationV1Alpha1 = ./schemas/rpi5-manual-lane-qualification-v1alpha1.schema.json;
           platformAdapterV1Alpha1 = ./schemas/rpi5-platform-adapter-v1alpha1.schema.json;
           releaseIntentV1Alpha1 = ./schemas/rpi5-release-intent-v1alpha1.schema.json;
           signerIndependentReviewV1Alpha1 = ./schemas/signer-independent-review-v1alpha1.schema.json;
+          stableVerifierEventV1Alpha1 = ./schemas/rpi5-stable-verifier-event-v1alpha1.schema.json;
+          stableVerifierPolicyV1Alpha1 = ./schemas/rpi5-stable-verifier-policy-v1alpha1.schema.json;
+          stableVerifierSpikeEvidenceV1Alpha1 = ./schemas/rpi5-stable-verifier-spike-evidence-v1alpha1.schema.json;
           unsignedArtifactSetV1Alpha1 = ./schemas/unsigned-artifact-set-v1alpha1.schema.json;
         };
 
@@ -114,6 +119,7 @@
         provisioning-signing-gate = import ./nix/modules/provisioning-signing-gate.nix;
         provisioning-station-demo = import ./nix/modules/provisioning-station-demo.nix;
         secure-boot-target = import ./nix/modules/secure-boot-target.nix;
+        stable-verifier-spike = import ./nix/modules/stable-verifier-spike.nix;
       };
 
       provisioningFor =
@@ -185,6 +191,24 @@
             builder = import ./nix/secure-boot-artifacts.nix { inherit pkgs lib; };
           in
           builder (builtins.removeAttrs args [ "system" ]);
+
+        mkRpi5StableVerifierUnsignedBoot =
+          { system, ... }@args:
+          packagesBySystem.${system}.mkRpi5StableVerifierUnsignedBoot (
+            builtins.removeAttrs args [ "system" ]
+          );
+
+        mkRpi5StableVerifierTestSD =
+          { system, ... }@args:
+          packagesBySystem.${system}.mkRpi5StableVerifierTestSD (builtins.removeAttrs args [ "system" ]);
+
+        mkRpi5DelegatedReleaseSpike =
+          { system, ... }@args:
+          packagesBySystem.${system}.mkRpi5DelegatedReleaseSpike (builtins.removeAttrs args [ "system" ]);
+
+        mkRpi5StableVerifierSpikeRig =
+          { system, ... }@args:
+          packagesBySystem.${system}.mkRpi5StableVerifierSpikeRig (builtins.removeAttrs args [ "system" ]);
 
         mkRpi5PhysicalLaneGuard =
           { system, ... }@args:
@@ -306,6 +330,9 @@
           kaiba-provision-unfused-compat = built.unfusedCompat;
           kaiba-provision-unfused-evidence = built.unfusedEvidence;
           kaiba-provision-unfused-runtime-record = built.unfusedRuntimeRecordTool;
+          kaiba-rpi5-one-boot-prove = built.oneBootProveTool;
+          kaiba-rpi5-stable-verifier = built.stableVerifierTool;
+          kaiba-rpi5-verifier-test-authority = built.verifierTestAuthority;
           provisioning-suite = built.suite;
           provisioning-services = built.serviceSuite;
           provisioning-test-result = provisioning.provisioningTestResult;
@@ -333,6 +360,29 @@
           pkgs = import nixpkgs { inherit system; };
           built = packagesBySystem.${system};
           provisioning = provisioningBySystem.${system};
+          stableVerifierVMFixture = import ./tests/stable-verifier-vm-fixture.nix {
+            inherit pkgs;
+            source = repositorySource;
+          };
+          stableVerifierInitramfsVM = import ./tests/stable-verifier-initramfs-vm.nix {
+            inherit pkgs built;
+            signedFixture = stableVerifierVMFixture;
+          };
+          aarch64GuestPkgs =
+            if system == "aarch64-linux" then pkgs else import nixpkgs { system = "aarch64-linux"; };
+          aarch64GuestBuilt =
+            if system == "aarch64-linux" then
+              built
+            else
+              import ./nix/packages.nix {
+                pkgs = aarch64GuestPkgs;
+                inherit lib;
+              };
+          stableVerifierAarch64KexecVM = import ./tests/stable-verifier-aarch64-kexec-vm.nix {
+            inherit pkgs;
+            guestPkgs = aarch64GuestPkgs;
+            built = aarch64GuestBuilt;
+          };
         in
         {
           asset-api = import ./tests/assets.nix { inherit assets pkgs; };
@@ -349,6 +399,10 @@
           rpi5-signed-release = provisioning.signedReleaseFinalizationContract;
           rpiboot-metadata-stdout = provisioning.rpibootMetadataStdoutCompatibility;
           secure-boot-artifacts = provisioning.secureBootArtifactContract;
+          stable-verifier-spike = built.mkRpi5StableVerifierSpikeContractCheck {
+            verifierPackage = built.stableVerifierTool;
+          };
+          stable-verifier-aarch64-kexec-vm = stableVerifierAarch64KexecVM;
           media-staging-fixture = provisioning.mediaStagingFixtureContract;
           production-media-staging = provisioning.productionMediaStagingContract;
           signed-release-manifest = provisioning.signedReleaseManifestContract;
@@ -396,6 +450,16 @@
               '';
         }
         // lib.optionalAttrs (system == "x86_64-linux") {
+          stable-verifier-initramfs-vm = pkgs.linkFarm "kaiba-stable-verifier-initramfs-vm" [
+            {
+              name = "fail-closed";
+              path = stableVerifierInitramfsVM.failure;
+            }
+            {
+              name = "signed-handoff";
+              path = stableVerifierInitramfsVM.signedHandoff;
+            }
+          ];
           signing-ceremony = import ./tests/signing-ceremony.nix {
             ceremony = mkDevelopmentSigningCeremony {
               inherit system;

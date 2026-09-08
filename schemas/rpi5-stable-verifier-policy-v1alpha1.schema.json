@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provisioning.kaiba.network/schemas/rpi5-stable-verifier-policy-v1alpha1.schema.json",
+  "title": "Kaiba Raspberry Pi 5 stable-verifier delegated-key policy v1alpha1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy_id",
+    "device_class",
+    "cohort_id",
+    "security_epoch",
+    "minimum_verifier_version",
+    "release_signature_threshold",
+    "allowed_slot_ids",
+    "root_key_id",
+    "root_key_fingerprint",
+    "delegated_keys",
+    "authorization_authorities",
+    "root_signature"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "kaiba.provisioning.rpi5-stable-verifier-policy/v1alpha1"
+    },
+    "policy_id": { "$ref": "#/$defs/identifier" },
+    "device_class": {
+      "const": "raspberry-pi-5-model-b-v1alpha1"
+    },
+    "cohort_id": { "$ref": "#/$defs/identifier" },
+    "security_epoch": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 18446744073709551615
+    },
+    "minimum_verifier_version": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 18446744073709551615
+    },
+    "release_signature_threshold": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 16
+    },
+    "allowed_slot_ids": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/identifier" }
+    },
+    "root_key_id": { "$ref": "#/$defs/identifier" },
+    "root_key_fingerprint": { "$ref": "#/$defs/digest" },
+    "delegated_keys": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/delegated_key" }
+    },
+    "authorization_authorities": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/authorization_authority" }
+    },
+    "root_signature": { "$ref": "#/$defs/rsa_signature" }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._:-]{0,127}$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "delegated_key": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key_id", "algorithm", "public_key_pem", "public_key_fingerprint", "status"],
+      "properties": {
+        "key_id": { "$ref": "#/$defs/identifier" },
+        "algorithm": { "const": "rsa-2048-sha256-pkcs1v15" },
+        "public_key_pem": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        },
+        "public_key_fingerprint": { "$ref": "#/$defs/digest" },
+        "status": {
+          "enum": ["active", "revoked"]
+        }
+      }
+    },
+    "authorization_authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key_id", "algorithm", "public_key"],
+      "properties": {
+        "key_id": { "$ref": "#/$defs/identifier" },
+        "algorithm": { "const": "ed25519" },
+        "public_key": {
+          "type": "string",
+          "pattern": "^ed25519:[0-9a-f]{64}$"
+        }
+      }
+    },
+    "rsa_signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key_id", "algorithm", "value"],
+      "properties": {
+        "key_id": { "$ref": "#/$defs/identifier" },
+        "algorithm": { "const": "rsa-2048-sha256-pkcs1v15" },
+        "value": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9+/]{341}[AQgw]==$"
+        }
+      }
+    }
+  }
+}

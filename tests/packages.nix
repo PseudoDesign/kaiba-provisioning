@@ -1627,8 +1627,10 @@ let
           ${developmentPostureSchemaPath} \
           ${built.goSource}/schemas/rpi5-hardware-qualification-v1alpha1.schema.json
         check-jsonschema --check-metaschema \
+          ${built.goSource}/schemas/rpi5-boot-authorization-v1alpha1.schema.json \
           ${built.goSource}/schemas/rpi5-boot-signing-plan-v1alpha2.schema.json \
           ${built.goSource}/schemas/rpi5-boot-signing-result-v1alpha2.schema.json \
+          ${built.goSource}/schemas/rpi5-delegated-release-manifest-v1alpha1.schema.json \
           ${built.goSource}/schemas/rpi5-eeprom-signing-plan-v1alpha1.schema.json \
           ${built.goSource}/schemas/rpi5-eeprom-signing-result-v1alpha1.schema.json \
           ${built.goSource}/schemas/rpi5-device-media-layout-v1alpha1.schema.json \
@@ -1650,6 +1652,9 @@ let
           ${built.goSource}/schemas/rpi5-media-verification-report-v1alpha1.schema.json \
           ${built.goSource}/schemas/rpi5-platform-adapter-v1alpha1.schema.json \
           ${built.goSource}/schemas/rpi5-signing-approval-v1alpha1.schema.json \
+          ${built.goSource}/schemas/rpi5-stable-verifier-event-v1alpha1.schema.json \
+          ${built.goSource}/schemas/rpi5-stable-verifier-policy-v1alpha1.schema.json \
+          ${built.goSource}/schemas/rpi5-stable-verifier-spike-evidence-v1alpha1.schema.json \
           ${built.goSource}/schemas/rpi5-unfused-runtime-facts-v1alpha1.schema.json \
           ${built.goSource}/schemas/rpi5-release-intent-v1alpha1.schema.json \
           ${built.goSource}/schemas/rpi5-rpiboot-directory-tree-v1alpha1.schema.json \
@@ -5545,6 +5550,16 @@ let
         test -x ${built.serviceSuite}/bin/kaiba-provision-signing-gate
         test -x ${built.serviceSuite}/bin/kaiba-provision-station
         test -x ${built.serviceSuite}/bin/kaiba-provision-yubikey-wrapper
+        test -x ${built.stableVerifierTool}/bin/kaiba-rpi5-stable-verifier
+        test -x ${built.verifierTestAuthority}/bin/kaiba-rpi5-verifier-test-authority
+        test -x ${built.oneBootProveTool}/bin/kaiba-rpi5-one-boot-prove
+        test '${built.stableVerifierTool.kaibaRpi5StableVerifier.runtimeBoundary}' = 'initramfs_only'
+        test '${builtins.toJSON built.stableVerifierTool.kaibaRpi5StableVerifier.staticallyLinked}' = 'true'
+        test '${builtins.toJSON built.stableVerifierTool.kaibaRpi5StableVerifier.productionReady}' = 'false'
+        test '${builtins.toJSON built.verifierTestAuthority.kaibaRpi5VerifierTestAuthority.nonProductionOnly}' = 'true'
+        test '${builtins.toJSON built.verifierTestAuthority.kaibaRpi5VerifierTestAuthority.privateKeyMaterialEmbedded}' = 'false'
+        test '${builtins.toJSON built.oneBootProveTool.kaibaRpi5OneBootProve.deletesOneBootPrivateKeyBeforeNetwork}' = 'true'
+        test '${builtins.toJSON built.oneBootProveTool.kaibaRpi5OneBootProve.authoritySigningCapable}' = 'false'
         test -x ${built.signedBootTool}/bin/kaiba-provision-sign-boot
         test -x ${built.laneOperator}/bin/kaiba-provision-lane-operator
         test -x ${built.laneWorkflow}/bin/kaiba-provision-lane-workflow

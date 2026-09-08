@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provisioning.kaiba.network/schemas/rpi5-stable-verifier-spike-evidence-v1alpha1.schema.json",
+  "title": "Kaiba Raspberry Pi 5 stable-verifier spike evidence v1alpha1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "evidence_id",
+    "recorded_at",
+    "classification",
+    "campaign_profile",
+    "hardware",
+    "software",
+    "outcome",
+    "test_results",
+    "ordered_events",
+    "private_material_present",
+    "production_ready"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "kaiba.provisioning.rpi5-stable-verifier-spike-evidence/v1alpha1"
+    },
+    "evidence_id": { "$ref": "#/$defs/identifier" },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "classification": { "const": "development-only" },
+    "campaign_profile": {
+      "const": "kaiba.provisioning.rpi5-stable-verifier-campaign/v1alpha1"
+    },
+    "hardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "device_class",
+        "board_revision",
+        "serial_redacted",
+        "customer_key_state",
+        "otp_changed",
+        "eeprom_changed"
+      ],
+      "properties": {
+        "device_class": { "const": "raspberry-pi-5-model-b-v1alpha1" },
+        "board_revision": { "const": "a04171" },
+        "serial_redacted": { "const": true },
+        "customer_key_state": { "const": "unfused" },
+        "otp_changed": { "const": false },
+        "eeprom_changed": { "const": false }
+      }
+    },
+    "software": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_revision",
+        "verifier_version",
+        "verifier_artifact_digest",
+        "policy_digest",
+        "manifest_digest",
+        "kernel_version",
+        "firmware_revision",
+        "kexec_version"
+      ],
+      "properties": {
+        "source_revision": {
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+        },
+        "verifier_version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 18446744073709551615
+        },
+        "verifier_artifact_digest": { "$ref": "#/$defs/digest" },
+        "policy_digest": { "$ref": "#/$defs/digest" },
+        "manifest_digest": { "$ref": "#/$defs/digest" },
+        "kernel_version": {
+          "type": "string",
+          "pattern": "^[0-9a-z][0-9a-z.+_~-]{0,127}$"
+        },
+        "firmware_revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "kexec_version": {
+          "type": "string",
+          "pattern": "^[0-9a-z][0-9a-z.+_~-]{0,127}$"
+        }
+      }
+    },
+    "outcome": {
+      "enum": ["validated", "blocked"]
+    },
+    "test_results": {
+      "type": "array",
+      "minItems": 14,
+      "maxItems": 14,
+      "prefixItems": [
+        { "allOf": [{ "$ref": "#/$defs/test_result" }, { "$ref": "#/$defs/test_approved_release_boots" }] },
+        { "allOf": [{ "$ref": "#/$defs/test_result" }, { "$ref": "#/$defs/test_authorization_offline_rejected" }] },
+        { "allOf": [{ "$ref": "#/$defs/test_result" }, { "$ref": "#/$defs/test_authorization_replay_rejected" }] },
+        { "allOf": [{ "$ref": "#/$defs/test_result" }, { "$ref": "#/$defs/test_component_byte_mutations_rejected" }] },
+        { "allOf": [{ "$ref": "#/$defs/test_result" }, { "$ref": "#/$defs/test_delegated_key_replacement_boots" }] },
+        { "allOf": [{ "$ref": "#/$defs/test_result" }, { "$ref": "#/$defs/test_dm_verity_corruption_rejected" }] },
+        { "allOf": [{ "$ref": "#/$defs/test_result" }, { "$ref": "#/$defs/test_kernel_command_line_observed" }] },
+        { "allOf": [{ "$ref": "#/$defs/test_result" }, { "$ref": "#/$defs/test_manifest_field_mutations_rejected" }] },
+        { "allOf": [{ "$ref": "#/$defs/test_result" }, { "$ref": "#/$defs/test_one_boot_key_bound" }] },
+        { "allOf": [{ "$ref": "#/$defs/test_result" }, { "$ref": "#/$defs/test_released_os_bootstrap_reuse_rejected" }] },
+        { "allOf": [{ "$ref": "#/$defs/test_result" }, { "$ref": "#/$defs/test_resolved_device_tree_observed" }] },
+        { "allOf": [{ "$ref": "#/$defs/test_result" }, { "$ref": "#/$defs/test_revoked_delegated_key_rejected" }] },
+        { "allOf": [{ "$ref": "#/$defs/test_result" }, { "$ref": "#/$defs/test_unsigned_release_rejected" }] },
+        { "allOf": [{ "$ref": "#/$defs/test_result" }, { "$ref": "#/$defs/test_wrong_delegated_key_rejected" }] }
+      ],
+      "items": false
+    },
+    "ordered_events": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source", "event", "record_digest"],
+        "properties": {
+          "source": {
+            "enum": ["verifier-uart", "authorization-server", "released-os-uart", "test-runner"]
+          },
+          "event": { "$ref": "#/$defs/identifier" },
+          "record_digest": { "$ref": "#/$defs/digest" }
+        }
+      }
+    },
+    "private_material_present": { "const": false },
+    "production_ready": { "const": false }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "outcome": { "const": "validated" } },
+        "required": ["outcome"]
+      },
+      "then": {
+        "properties": {
+          "test_results": {
+            "not": {
+              "contains": {
+                "properties": { "result": { "enum": ["fail", "blocked"] } },
+                "required": ["result"]
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "test_results": {
+            "contains": {
+              "properties": { "result": { "enum": ["fail", "blocked"] } },
+              "required": ["result"]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._:-]{0,127}$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "test_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["test_id", "result"],
+      "properties": {
+        "test_id": { "$ref": "#/$defs/identifier" },
+        "result": { "enum": ["pass", "fail", "blocked"] }
+      }
+    },
+    "test_approved_release_boots": {
+      "properties": { "test_id": { "const": "approved-release-boots" } }
+    },
+    "test_authorization_offline_rejected": {
+      "properties": { "test_id": { "const": "authorization-offline-rejected" } }
+    },
+    "test_authorization_replay_rejected": {
+      "properties": { "test_id": { "const": "authorization-replay-rejected" } }
+    },
+    "test_component_byte_mutations_rejected": {
+      "properties": { "test_id": { "const": "component-byte-mutations-rejected" } }
+    },
+    "test_delegated_key_replacement_boots": {
+      "properties": { "test_id": { "const": "delegated-key-replacement-boots" } }
+    },
+    "test_dm_verity_corruption_rejected": {
+      "properties": { "test_id": { "const": "dm-verity-corruption-rejected" } }
+    },
+    "test_kernel_command_line_observed": {
+      "properties": { "test_id": { "const": "kernel-command-line-observed" } }
+    },
+    "test_manifest_field_mutations_rejected": {
+      "properties": { "test_id": { "const": "manifest-field-mutations-rejected" } }
+    },
+    "test_one_boot_key_bound": {
+      "properties": { "test_id": { "const": "one-boot-key-bound" } }
+    },
+    "test_released_os_bootstrap_reuse_rejected": {
+      "properties": { "test_id": { "const": "released-os-bootstrap-reuse-rejected" } }
+    },
+    "test_resolved_device_tree_observed": {
+      "properties": { "test_id": { "const": "resolved-device-tree-observed" } }
+    },
+    "test_revoked_delegated_key_rejected": {
+      "properties": { "test_id": { "const": "revoked-delegated-key-rejected" } }
+    },
+    "test_unsigned_release_rejected": {
+      "properties": { "test_id": { "const": "unsigned-release-rejected" } }
+    },
+    "test_wrong_delegated_key_rejected": {
+      "properties": { "test_id": { "const": "wrong-delegated-key-rejected" } }
+    }
+  }
+}

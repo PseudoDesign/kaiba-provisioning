@@ -1,0 +1,232 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kaiba.invalid/schemas/rpi5-boot-authorization-v1alpha1.schema.json",
+  "title": "Kaiba Raspberry Pi 5 non-production boot authorization protocol v1alpha1",
+  "description": "Challenge, request, authorization, registration, one-boot proof, and error documents for the unfused stable-verifier development spike. This contract does not assert production device identity or enrollment.",
+  "oneOf": [
+    { "$ref": "#/$defs/challenge" },
+    { "$ref": "#/$defs/authorization_request" },
+    { "$ref": "#/$defs/authorization" },
+    { "$ref": "#/$defs/bootstrap_registration" },
+    { "$ref": "#/$defs/one_boot_proof" },
+    { "$ref": "#/$defs/error" }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._:+-]{0,127}$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "challenge_id": {
+      "type": "string",
+      "pattern": "^challenge:[0-9a-f]{64}$"
+    },
+    "nonce": {
+      "type": "string",
+      "pattern": "^hex:[0-9a-f]{64}$"
+    },
+    "public_key": {
+      "type": "string",
+      "pattern": "^ed25519:[0-9a-f]{64}$"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^ed25519:[0-9a-f]{128}$"
+    },
+    "issued_at": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 253402300799
+    },
+    "max_age": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 300
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logical_identity",
+        "audience",
+        "storage_generation",
+        "verifier_version",
+        "policy_digest",
+        "manifest_digest",
+        "security_epoch"
+      ],
+      "properties": {
+        "logical_identity": { "$ref": "#/$defs/identifier" },
+        "audience": { "$ref": "#/$defs/identifier" },
+        "storage_generation": { "const": 0 },
+        "verifier_version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 18446744073709551615
+        },
+        "policy_digest": { "$ref": "#/$defs/digest" },
+        "manifest_digest": { "$ref": "#/$defs/digest" },
+        "security_epoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 18446744073709551615
+        }
+      }
+    },
+    "challenge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "challenge_id",
+        "nonce",
+        "issued_at_unix_seconds",
+        "max_age_seconds",
+        "authority_key_id",
+        "signature_algorithm",
+        "signature"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "kaiba.provisioning.rpi5-non-production-boot-challenge/v1alpha1"
+        },
+        "challenge_id": { "$ref": "#/$defs/challenge_id" },
+        "nonce": { "$ref": "#/$defs/nonce" },
+        "issued_at_unix_seconds": { "$ref": "#/$defs/issued_at" },
+        "max_age_seconds": { "$ref": "#/$defs/max_age" },
+        "authority_key_id": { "$ref": "#/$defs/identifier" },
+        "signature_algorithm": { "const": "ed25519" },
+        "signature": { "$ref": "#/$defs/signature" }
+      }
+    },
+    "authorization_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "challenge",
+        "binding",
+        "bootstrap_public_key",
+        "one_boot_public_key",
+        "proof_algorithm",
+        "bootstrap_proof"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "kaiba.provisioning.rpi5-non-production-boot-authorization-request/v1alpha1"
+        },
+        "challenge": { "$ref": "#/$defs/challenge" },
+        "binding": { "$ref": "#/$defs/binding" },
+        "bootstrap_public_key": { "$ref": "#/$defs/public_key" },
+        "one_boot_public_key": { "$ref": "#/$defs/public_key" },
+        "proof_algorithm": { "const": "ed25519" },
+        "bootstrap_proof": { "$ref": "#/$defs/signature" }
+      }
+    },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "challenge_id",
+        "challenge_nonce",
+        "challenge_digest",
+        "binding",
+        "bootstrap_public_key",
+        "one_boot_public_key",
+        "decision",
+        "issued_at_unix_seconds",
+        "max_age_seconds",
+        "authority_key_id",
+        "signature_algorithm",
+        "signature"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "kaiba.provisioning.rpi5-non-production-boot-authorization/v1alpha1"
+        },
+        "challenge_id": { "$ref": "#/$defs/challenge_id" },
+        "challenge_nonce": { "$ref": "#/$defs/nonce" },
+        "challenge_digest": { "$ref": "#/$defs/digest" },
+        "binding": { "$ref": "#/$defs/binding" },
+        "bootstrap_public_key": { "$ref": "#/$defs/public_key" },
+        "one_boot_public_key": { "$ref": "#/$defs/public_key" },
+        "decision": { "const": "authorized" },
+        "issued_at_unix_seconds": { "$ref": "#/$defs/issued_at" },
+        "max_age_seconds": { "$ref": "#/$defs/max_age" },
+        "authority_key_id": { "$ref": "#/$defs/identifier" },
+        "signature_algorithm": { "const": "ed25519" },
+        "signature": { "$ref": "#/$defs/signature" }
+      }
+    },
+    "bootstrap_registration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "logical_identity",
+        "bootstrap_public_key"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "kaiba.provisioning.rpi5-non-production-bootstrap-registration/v1alpha1"
+        },
+        "logical_identity": { "$ref": "#/$defs/identifier" },
+        "bootstrap_public_key": { "$ref": "#/$defs/public_key" }
+      }
+    },
+    "one_boot_proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "authorization",
+        "authorization_digest",
+        "proof_algorithm",
+        "proof"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "kaiba.provisioning.rpi5-non-production-one-boot-proof/v1alpha1"
+        },
+        "authorization": { "$ref": "#/$defs/authorization" },
+        "authorization_digest": { "$ref": "#/$defs/digest" },
+        "proof_algorithm": { "const": "ed25519" },
+        "proof": { "$ref": "#/$defs/signature" }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "code"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "kaiba.provisioning.rpi5-non-production-boot-authorization-error/v1alpha1"
+        },
+        "code": {
+          "enum": [
+            "authorization_unknown",
+            "binding_mismatch",
+            "binding_unauthorized",
+            "bootstrap_untrusted",
+            "challenge_capacity",
+            "challenge_expired",
+            "challenge_replayed",
+            "challenge_unknown",
+            "internal_error",
+            "invalid_request",
+            "one_boot_proof_replayed",
+            "request_too_large",
+            "signature_invalid"
+          ]
+        }
+      }
+    }
+  }
+}

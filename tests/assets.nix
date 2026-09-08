@@ -29,12 +29,17 @@ pkgs.runCommand "kaiba-provisioning-asset-api-contract"
 
     for schema in \
       ${assets.schemas.bootSigningPlanV1Alpha2} \
+      ${assets.schemas.bootAuthorizationV1Alpha1} \
+      ${assets.schemas.delegatedReleaseManifestV1Alpha1} \
       ${assets.schemas.eepromSigningPlanV1Alpha1} \
       ${assets.schemas.hardwareQualificationV1Alpha1} \
       ${assets.schemas.manualLaneQualificationV1Alpha1} \
       ${assets.schemas.platformAdapterV1Alpha1} \
       ${assets.schemas.releaseIntentV1Alpha1} \
       ${assets.schemas.signerIndependentReviewV1Alpha1} \
+      ${assets.schemas.stableVerifierEventV1Alpha1} \
+      ${assets.schemas.stableVerifierPolicyV1Alpha1} \
+      ${assets.schemas.stableVerifierSpikeEvidenceV1Alpha1} \
       ${assets.schemas.unsignedArtifactSetV1Alpha1}
     do
       test -f "$schema"
