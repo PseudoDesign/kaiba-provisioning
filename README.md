@@ -1,7 +1,7 @@
 # Kaiba Provisioning
 
-Kaiba Provisioning is a Go and Nix reference implementation for a fail-closed
-Raspberry Pi 5 secure-boot provisioning lane. It covers hardware
+Kaiba Provisioning provides Go and Nix reference components and contracts for
+a fail-closed Raspberry Pi 5 secure-boot provisioning lane. It covers hardware
 qualification, approval-gated signing, deterministic release and media
 construction, audited execution, and operator-facing workflows.
 
@@ -21,12 +21,15 @@ construction, audited execution, and operator-facing workflows.
 | Lane execution | Compile the fixed operation sequence, collect explicit acknowledgement, and execute one bound physical action at a time | `kaiba-provision-lane-workflow`, `kaiba-provision-lane-operator`, `kaiba-provision-lane-guard` |
 | Signing and releases | Gate YubiKey-backed signing behind immutable approvals and verify complete signed releases offline | `kaiba-provision-signing-gate`, `kaiba-provision-sign-boot`, `kaiba-provision-sign-eeprom`, `kaiba-provision-finalize-release` |
 | Media construction | Bind a release to an exact storage layout, write it through a configured device-specific package, and verify it independently | `kaiba-provision-media-device-stager`, `kaiba-provision-media-device-verifier`, `kaiba-provision-media-contract` |
-| Operator interfaces | Provide separate live and simulated loopback-only station interfaces | `kaiba-provision-station`, `kaiba-provision-station-demo` |
+| Operator interfaces | Provide a loopback live-interface foundation with a disabled backend and a separate in-memory simulation | `kaiba-provision-station`, `kaiba-provision-station-demo` |
 
-Generic hardware-facing and signing binaries are intentionally unconfigured
-and fail closed. The flake constructors bind them to reviewed inputs:
-`lib.mkRpi5PhysicalLaneGuard`, `lib.mkDevelopmentYubiKeySigning`, and
-`lib.mkRpi5ProductionMedia`.
+Generic hardware-facing binaries and `kaiba-provision-sign-boot` are
+intentionally unconfigured and fail closed. The exported
+`kaiba-provision-sign-eeprom` is different: it is pinned to the local
+approval-gate socket and EEPROM release inputs, but has neither private-key nor
+direct hardware authority. Flake constructors bind complete deployments to
+reviewed inputs: `lib.mkRpi5PhysicalLaneGuard`,
+`lib.mkDevelopmentYubiKeySigning`, and `lib.mkRpi5ProductionMedia`.
 
 ## Quick start
 
@@ -75,7 +78,8 @@ nix build .#kaiba-provision-station-pages
   outcomes enter reconciliation or quarantine and never become blind retries.
 - Signing keys and PINs are runtime-only. The repository contains public trust
   anchors and signed inputs, not private keys or credentials.
-- The live station never falls back to the browser simulation, and the
+- The exported live-interface foundation has a disabled backend and rejects
+  mutation enablement. It never falls back to the browser simulation, and the
   simulation never calls a live backend.
 - Raw device observations remain outside the repository. Only validated,
   whitelist-redacted qualification evidence belongs under
@@ -91,6 +95,7 @@ qualification.
 | Path | Contents |
 | --- | --- |
 | [`cmd/`](cmd/) | CLI entry points |
+| [`docs/`](docs/) | Security model, development runbooks, contract reference, and production roadmap |
 | [`internal/provisioning/`](internal/provisioning/) | Control, signing, media, lane, and station implementation packages |
 | [`nix/`](nix/) | Packages, constructors, NixOS modules, and pinned patches |
 | [`config/hardware/`](config/hardware/) | Typed, host-bound hardware configurations |
@@ -101,7 +106,31 @@ qualification.
 | [`signers/`](signers/) | Public signer trust anchors and independent review records |
 | [`tests/`](tests/) | Nix contracts, Go tests, deployment checks, fixtures, and UI tests |
 
-## Deployment and evidence guides
+## Documentation
+
+Start with the [documentation index](docs/README.md). It defines the status
+language used throughout the guides so that implemented code, software tests,
+checked evidence, and proposed production controls are not conflated.
+
+- [Architecture and trust boundaries](docs/architecture-and-trust-boundaries.md)
+- [Raspberry Pi 5 secure-boot model](docs/raspberry-pi-5-secure-boot.md)
+- [Development execution plan](docs/raspberry-pi-5-secure-boot-execution-plan.md)
+- [Production readiness](docs/production-readiness.md)
+- [Production security follow-on](docs/raspberry-pi-5-production-security-follow-on.md)
+- [Production-station architecture](docs/provisioning-station-production.md)
+- [Contracts reference](docs/contracts-reference.md)
+
+Operator workflows cover [hardware qualification](docs/raspberry-pi-5-provisioning-probe.md),
+[release signing](docs/raspberry-pi-5-signed-boot-workflow.md),
+[media staging](docs/target-media-staging-prototype.md), and the
+[live development lane](docs/raspberry-pi-5-live-provisioning.md). The
+[station interface](docs/provisioning-station-kiosk.md) and
+[development target access](docs/raspberry-pi-5-development-target-access.md)
+guides make their current non-production boundaries explicit. The signing
+guides identify the configured flake outputs that still need to be restored or
+supplied by a reviewed consumer before starting a new live ceremony.
+
+### Deployment and evidence guides
 
 - [Ubuntu development provisioning authority](deploy/ubuntu-provisioning-authority/README.md)
 - [Ubuntu 24.04 signing-gate deployment](deploy/ubuntu-signing-gate/README.md)

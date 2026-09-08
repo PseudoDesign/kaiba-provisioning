@@ -54,22 +54,24 @@ or authorize any Pi, media, EEPROM, or OTP mutation. PIN, PUK, management-key
 material, systemd credentials, signing grants, private-key material, derived
 policy files, and derived Raspberry Pi key binaries must never be added here.
 
-Build the public-only contracts from the repository root:
+Validate the public-only contracts from the repository root without contacting
+the token:
 
 ```console
-nix build .#development-signing --out-link result-development-signing
-nix build .#rpi5-unfused-verifier --out-link result-rpi5-unfused-verifier
-nix build .#packages.aarch64-linux.rpi5-prototype-unsigned-artifacts \
-  --out-link result-rpi5-prototype-unsigned-artifacts
-nix build .#rpi5-prototype-signing-plan \
-  --out-link result-rpi5-prototype-signing-plan
-nix build .#rpi5-prototype-release-review \
-  --out-link result-rpi5-prototype-release-review
+nix build .#checks.x86_64-linux.development-yubikey-signing --no-link -L
+nix build .#checks.x86_64-linux.signed-boot-plan --no-link -L
+nix build .#checks.x86_64-linux.unfused-capsule --no-link -L
+nix build .#checks.x86_64-linux.rpi5-signed-release --no-link -L
 ```
 
-The final three outputs bind a clean repository revision to the development
-customer-key hash, construct an unsigned Pi 5 boot/root artifact set, and
-validate its public signing plan. They neither contact the YubiKey nor sign or
-write anything. See the
-[signed-boot workflow](../../../docs/raspberry-pi-5-signed-boot-workflow.md#build-the-repository-prototype-release-inputs)
-for output inspection and host requirements.
+Select the check system matching the builder. These checks reconstruct and
+validate the signer, signed-boot, unfused, and complete-release contracts; they
+may create synthetic signatures and Nix outputs, but do not contact a YubiKey,
+reach a live signing service, or write target hardware.
+
+The standalone root flake does not currently export the historical
+`development-signing`, `rpi5-unfused-verifier`, or configured
+`rpi5-prototype-*` package outputs. A release-specific consumer must compose
+the lower-level constructors before a new live ceremony can begin. See the
+[signed-boot workflow](../../docs/raspberry-pi-5-signed-boot-workflow.md#current-standalone-boundary)
+for the supported API and current integration boundary.
