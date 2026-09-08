@@ -204,23 +204,16 @@ nix flake check . -L
 nix build .#kaiba-provision -L
 ```
 
-### GitLab Pages
+### GitHub Pages
 
-The GitLab pipeline publishes the static provisioning-station simulation from
-the `kaiba-provision-station-pages` Nix package. To enable it:
-
-1. Import this repository into GitLab, or configure the GitLab project as a
-   mirror of the GitHub repository.
-2. Push the default branch. The `deploy-pages` job in `.gitlab-ci.yml` builds
-   the site with the pinned flake inputs, pulls from the project's Cachix
-   caches, and publishes the resulting `public/` artifact.
-3. Open **Deploy > Pages** in the GitLab project to find the generated URL.
-
-The public Cachix caches do not require a GitLab CI/CD variable. The existing
-GitHub CI remains responsible for pushing build results to
-`nixos-kaiba-network`; a cache miss in the Pages job is built normally. If the
-site should be private, enable Pages access control in the GitLab project's
-visibility settings.
+The GitHub Pages workflow publishes the static provisioning-station simulation
+from the `kaiba-provision-station-pages` Nix package. To enable it, open
+**Settings > Pages** in the GitHub repository and select **GitHub Actions** as
+the build and deployment source. A push to `main`, or a manual run of the
+`GitHub Pages` workflow, then builds with the pinned flake inputs, pulls from
+the `kaiba-provisioning` and `nixos-raspberrypi` Cachix caches, and deploys the
+site to the `github-pages` environment. The deployment URL appears in the
+workflow summary and under the repository's **Deployments** section.
 
 See the [Raspberry Pi 5 probe](../docs/raspberry-pi-5-provisioning-probe.md),
 [Raspberry Pi 5 secure-boot guide](../docs/raspberry-pi-5-secure-boot.md), and
