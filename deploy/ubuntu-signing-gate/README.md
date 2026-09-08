@@ -49,12 +49,22 @@ sudo apt-get update
 sudo apt-get install acl jq libccid pcscd polkitd
 ```
 
+> [!IMPORTANT]
+> The standalone root flake does not currently export a configured
+> `development-signing` package. A reviewed release-specific consumer must
+> construct that output with `lib.mkDevelopmentYubiKeySigning` and the exact
+> release signer inputs before this live-host procedure can begin. See the
+> [signed-boot workflow](../../docs/raspberry-pi-5-signed-boot-workflow.md#current-standalone-boundary)
+> and [ceremony integration gate](../../docs/ubuntu-rpi5-development-signing-ceremony.md#current-integration-gate).
+
 Nix must already contain both the exact configured signing output and the
 immutable deployment bundle. Build them with named result links so the reviewed
-paths remain available until installation:
+paths remain available until installation. The first flake reference below is
+a placeholder for that separately reviewed consumer; it is not this repository
+root:
 
 ```console
-nix build path:.#development-signing \
+nix build /absolute/path/to/reviewed-release-flake#development-signing \
   --out-link result-development-signing
 nix build path:.#ubuntu-signing-gate-deployment \
   --out-link result-ubuntu-signing-gate-deployment
@@ -108,14 +118,102 @@ installer.
 
 Install a separately reviewed v1alpha2 grant registry. The gate loads it once
 at startup and independently validates its owner, parent, permissions, schema,
-canonical ordering, request bindings, and expiry fields.
+canonical ordering, request bindings, and expiry fields. Those checks do not
+authenticate the reviewer's approval: the exact registry file SHA-256 received
+through the independent review channel is the authority for this handoff.
+
+Do not copy the registry directly from an operator-writable checkout into
+`/etc`. First enter the independently communicated lowercase, 64-hex file
+SHA-256, copy the input into a new root-owned staging directory under `/root`,
+remove access and default ACLs, and verify the staged copy. The digest-derived
+directory must not already exist; an existing path is an unresolved prior
+handoff, not permission to reuse or delete it.
 
 ```console
-sudo install -o root -g kaiba-signing -m 0440 \
-  ./reviewed-signing-grants.json \
-  /etc/kaiba-provisioning/signing-grants.json
-sudo setfacl --remove-all -- /etc/kaiba-provisioning/signing-grants.json
+(
+  set -euo pipefail
+
+  registry_source=./reviewed-signing-grants.json
+  installed_registry=/etc/kaiba-provisioning/signing-grants.json
+
+  read -r -p 'Independently approved registry file SHA-256: ' approved_registry_sha256
+  case "$approved_registry_sha256" in
+    ''|*[!0-9a-f]*)
+      printf 'approved registry SHA-256 must be 64 lowercase hexadecimal characters\n' >&2
+      exit 1
+      ;;
+  esac
+  test "${#approved_registry_sha256}" -eq 64
+
+  test -f "$registry_source"
+  test ! -L "$registry_source"
+  sudo test -d /root
+  sudo test ! -L /root
+  test "$(sudo stat --format='%U:%G:%a:%F' -- /root)" = 'root:root:700:directory'
+
+  registry_stage_dir="/root/kaiba-signing-registry-stage-$approved_registry_sha256"
+  if sudo test -e "$registry_stage_dir" || sudo test -L "$registry_stage_dir"; then
+    printf 'registry staging path already exists; stop for review: %s\n' \
+      "$registry_stage_dir" >&2
+    exit 1
+  fi
+
+  sudo install -d -o root -g root -m 0700 -- "$registry_stage_dir"
+  staged_registry="$registry_stage_dir/signing-grants.json"
+  sudo install -T -o root -g root -m 0400 -- \
+    "$registry_source" "$staged_registry"
+  sudo setfacl --remove-all -- "$registry_stage_dir" "$staged_registry"
+  sudo setfacl --remove-default -- "$registry_stage_dir"
+
+  sudo test ! -L "$registry_stage_dir"
+  sudo test ! -L "$staged_registry"
+  test "$(sudo stat --format='%U:%G:%a:%F' -- "$registry_stage_dir")" = \
+    'root:root:700:directory'
+  test "$(sudo stat --format='%U:%G:%a:%F' -- "$staged_registry")" = \
+    'root:root:400:regular file'
+  test "$(sudo stat --format='%h' -- "$staged_registry")" = 1
+  test -z "$(sudo getfacl --absolute-names --skip-base -- \
+    "$registry_stage_dir" "$staged_registry")"
+
+  staged_registry_sha256="$(sudo sha256sum -- "$staged_registry" | cut -d ' ' -f 1)"
+  if test "$staged_registry_sha256" != "$approved_registry_sha256"; then
+    printf 'staged registry SHA-256 does not match independent approval; stop\n' >&2
+    exit 1
+  fi
+
+  if sudo systemctl is-active --quiet kaiba-provision-signing-gate.service; then
+    printf 'signing gate must be inactive before registry installation\n' >&2
+    exit 1
+  fi
+  sudo test -d /etc/kaiba-provisioning
+  sudo test ! -L /etc/kaiba-provisioning
+  sudo test ! -L "$installed_registry"
+  sudo install -T -o root -g kaiba-signing -m 0440 -- \
+    "$staged_registry" "$installed_registry"
+  sudo setfacl --remove-all -- "$installed_registry"
+
+  sudo test ! -L "$installed_registry"
+  test "$(sudo stat --format='%U:%G:%a:%F' -- "$installed_registry")" = \
+    'root:kaiba-signing:440:regular file'
+  test "$(sudo stat --format='%h' -- "$installed_registry")" = 1
+  test -z "$(sudo getfacl --absolute-names --skip-base -- "$installed_registry")"
+
+  installed_registry_sha256="$(sudo sha256sum -- "$installed_registry" | cut -d ' ' -f 1)"
+  if test "$installed_registry_sha256" != "$approved_registry_sha256"; then
+    printf 'installed registry SHA-256 does not match independent approval; stop\n' >&2
+    exit 1
+  fi
+
+  printf 'registry handoff verified: %s  %s\n' \
+    "$installed_registry_sha256" "$installed_registry"
+)
 ```
+
+Record the approved and installed file SHA-256 in the ceremony evidence. If
+any command above fails, preserve the source, staging directory, and installed
+file for review. Do not provision the PIN or start the gate. Do not repair a
+mismatch by editing, recopying, deleting, or reusing the staged path; obtain a
+new authenticated handoff and follow the reviewed recovery procedure.
 
 Enable the Ubuntu pcscd activation socket. Starting the socket does not call a
 token utility; pcscd itself remains policy-controlled and can auto-exit.
@@ -158,9 +256,9 @@ only a new independently authorized ceremony attempt; there is no same-grant
 retry command. A new approval creates new grant identities, so all five inputs
 must be signed under that registry; never combine receipts across attempts. Two
 is a successful first-attempt minimum, not permission to repeat a request.
-Follow the reviewed signing-plan workflow in
-`docs/ubuntu-rpi5-development-signing-ceremony.md`; this deployment bundle does
-not automate that ceremony.
+Follow the reviewed
+[development signing ceremony](../../docs/ubuntu-rpi5-development-signing-ceremony.md);
+this deployment bundle does not automate that ceremony.
 
 ## Close the boundary
 
