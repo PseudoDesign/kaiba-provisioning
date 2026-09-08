@@ -93,6 +93,8 @@
           inherit pkgs lib moduleRoot;
         };
 
+      packagesBySystem = forAllSystems packagesFor;
+
       modules = {
         default = import ./nix/modules;
         provisioning-audit = import ./nix/modules/provisioning-audit.nix;
@@ -112,9 +114,11 @@
         in
         import ./tests/packages.nix {
           inherit hardwareConfigurations pkgs lib;
-          built = packagesFor system;
+          built = packagesBySystem.${system};
           kaibaModules = modules;
         };
+
+      provisioningBySystem = forAllSystems provisioningFor;
 
       mkDevelopmentSigningCeremony =
         {
@@ -130,9 +134,9 @@
       mkUbuntuProvisioningAuthorityDeployment =
         {
           system,
-          auditPackage ? (packagesFor system).audit,
+          auditPackage ? packagesBySystem.${system}.audit,
           auditPort ? 8092,
-          controlPackage ? (packagesFor system).control,
+          controlPackage ? packagesBySystem.${system}.control,
           controlPort ? 8091,
           listenAddress ? "192.168.8.249",
         }:
@@ -175,92 +179,96 @@
 
         mkRpi5PhysicalLaneGuard =
           { system, ... }@args:
-          (packagesFor system).mkRpi5PhysicalLaneGuard (builtins.removeAttrs args [ "system" ]);
+          packagesBySystem.${system}.mkRpi5PhysicalLaneGuard (builtins.removeAttrs args [ "system" ]);
 
         mkRpi5DevelopmentSecureBootRunner =
           { system, ... }@args:
-          (packagesFor system).mkRpi5DevelopmentSecureBootRunner (builtins.removeAttrs args [ "system" ]);
+          packagesBySystem.${system}.mkRpi5DevelopmentSecureBootRunner (
+            builtins.removeAttrs args [ "system" ]
+          );
 
         mkRpi5DevelopmentSecureBootOperationalPayload =
           { system, ... }@args:
-          (packagesFor system).mkRpi5DevelopmentSecureBootOperationalPayload (
+          packagesBySystem.${system}.mkRpi5DevelopmentSecureBootOperationalPayload (
             builtins.removeAttrs args [ "system" ]
           );
 
         mkRpi5BootSigningPlan =
           { system, ... }@args:
-          (packagesFor system).mkRpi5BootSigningPlan (builtins.removeAttrs args [ "system" ]);
+          packagesBySystem.${system}.mkRpi5BootSigningPlan (builtins.removeAttrs args [ "system" ]);
 
         mkRpi5EEPROMRelease =
           { system, ... }@args:
-          (packagesFor system).mkRpi5EEPROMRelease (builtins.removeAttrs args [ "system" ]);
+          packagesBySystem.${system}.mkRpi5EEPROMRelease (builtins.removeAttrs args [ "system" ]);
 
         mkRpi5EEPROMReleaseSigningInputs =
           { system, ... }@args:
-          (packagesFor system).mkRpi5EEPROMReleaseSigningInputs (builtins.removeAttrs args [ "system" ]);
+          packagesBySystem.${system}.mkRpi5EEPROMReleaseSigningInputs (
+            builtins.removeAttrs args [ "system" ]
+          );
 
         mkRpi5EEPROMSigningPlan =
           { system, ... }@args:
-          (packagesFor system).mkRpi5EEPROMSigningPlan (builtins.removeAttrs args [ "system" ]);
+          packagesBySystem.${system}.mkRpi5EEPROMSigningPlan (builtins.removeAttrs args [ "system" ]);
 
         mkRpi5OwnedRecoverySigningPlan =
           { system, ... }@args:
-          (packagesFor system).mkRpi5OwnedRecoverySigningPlan (builtins.removeAttrs args [ "system" ]);
+          packagesBySystem.${system}.mkRpi5OwnedRecoverySigningPlan (builtins.removeAttrs args [ "system" ]);
 
         mkRpi5VerifiedRPIBootBundles =
           { system, ... }@args:
-          (packagesFor system).mkRpi5VerifiedRPIBootBundles (builtins.removeAttrs args [ "system" ]);
+          packagesBySystem.${system}.mkRpi5VerifiedRPIBootBundles (builtins.removeAttrs args [ "system" ]);
 
         mkRpi5VerifiedSigningReceipts =
           { system, ... }@args:
-          (packagesFor system).mkRpi5VerifiedSigningReceipts (builtins.removeAttrs args [ "system" ]);
+          packagesBySystem.${system}.mkRpi5VerifiedSigningReceipts (builtins.removeAttrs args [ "system" ]);
 
         mkRpi5VerifiedSignedRelease =
           { system, ... }@args:
-          (packagesFor system).mkRpi5VerifiedSignedRelease (builtins.removeAttrs args [ "system" ]);
+          packagesBySystem.${system}.mkRpi5VerifiedSignedRelease (builtins.removeAttrs args [ "system" ]);
 
         mkRpi5ReleaseIntent =
           { system, ... }@args:
-          (packagesFor system).mkRpi5ReleaseIntent (builtins.removeAttrs args [ "system" ]);
+          packagesBySystem.${system}.mkRpi5ReleaseIntent (builtins.removeAttrs args [ "system" ]);
 
         mkDevelopmentYubiKeySigning =
           { system, ... }@args:
-          (packagesFor system).mkDevelopmentYubiKeySigning (builtins.removeAttrs args [ "system" ]);
+          packagesBySystem.${system}.mkDevelopmentYubiKeySigning (builtins.removeAttrs args [ "system" ]);
 
         mkRpi5UnfusedVerifier =
           { system, ... }@args:
-          (packagesFor system).mkRpi5UnfusedVerifier (builtins.removeAttrs args [ "system" ]);
+          packagesBySystem.${system}.mkRpi5UnfusedVerifier (builtins.removeAttrs args [ "system" ]);
 
         mkRpi5VerifiedSignedBoot =
           { system, ... }@args:
-          (packagesFor system).mkRpi5VerifiedSignedBoot (builtins.removeAttrs args [ "system" ]);
+          packagesBySystem.${system}.mkRpi5VerifiedSignedBoot (builtins.removeAttrs args [ "system" ]);
 
         mkRpi5VerifiedSignedEEPROM =
           { system, ... }@args:
-          (packagesFor system).mkRpi5VerifiedSignedEEPROM (builtins.removeAttrs args [ "system" ]);
+          packagesBySystem.${system}.mkRpi5VerifiedSignedEEPROM (builtins.removeAttrs args [ "system" ]);
 
         mkRpi5VerifiedOwnedRecovery =
           { system, ... }@args:
-          (packagesFor system).mkRpi5VerifiedOwnedRecovery (builtins.removeAttrs args [ "system" ]);
+          packagesBySystem.${system}.mkRpi5VerifiedOwnedRecovery (builtins.removeAttrs args [ "system" ]);
 
         mkRpi5VerifiedUnfusedCapsule =
           { system, ... }@args:
-          (packagesFor system).mkRpi5VerifiedUnfusedCapsule (builtins.removeAttrs args [ "system" ]);
+          packagesBySystem.${system}.mkRpi5VerifiedUnfusedCapsule (builtins.removeAttrs args [ "system" ]);
 
         mkRpi5MediaStagingFixture =
           { system, ... }@args:
-          (packagesFor system).mkRpi5MediaStagingFixture (builtins.removeAttrs args [ "system" ]);
+          packagesBySystem.${system}.mkRpi5MediaStagingFixture (builtins.removeAttrs args [ "system" ]);
 
         mkRpi5ProductionMedia =
           { system, ... }@args:
-          (packagesFor system).mkRpi5ProductionMedia (builtins.removeAttrs args [ "system" ]);
+          packagesBySystem.${system}.mkRpi5ProductionMedia (builtins.removeAttrs args [ "system" ]);
       };
 
       packages = forAllSystems (
         system:
         let
-          built = packagesFor system;
-          provisioning = provisioningFor system;
+          built = packagesBySystem.${system};
+          provisioning = provisioningBySystem.${system};
         in
         {
           default = built.provision;
@@ -314,8 +322,8 @@
         system:
         let
           pkgs = import nixpkgs { inherit system; };
-          built = packagesFor system;
-          provisioning = provisioningFor system;
+          built = packagesBySystem.${system};
+          provisioning = provisioningBySystem.${system};
         in
         {
           asset-api = import ./tests/assets.nix { inherit assets pkgs; };
@@ -387,6 +395,30 @@
             };
             inherit pkgs;
           };
+        }
+        // lib.optionalAttrs (system == "aarch64-linux") {
+          operator-packages = pkgs.linkFarm "kaiba-operator-packages-check" [
+            {
+              name = "kaiba-provision";
+              path = built.provision;
+            }
+            {
+              name = "kaiba-provision-station";
+              path = built.liveStation;
+            }
+            {
+              name = "kaiba-provision-station-demo";
+              path = built.stationDemo;
+            }
+            {
+              name = "kaiba-provision-station-pages";
+              path = built.stationPages;
+            }
+            {
+              name = "provisioning-test-result";
+              path = provisioning.provisioningTestResult;
+            }
+          ];
         }
       );
 

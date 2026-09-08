@@ -152,13 +152,8 @@ let
     src = goSource;
     subPackages = [ "cmd/kaiba-provision-signing-approval" ];
     vendorHash = null;
-    doCheck = true;
-    checkPhase = ''
-      runHook preCheck
-      go test ./internal/provisioning/signingapproval \
-        ./cmd/kaiba-provision-signing-approval
-      runHook postCheck
-    '';
+    # checks.unit runs the complete Go suite once for this source tree.
+    doCheck = false;
     postInstall = ''
       mkdir -p "$out/share/kaiba/schemas"
       install -m 0444 \
@@ -192,14 +187,8 @@ let
     src = goSource;
     subPackages = [ "cmd/kaiba-provision-signing-receipts" ];
     vendorHash = null;
-    doCheck = true;
-    checkPhase = ''
-      runHook preCheck
-      go test ./internal/provisioning/signinggate \
-        ./internal/provisioning/signingreceipts \
-        ./cmd/kaiba-provision-signing-receipts
-      runHook postCheck
-    '';
+    # checks.unit runs the complete Go suite once for this source tree.
+    doCheck = false;
     postInstall = ''
       mkdir -p "$out/share/kaiba/schemas"
       install -m 0444 \
@@ -464,12 +453,8 @@ let
     src = goSource;
     subPackages = [ "cmd/kaiba-provision-fixture-snapshot" ];
     vendorHash = null;
-    doCheck = true;
-    checkPhase = ''
-      runHook preCheck
-      go test ./internal/provisioning/fixturesnapshot ./cmd/kaiba-provision-fixture-snapshot
-      runHook postCheck
-    '';
+    # checks.unit runs the complete Go suite once for this source tree.
+    doCheck = false;
     passthru.kaibaFixtureSnapshot = {
       blockDeviceAccess = false;
       directHardwareAccess = false;
@@ -783,13 +768,8 @@ let
     src = goSource;
     subPackages = [ "cmd/kaiba-provision-finalize-release" ];
     vendorHash = null;
-    doCheck = true;
-    checkPhase = ''
-      runHook preCheck
-      go test ./internal/provisioning/signedrelease \
-        ./cmd/kaiba-provision-finalize-release
-      runHook postCheck
-    '';
+    # checks.unit runs the complete Go suite once for this source tree.
+    doCheck = false;
     ldflags = [
       "-X=main.eepromFinalizerExecutablePath=${eepromReplayFinalizer}/bin/kaiba-provision-sign-eeprom"
     ];
