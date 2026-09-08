@@ -482,7 +482,7 @@ let
     '';
   };
 
-  vmTest = pkgs.testers.runNixOSTest {
+  vmTestRequiringKVM = pkgs.testers.runNixOSTest {
     name = "kaiba-stable-verifier-aarch64-real-kexec";
     # runNixOSTest defaults nodes to the host package set. Override that one
     # unique value so QEMU/the Python driver remain native while the VM closure
@@ -525,7 +525,10 @@ let
         # QEMU's GICv3 ITS/LPI state is not reset reliably across an in-guest
         # kexec under TCG. GICv2 avoids that emulator-only failure and is also
         # the interrupt-controller generation used by the Pi 5 platform.
-        virtualisation.qemu.options = [ "-machine gic-version=2" ];
+        virtualisation.qemu.options = [
+          "-accel tcg,thread=multi"
+          "-machine gic-version=2"
+        ];
 
         systemd.services.kaiba-stable-verifier-kexec-vm = {
           description = "Kaiba stable-verifier real kexec VM exercise";
@@ -589,5 +592,12 @@ let
       machine.wait_for_shutdown()
     '';
   };
+
+  # GitHub's native ARM64 hosted runners do not expose /dev/kvm. This test is
+  # intentionally compatible with TCG, so retain the NixOS-test sandbox
+  # requirement while dropping the test framework's unconditional KVM marker.
+  vmTest = vmTestRequiringKVM.overrideTestDerivation (_: {
+    requiredSystemFeatures = [ "nixos-test" ];
+  });
 in
 vmTest
