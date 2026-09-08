@@ -402,7 +402,6 @@
           stable-verifier-spike = built.mkRpi5StableVerifierSpikeContractCheck {
             verifierPackage = built.stableVerifierTool;
           };
-          stable-verifier-aarch64-kexec-vm = stableVerifierAarch64KexecVM;
           media-staging-fixture = provisioning.mediaStagingFixtureContract;
           production-media-staging = provisioning.productionMediaStagingContract;
           signed-release-manifest = provisioning.signedReleaseManifestContract;
@@ -470,6 +469,10 @@
           };
         }
         // lib.optionalAttrs (system == "aarch64-linux") {
+          # This check builds and boots a native AArch64 NixOS closure. Keep it
+          # on the native ARM64 CI runner; exporting it under x86_64-linux makes
+          # the x86 job require an otherwise unconfigured ARM builder.
+          stable-verifier-aarch64-kexec-vm = stableVerifierAarch64KexecVM;
           operator-packages = pkgs.linkFarm "kaiba-operator-packages-check" [
             {
               name = "kaiba-provision";
