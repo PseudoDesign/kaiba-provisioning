@@ -1,13 +1,26 @@
 {
   pkgs,
   lib,
-  moduleRoot ? ../.,
+  moduleRoot ? lib.fileset.toSource {
+    root = ../.;
+    fileset = lib.fileset.unions [
+      ../cmd
+      ../config/rpi5-prototype-release/platform-adapter-v1alpha1.json
+      ../go.mod
+      ../internal
+      ../policies/raspberry-pi-5-development-posture-v1alpha1.json
+      ../profiles/device-classes/raspberry-pi-5-model-b-v1alpha1.json
+      ../schemas
+      ../signers/development-prototype/independent-review-2026-08-27.json
+    ];
+  },
 }:
 
 let
   version = "0.1.0";
-  # Flake Git sources are already clean. Filtering this store-backed subpath a
-  # second time can leave an unmaterialized source path under lazy-tree Nix.
+  # moduleRoot is either the single-pass fileset above or an explicitly scoped
+  # caller input. Do not filter it again: a second pass over a store-backed
+  # subpath can leave an unmaterialized source path under lazy-tree Nix.
   goSource = moduleRoot;
 
   # Keep the audited recovery firmware on the frozen Nixpkgs source while

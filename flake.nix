@@ -7,8 +7,17 @@
     { self, nixpkgs }:
     let
       lib = nixpkgs.lib;
-      repositoryRoot = self.sourceInfo.outPath;
-      moduleRoot = ./.;
+      # Build the UI test tree in one pass from the flake's original path.
+      # nix/packages.nix does the same for the shared application source.
+      repositorySource = ./.;
+      stationUITestRoot = lib.fileset.toSource {
+        root = repositorySource;
+        fileset = lib.fileset.unions [
+          ./internal/provisioning/livestation/web
+          ./internal/provisioning/stationui/web
+          ./tests/station-ui
+        ];
+      };
       systems = [
         "x86_64-linux"
         "aarch64-linux"
@@ -90,7 +99,7 @@
           pkgs = import nixpkgs { inherit system; };
         in
         import ./nix/packages.nix {
-          inherit pkgs lib moduleRoot;
+          inherit pkgs lib;
         };
 
       packagesBySystem = forAllSystems packagesFor;
@@ -370,7 +379,7 @@
               ''
                 set -eu
                 export PYTHONDONTWRITEBYTECODE=1
-                cd ${repositoryRoot}
+                cd ${stationUITestRoot}
                 node --check internal/provisioning/stationui/web/app.js
                 node --check internal/provisioning/stationui/web/transport.js
                 node --check internal/provisioning/livestation/web/app.js

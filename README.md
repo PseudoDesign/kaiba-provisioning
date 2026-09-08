@@ -144,21 +144,24 @@ crossing a hardware or signing boundary.
 
 ## CI, Cachix, and GitHub Pages
 
-The main CI workflow runs formatting, Go tests, deployment checks, and native
-Nix checks for both supported architectures. Pull requests consume binary
-caches but do not push to them. Successful `main` builds may push when the
-`CACHIX_AUTH_TOKEN` secret grants write access to the
-[`kaiba-provisioning` cache](https://app.cachix.org/cache/kaiba-provisioning);
-the Raspberry Pi dependencies are pulled from `nixos-raspberrypi`.
+The [main CI workflow](.github/workflows/ci.yml) starts formatting and
+deployment checks alongside native Nix checks for both supported
+architectures. The Nix checks run the complete Go test suite, so the fast job
+does not repeat it. Pull requests consume binary caches but do not push to
+them. Successful `main` pushes upload to the
+[`kaiba-provisioning` cache](https://app.cachix.org/cache/kaiba-provisioning)
+when `CACHIX_AUTH_TOKEN` grants write access; an explicit write-and-read-back
+probe makes a broken cache token or cache name fail the workflow. Raspberry Pi
+dependencies are pulled from `nixos-raspberrypi`.
 
-The [GitHub Pages workflow](.github/workflows/pages.yml) publishes the static
-station simulation from `main`. Enable it once under **Settings > Pages** by
-selecting **GitHub Actions** as the build and deployment source. The Pages job
-is pull-only and does not need the Cachix write token.
+The same workflow publishes the static station simulation from `main`, reusing
+the site already realized by the x86_64 Nix checks. Deployment waits for every
+CI job to pass. Enable Pages once under **Settings > Pages** by selecting
+**GitHub Actions** as the build and deployment source.
 
 ## Development checks
 
-Run the same fast checks used by CI:
+Run the formatter, Go unit suite, and deployment smoke test locally:
 
 ```console
 nix --accept-flake-config fmt -- --ci

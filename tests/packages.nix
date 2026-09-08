@@ -1455,11 +1455,10 @@ let
   qualificationEvidenceName = "sacrificial-pi-5.json";
   developmentPostureName = "raspberry-pi-5-development-posture-v1alpha1.json";
   developmentPostureEvidencePath = "evidence/provisioning/development-posture/${developmentPostureName}";
-  developmentPosturePath = built.goSource + "/policies/${developmentPostureName}";
-  developmentPostureSchemaPath =
-    built.goSource + "/schemas/rpi5-development-posture-v1alpha1.schema.json";
+  developmentPosturePath = ../policies/raspberry-pi-5-development-posture-v1alpha1.json;
+  developmentPostureSchemaPath = ../schemas/rpi5-development-posture-v1alpha1.schema.json;
   developmentPosture = builtins.fromJSON (builtins.readFile developmentPosturePath);
-  qualificationProfilePath = built.goSource + "/profiles/device-classes/${qualificationProfileName}";
+  qualificationProfilePath = ../profiles/device-classes/raspberry-pi-5-model-b-v1alpha1.json;
   qualificationProfile = builtins.fromJSON (builtins.readFile qualificationProfilePath);
   qualificationPolicy = qualificationProfile // {
     metadata = {
