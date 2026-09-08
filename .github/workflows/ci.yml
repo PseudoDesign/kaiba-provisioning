@@ -38,6 +38,8 @@ jobs:
         run: nix --accept-flake-config fmt -- --ci
 
       - name: Run Go tests
+        env:
+          TMPDIR: /tmp
         run: go test ./...
 
       - name: Test the inert Ubuntu signing-gate deployment
