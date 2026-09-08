@@ -1,223 +1,145 @@
-# Provisioning Go module
+# Kaiba Provisioning
 
-This module implements the non-mutating Raspberry Pi probe, the browser
-simulation, and the fail-closed reference services for the hardware-facing Pi
-5 secure-boot development-lane foundation. It has no Go dependency on the DNS
-module and uses only the Go standard library.
+Kaiba Provisioning is a Go and Nix reference implementation for a fail-closed
+Raspberry Pi 5 secure-boot provisioning lane. It covers hardware
+qualification, approval-gated signing, deterministic release and media
+construction, audited execution, and operator-facing workflows.
 
-## Commands
+> [!WARNING]
+> This repository targets a sacrificial development cohort and explicitly
+> reviewed hardware configurations. It is not a general-purpose Raspberry Pi
+> imager or a turnkey production provisioning system. Several operations can
+> affect EEPROM, OTP, boot media, or signing state; use only the configured Nix
+> outputs and reviewed deployment procedures.
 
-- `kaiba-provision probe` performs the non-persistent device preflight.
-- `kaiba-provision qualify` strictly compares two private live-probe results
-  and emits deterministic whitelist-redacted hardware evidence.
-- `kaiba-provision-station-demo` serves the loopback-only station simulation.
-- `kaiba-provision-station-graph` generates the browser simulation graph.
-- `kaiba-provision-control` owns transactions, claims, fence epochs,
-  approvals, quarantine, and the terminal `security_applied` record.
-- `kaiba-provision-audit` persists an independent, secret-free hash chain.
-- `kaiba-provision-authority-bridge` authenticates stable control/audit state
-  and emits only the current closed lane plan/request over a private Unix
-  socket.
-- `kaiba-provision-lane-workflow` creates the fixed seven-operation draft and
-  the narrowly typed approval, per-operation intent, evidence, and
-  reconciliation proposals, then derives the fixed `security_applied`
-  terminalization from all seven durable records. It accepts no operation,
-  boot-mode, payload, evidence-digest, rollback, classification, or hardware
-  selector.
-- `kaiba-provision-lane-guard` is the root-only, one-shot physical adapter. It
-  obtains current authority through the bridge, persists attempts and physical
-  boot transitions in its execute-once journal, and publishes each terminal
-  attempt as a root-owned, immutable receipt. Publication always reloads the
-  durable record; an in-memory result is never evidence, and an exact receipt
-  retry never reaches hardware.
-- `kaiba-provision-lane-operator` is the acknowledgement-only client for the
-  guard's private authenticated prompt socket. It displays the server-selected
-  action and accepts only the exact bound confirmation phrase; it cannot select
-  an operation, target, boot mode, or physical path.
-- `kaiba-provision-signer`, `kaiba-provision-signing-client`, and
-  `kaiba-provision-signing-gate` enforce the immutable approval boundary.
-- `kaiba-provision-yubikey-wrapper` performs the fixed RSA-2048/SHA-256 PIV 9c
-  operation through the pinned OpenSSL PKCS#11 provider chain.
-- `kaiba-provision-sign-boot` submits one immutable public boot plan to the
-  fixed signing gate and offline-finalizes its public result. The generic build
-  has no signing authority and can only finalize.
-- `kaiba-provision-sign-eeprom` runs only the pinned fresh-board `-f` EEPROM
-  updater, requires exactly three release-intent-bound gate callbacks, and
-  offline-finalizes the public EEPROM result. It cannot select recovery
-  signing, access a device, program EEPROM, or change OTP.
-- `kaiba-provision-media-stager` is the legacy mixed prototype that preflights,
-  writes, and reopens exactly three digest-bound payload extents. Its
-  regular-file fixture mode remains a safe regression path.
-- `kaiba-provision-media-device-stager` is emitted only by
-  `lib.mkRpi5ProductionMedia`; it is linker-fixed to one complete media plan and
-  is the only production-media command here with block-device write capability.
-- `kaiba-provision-media-device-verifier` is the separately built, read-only
-  production verifier. It independently validates GPT, FAT, signed-release
-  lineage, the complete device digest, and dm-verity after reattachment.
-- `kaiba-provision-media-fixture-stager` and
-  `kaiba-provision-media-verifier` exercise that same complete production
-  layout against regular files without block-device authority.
-- `kaiba-provision-media-contract` validates and correlates canonical media
-  plans and receipts. `kaiba-provision-unfused-runtime-record` serializes two
-  bounded plan-correlated UART records; it is not a hardware collector.
-- `kaiba-provision-station` serves the separate live, loopback-only operator
-  interface. It never falls back to the browser simulation.
+## What is included
 
-The generic bridge, lane, and signer binaries are deliberately unconfigured and
-fail closed. A deployment must instantiate `lib.mkRpi5PhysicalLaneGuard` and
-`lib.mkDevelopmentYubiKeySigning`, then use the corresponding NixOS modules.
-The authority bridge additionally requires runtime station mTLS credentials
-and independent control/audit server trust roots.
-The `provisioning-lane-guard` module installs only the fixed, no-argument
-`kaiba-provision-lane-acknowledge` wrapper, creates the
-`kaiba-provision-operator` group, fixes every device and socket path in the root
-one-shot unit, and leaves that unit without an automatic start target. Relay
-power control remains the default: the unit refuses to run unless the Raspberry
-Pi RP1 driver has output persistence disabled, and it invokes the release-bound
-immutable GPIO setter at logical inactive before startup and after every exit.
-The physical relay still requires a qualified normally-off bias and
-normally-open contacts. An explicit development-only manual-power mode instead
-uses authenticated connect and disconnect prompts and grants the service no
-GPIO device access. That mode records operator-attributed power actions and USB
-topology observations, but it provides no automated fail-off guarantee and is
-not a production-lane qualification. The closed power mode is part of the
-reviewed draft and `v1alpha6` plan digest, so the approval, intent, executable
-request, immutable service configuration, and transition evidence must agree;
-there is no relay-to-manual runtime fallback. Restart recovery encountering a
-persisted/configured mode mismatch uses neither actuator, quarantines the
-transition with unproven safe-off, and requires external inspection. Manual
-power establishment uses
-an explicit operator-attestation basis and acknowledgement timestamp, not a
-claim that software directly observed an electrical edge. Completed and failed
-terminal references preserve the power mode and closed safe-off basis, using
-`unproven` when disconnection plus USB absence was not established. The
-previously cut VBUS/data-only cable is not a manual RPIBOOT power path. Before
-any OTP-capable run, use and load-qualify an intact power-and-data path through
-a Raspberry Pi Powered USB Hub (the upstream `usbboot` recommendation), or
-another reviewed USB 3 source capable of supplying at least 900 mA without
-brownout, with the normal Pi PSU absent. Undervoltage, USB reset, or target
-disappearance is a stop condition; an unqualified or marginal source does not
-authorize OTP. The
-module uses the NixOS setgid security-wrapper boundary and a native fixed-argv
-launcher to enter that authenticated GID and supply the module-owned socket to
-the constrained client. A shell launcher is deliberately not used because it
-would drop a mismatched effective group. Supplementary membership by itself is
-not authority, and the supported command accepts no selector arguments.
+| Area | Purpose | Primary entry points |
+| --- | --- | --- |
+| Hardware qualification | Probe a Pi without persisting changes, compare repeated observations, and emit redacted evidence | `kaiba-provision probe`, `kaiba-provision qualify` |
+| Control and audit | Manage transactions, claims, approvals, quarantine, and an independent hash-chained audit log | `kaiba-provision-control`, `kaiba-provision-audit`, `kaiba-provision-authority-bridge` |
+| Lane execution | Compile the fixed operation sequence, collect explicit acknowledgement, and execute one bound physical action at a time | `kaiba-provision-lane-workflow`, `kaiba-provision-lane-operator`, `kaiba-provision-lane-guard` |
+| Signing and releases | Gate YubiKey-backed signing behind immutable approvals and verify complete signed releases offline | `kaiba-provision-signing-gate`, `kaiba-provision-sign-boot`, `kaiba-provision-sign-eeprom`, `kaiba-provision-finalize-release` |
+| Media construction | Bind a release to an exact storage layout, write it through a configured device-specific package, and verify it independently | `kaiba-provision-media-device-stager`, `kaiba-provision-media-device-verifier`, `kaiba-provision-media-contract` |
+| Operator interfaces | Provide separate live and simulated loopback-only station interfaces | `kaiba-provision-station`, `kaiba-provision-station-demo` |
 
-Workflow claim renewal is deliberately narrow. Proposal commands may extend
-only the same current claim in an exact compiler-derived state, immediately
-before constructing a proposal. The proposal's resource version is immutable:
-any later renewal or state change invalidates it, so renewal is forbidden
-between review and apply. Intent execution has a separate fixed
-`renew-pending-intent` step immediately before the one-shot starts, while
-`renew-ready-campaign` preserves an exact successful prefix during a pause.
-Approval itself is never renewed. Before a new audited transition, the control
-server's clock must confirm the proposal's exact current claim; intent and
-`security_applied` additionally require the exact current approval. Terminal
-evidence from an operation authorized on time remains recordable after approval
-expiry only while that exact mutation claim is still current. No renewal revives
-an expired claim or rebases an immutable proposal. Approval-bound and clean
-target-bound renewals validate their exact approval or reviewed deadline on the
-server inside the same CAS before changing the lease or resource version.
-After delayed physical pre-observation, the guard refreshes the authenticated
-binding and requires server-confirmed minimum authority windows immediately
-before it records `AttemptStarted` and dispatches hardware. An exact already
-committed initial approval remains idempotently replayable after expiry, but an
-audit-only or uncommitted approval does not. The selector-free
-`release-terminal-claim` command promptly closes only the exact current claim
-after `security_applied`, quarantine, clean abort, or conclusive reconciliation.
-Its lost-response replay is tied to the original server idempotency record and
-refuses to retarget any later claim.
+Generic hardware-facing and signing binaries are intentionally unconfigured
+and fail closed. The flake constructors bind them to reviewed inputs:
+`lib.mkRpi5PhysicalLaneGuard`, `lib.mkDevelopmentYubiKeySigning`, and
+`lib.mkRpi5ProductionMedia`.
 
-The YubiKey PIN is a runtime systemd credential; it is never a Nix value.
-Normal-boot signing additionally uses `lib.mkRpi5BootSigningPlan` and
-`lib.mkRpi5VerifiedSignedBoot`. The shared cohort authorization is built with
-`lib.mkRpi5ReleaseIntent`; EEPROM inputs and the public fresh-board plan use
-`lib.mkRpi5EEPROMReleaseSigningInputs` and `lib.mkRpi5EEPROMSigningPlan`, while
-`lib.mkRpi5VerifiedSignedEEPROM` admits only an offline-verified public result.
-A signer-verified capsule can be wrapped in a
-deterministic outer FAT/GPT regular-file rehearsal with
-`lib.mkRpi5MediaStagingFixture`. A complete content-addressed signed release can
-instead be bound to exact per-run capacity and 512-byte logical-sector geometry,
-the full GPT/FAT/root/verity layout, and a plan-specialized writer/verifier pair
-with `lib.mkRpi5ProductionMedia`. The station-local raw whole-device or
-`/dev/disk/by-path` selector comes from the versioned, typed catalog in
-`config/hardware/` and is linker-fixed into the writer and verifier. The
-catalog is exposed as `lib.hardwareConfigurations`. It has no generic
-sacrificial-device entry: callers must choose either the `malak` USB/SD-reader
-configuration or the Pi-local NVMe configuration. The former is hostname-bound
-to `malak`, selects its fixed `/dev/disk/by-path` USB topology, and treats
-`/dev/nvme0n1` as protected. The latter is hostname-bound to
-`kaiba-rpi5-provisioner` and selects `/dev/nvme0n1` for a Pi booted from a
-separate medium. The execution-host binding, selector, resolved device, and
-attachment tuple appear in the mandatory station-local operational preflight;
-they remain absent from canonical plans and the stage, verification, and final
-receipt chain. Storage model, serial, WWID, `/dev/disk/by-id`, physical sector
-size, and initial contents are not trust inputs. See the
-[signed-boot workflow](../docs/raspberry-pi-5-signed-boot-workflow.md) and
-[target-media staging contracts](../docs/target-media-staging-prototype.md).
+## Quick start
 
-The current file journal accepts only
-`lane-guard-attempt-store/v1alpha5` envelopes containing
-`lane-guard-attempt/v1alpha4` attempts and current durable boot-transition
-records. Older nonempty journals are not migrated or replayed: remove the lane
-from service and resolve the target externally as a reconciliation or
-quarantine case before replacing the deployment. Only a journal positively
-known to be empty and created before any live operation may be deleted and
-recreated. The exact reviewed operator sequence is in the
-[live secure-boot foundation](../docs/raspberry-pi-5-live-provisioning.md).
-
-An exact guard rerun that finds the same durable terminal journal record only
-verifies or republishes its immutable receipt; it does not call hardware or
-repeat a mutation. That publication retry still enters through the current
-authenticated bridge and therefore must happen before its execution authority
-expires. A durable `started` record, a failed terminal journal write, or any
-other ambiguous physical result is never an execute retry: preserve the journal
-and use the reviewed reconciliation-only branch. If claim expiry prevents an
-uncertain receipt from entering control first, acquire a new read-only
-reconciliation claim for direct observation; never acquire new mutation
-authority for the old result.
-
-Command entry points live under `cmd/`. Implementation packages and embedded
-station assets live under `internal/`. Device-class profiles and their schema
-live under `profiles/` and `schemas/`.
-
-## Development
-
-From this directory:
+The supported development systems are `x86_64-linux` and `aarch64-linux`.
+Nix supplies a Go toolchain compatible with the module's Go 1.24 requirement
+and the other development tools:
 
 ```console
+nix develop
 go test ./...
-go build ./cmd/...
+nix --accept-flake-config flake check -L
 ```
 
-From the repository root, the workspace supports:
+Build the non-persistent probe package:
 
 ```console
-go test ./provisioning/...
+nix build .#kaiba-provision
 ```
 
-From this directory, the corresponding Nix boundary is `.`:
+The resulting executable is `result/bin/kaiba-provision`; its pinned device
+profile, schemas, and RPIBOOT probe bundle are under `result/share/kaiba/`.
+
+### Run the station simulation
+
+The demo is an in-memory simulation. It binds only to an explicit loopback
+address and has no hardware, signing, or persistence authority.
 
 ```console
-nix flake check . -L
-nix build .#kaiba-provision -L
+nix run .#kaiba-provision-station-demo -- --listen 127.0.0.1:8080
 ```
 
-### GitHub Pages
+Open `http://127.0.0.1:8080` in a browser. The static version deployed to
+GitHub Pages is built with:
 
-The GitHub Pages workflow publishes the static provisioning-station simulation
-from the `kaiba-provision-station-pages` Nix package. To enable it, open
-**Settings > Pages** in the GitHub repository and select **GitHub Actions** as
-the build and deployment source. A push to `main`, or a manual run of the
-`GitHub Pages` workflow, then builds with the pinned flake inputs, pulls from
-the `kaiba-provisioning` and `nixos-raspberrypi` Cachix caches, and deploys the
-site to the `github-pages` environment. The deployment URL appears in the
-workflow summary and under the repository's **Deployments** section.
+```console
+nix build .#kaiba-provision-station-pages
+```
 
-See the [Raspberry Pi 5 probe](../docs/raspberry-pi-5-provisioning-probe.md),
-[Raspberry Pi 5 secure-boot guide](../docs/raspberry-pi-5-secure-boot.md), and
-[live secure-boot foundation](../docs/raspberry-pi-5-live-provisioning.md),
-as well as the
-[station kiosk](../docs/provisioning-station-kiosk.md) documentation for the
-safety, lifecycle, and operator boundaries.
+## Safety model
+
+- Plans, approvals, requests, and receipts are canonical and digest-bound.
+- Hardware selectors and execution-host bindings come from the versioned
+  [hardware catalog](config/hardware/); callers cannot supply an arbitrary
+  block device at runtime.
+- The physical lane guard uses a durable execute-once journal. Ambiguous
+  outcomes enter reconciliation or quarantine and never become blind retries.
+- Signing keys and PINs are runtime-only. The repository contains public trust
+  anchors and signed inputs, not private keys or credentials.
+- The live station never falls back to the browser simulation, and the
+  simulation never calls a live backend.
+- Raw device observations remain outside the repository. Only validated,
+  whitelist-redacted qualification evidence belongs under
+  [`tests/evidence/`](tests/evidence/).
+
+The relay-backed lane is designed around normally-off power and a fixed,
+reviewed USB topology. A development-only manual-power mode exists, but it does
+not provide automated fail-off guarantees and is not a production-lane
+qualification.
+
+## Repository layout
+
+| Path | Contents |
+| --- | --- |
+| [`cmd/`](cmd/) | CLI entry points |
+| [`internal/provisioning/`](internal/provisioning/) | Control, signing, media, lane, and station implementation packages |
+| [`nix/`](nix/) | Packages, constructors, NixOS modules, and pinned patches |
+| [`config/hardware/`](config/hardware/) | Typed, host-bound hardware configurations |
+| [`profiles/`](profiles/) and [`policies/`](policies/) | Device-class and development posture inputs |
+| [`schemas/`](schemas/) | Versioned JSON contracts |
+| [`deploy/`](deploy/) | Inert Ubuntu deployment bundles and preflight tooling |
+| [`releases/`](releases/) | Public, signed release inputs |
+| [`signers/`](signers/) | Public signer trust anchors and independent review records |
+| [`tests/`](tests/) | Nix contracts, Go tests, deployment checks, fixtures, and UI tests |
+
+## Deployment and evidence guides
+
+- [Ubuntu development provisioning authority](deploy/ubuntu-provisioning-authority/README.md)
+- [Ubuntu 24.04 signing-gate deployment](deploy/ubuntu-signing-gate/README.md)
+- [Raspberry Pi 5 v0.1.6 public signed inputs](releases/rpi5-v0.1.6/README.md)
+- [Development prototype signer](signers/development-prototype/README.md)
+- [Hardware qualification evidence boundary](tests/evidence/README.md)
+
+The deployment bundles are inert by design: installation does not enable or
+start their services. Follow the linked preflight and operator steps before
+crossing a hardware or signing boundary.
+
+## CI, Cachix, and GitHub Pages
+
+The main CI workflow runs formatting, Go tests, deployment checks, and native
+Nix checks for both supported architectures. Pull requests consume binary
+caches but do not push to them. Successful `main` builds may push when the
+`CACHIX_AUTH_TOKEN` secret grants write access to the
+[`kaiba-provisioning` cache](https://app.cachix.org/cache/kaiba-provisioning);
+the Raspberry Pi dependencies are pulled from `nixos-raspberrypi`.
+
+The [GitHub Pages workflow](.github/workflows/pages.yml) publishes the static
+station simulation from `main`. Enable it once under **Settings > Pages** by
+selecting **GitHub Actions** as the build and deployment source. The Pages job
+is pull-only and does not need the Cachix write token.
+
+## Development checks
+
+Run the same fast checks used by CI:
+
+```console
+nix --accept-flake-config fmt -- --ci
+go test ./...
+tests/deployment/ubuntu_signing_gate_test.sh
+```
+
+Run the complete Nix contract suite before merging changes that affect
+packages, schemas, release inputs, or deployment boundaries:
+
+```console
+nix --accept-flake-config flake check -L
+```
