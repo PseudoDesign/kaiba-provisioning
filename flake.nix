@@ -461,15 +461,28 @@
                   /dev/disk/by-partlabel/KAIBA_RELEASE
                 test ${lib.escapeShellArg stableVerifierHardwareSystem.nixosSystem.config.kaiba.stableVerifierSpike.networkInterface} = \
                   end0
-                grep -Fx 'CONFIG_SUSPEND=y' \
-                  ${stableVerifierHardwareSystem.kernel.configfile} > /dev/null
-                grep -Fx 'CONFIG_PM_SLEEP_SMP=y' \
-                  ${stableVerifierHardwareSystem.kernel.configfile} > /dev/null
-                grep -Fx 'CONFIG_ARCH_SUPPORTS_KEXEC=y' \
-                  ${stableVerifierHardwareSystem.kernel.configfile} > /dev/null
-                grep -Fx 'CONFIG_KEXEC=y' \
-                  ${stableVerifierHardwareSystem.kernel.configfile} > /dev/null
+                test ${
+                  if
+                    lib.any (
+                      patch:
+                      patch.name == "kaiba-rpi5-stable-verifier-kexec-load"
+                      && patch.structuredExtraConfig ? SUSPEND
+                      && patch.structuredExtraConfig ? KEXEC
+                    ) stableVerifierHardwareSystem.nixosSystem.config.boot.kernelPatches
+                  then
+                    "true"
+                  else
+                    "false"
+                } = true
                 ${lib.optionalString (system == "aarch64-linux") ''
+                  grep -Fx 'CONFIG_SUSPEND=y' \
+                    ${stableVerifierHardwareSystem.kernel.configfile} > /dev/null
+                  grep -Fx 'CONFIG_PM_SLEEP_SMP=y' \
+                    ${stableVerifierHardwareSystem.kernel.configfile} > /dev/null
+                  grep -Fx 'CONFIG_ARCH_SUPPORTS_KEXEC=y' \
+                    ${stableVerifierHardwareSystem.kernel.configfile} > /dev/null
+                  grep -Fx 'CONFIG_KEXEC=y' \
+                    ${stableVerifierHardwareSystem.kernel.configfile} > /dev/null
                   find "$firmwareTree" -type f -printf '%P\n' | sort > "$TMPDIR/actual-files"
                   printf '%s\n' \
                     bcm2712-rpi-5-b.dtb \
