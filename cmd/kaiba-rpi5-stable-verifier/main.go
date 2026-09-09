@@ -218,9 +218,10 @@ func run(ctx context.Context, arguments []string, output io.Writer) int {
 	}
 	loaded, err := (stablehandoff.Plan{
 		KexecPath: cfg.kexecPath, Kernel: kernel, Initramfs: preparedInitramfs,
-		DeviceTree: deviceTree, CommandLine: release.KernelCommandLine(), Output: io.Discard,
+		DeviceTree: deviceTree, CommandLine: release.KernelCommandLine(), Output: os.Stderr,
 	}).Load(ctx)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "stable verifier: kexec load failed: %v\n", err)
 		return fail(emitter, details, "kexec-load-failed", exitHandoff)
 	}
 	if _, _, err := emitter.Emit(verifierevents.EventHandoffLoaded, details); err != nil {
@@ -242,6 +243,7 @@ func run(ctx context.Context, arguments []string, output io.Writer) int {
 		return fail(emitter, details, "authorization-expired-before-execute", exitAuthorization)
 	}
 	if err := loaded.Execute(ctx); err != nil {
+		fmt.Fprintf(os.Stderr, "stable verifier: kexec execute failed: %v\n", err)
 		return fail(emitter, details, "kexec-execute-failed", exitHandoff)
 	}
 	return fail(emitter, details, "kexec-returned", exitHandoff)
