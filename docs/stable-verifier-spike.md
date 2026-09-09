@@ -177,6 +177,14 @@ drivers into the kernel. The hardware composition retains `nvme` in
 silently omit it. Any platform-pin change requires the storage and network
 driver disposition to be reviewed again.
 
+The vendor kernel enables only `kexec_file_load` by default. That syscall
+cannot consume the verifier's separately authenticated device tree, so the
+hardware composition also enables `SUSPEND` (which makes arm64
+`ARCH_SUPPORTS_KEXEC` available) and `KEXEC`. The hardware-evaluation check
+asserts the resulting `CONFIG_PM_SLEEP_SMP=y`,
+`CONFIG_ARCH_SUPPORTS_KEXEC=y`, and `CONFIG_KEXEC=y` settings. Removing any of
+them makes the required legacy `kexec_load` handoff unavailable.
+
 ## Remaining hardware gate
 
 The spike is not validated until the development-key-fused sacrificial
@@ -201,6 +209,13 @@ The campaign is bound to development customer-key hash
 The board was fused before this campaign; `otp_changed: false` and
 `eeprom_changed: false` attest that this campaign performed no further OTP or
 EEPROM mutation. They do not describe an unfused board.
+
+This non-production spike does not bootstrap trusted wall-clock time. Before a
+physical test, the development Pi RTC must already fall within the explicit
+test-authority TLS certificate's validity interval. An unset Pi RTC causes the
+TLS client to fail closed. A production design must obtain authenticated time
+without weakening X.509 validity checks; manually setting the RTC is only a
+laboratory prerequisite for this campaign.
 
 - approved release boots;
 - offline authorization is rejected;

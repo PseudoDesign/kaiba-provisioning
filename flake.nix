@@ -461,6 +461,14 @@
                   /dev/disk/by-partlabel/KAIBA_RELEASE
                 test ${lib.escapeShellArg stableVerifierHardwareSystem.nixosSystem.config.kaiba.stableVerifierSpike.networkInterface} = \
                   end0
+                grep -Fx 'CONFIG_SUSPEND=y' \
+                  ${stableVerifierHardwareSystem.kernel.configfile} > /dev/null
+                grep -Fx 'CONFIG_PM_SLEEP_SMP=y' \
+                  ${stableVerifierHardwareSystem.kernel.configfile} > /dev/null
+                grep -Fx 'CONFIG_ARCH_SUPPORTS_KEXEC=y' \
+                  ${stableVerifierHardwareSystem.kernel.configfile} > /dev/null
+                grep -Fx 'CONFIG_KEXEC=y' \
+                  ${stableVerifierHardwareSystem.kernel.configfile} > /dev/null
                 ${lib.optionalString (system == "aarch64-linux") ''
                   find "$firmwareTree" -type f -printf '%P\n' | sort > "$TMPDIR/actual-files"
                   printf '%s\n' \

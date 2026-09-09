@@ -56,6 +56,23 @@ let
           };
           hardware.raspberry-pi.config.cm5.dt-overlays.dwc2.enable = lib.mkForce false;
 
+          # arm64 exposes the segment-based kexec_load syscall only when
+          # PM_SLEEP_SMP makes ARCH_SUPPORTS_KEXEC available. The verifier
+          # intentionally uses that syscall because kexec_file_load cannot
+          # consume the separately authenticated device tree. The reviewed
+          # vendor default enables only KEXEC_FILE, which makes the retained
+          # DTB handoff fail with ENOSYS on physical Pi 5 hardware.
+          boot.kernelPatches = [
+            {
+              name = "kaiba-rpi5-stable-verifier-kexec-load";
+              patch = null;
+              structuredExtraConfig = with lib.kernel; {
+                SUSPEND = yes;
+                KEXEC = yes;
+              };
+            }
+          ];
+
           fileSystems."/" = {
             device = "none";
             fsType = "tmpfs";
