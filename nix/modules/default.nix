@@ -10,5 +10,6 @@
     ./provisioning-signing-gate.nix
     ./provisioning-station-demo.nix
     ./secure-boot-target.nix
+    ./stable-verifier-spike.nix
   ];
 }

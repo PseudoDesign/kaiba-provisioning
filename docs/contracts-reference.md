@@ -15,7 +15,7 @@ exported package.
 
 ## JSON schema groups
 
-There are 49 versioned files under [`schemas/`](../schemas/). Several groups
+There are 54 versioned files under [`schemas/`](../schemas/). Several groups
 retain older alpha revisions so checked inputs can be verified; revision
 coexistence does not imply automatic migration.
 
@@ -28,6 +28,7 @@ coexistence does not imply automatic migration.
 | Signing receipts | `signing-gate-receipt-export-*`, `signing-gate-receipt-verification-*` | `kaiba-provision-signing-receipts`, signed-release finalization, independent receipt verification |
 | RPIBOOT and boot bundles | `secure-boot-bundle-*`, `rpi5-rpiboot-bundle-set-*`, `rpi5-rpiboot-directory-tree-*` | RPIBOOT bundle constructor/verifier and the physical lane package |
 | Signed release | `rpi5-signed-release-manifest-*`, `rpi5-signed-release-publication-*` | `mkRpi5VerifiedSignedRelease`, `kaiba-provision-finalize-release`, media and lane constructors |
+| Stable-verifier spike | `rpi5-stable-verifier-policy-*`, `rpi5-delegated-release-manifest-*`, `rpi5-boot-authorization-*`, `rpi5-stable-verifier-event-*`, `rpi5-stable-verifier-spike-evidence-*` | Stable release verification, audience-bound non-production authorization, UART events, and software/hardware evidence packaging |
 | Media plan and layout | `rpi5-device-media-layout-*`, `rpi5-media-binding-*`, `rpi5-media-staging-plan-*` | `mkRpi5ProductionMedia`, fixture staging, device-specific writer and verifier |
 | Media execution evidence | `rpi5-media-device-preflight-*`, `rpi5-media-stage-receipt-*`, `rpi5-media-staging-receipt-*`, `rpi5-media-verification-receipt-*`, `rpi5-media-verification-report-*`, `rpi5-media-fixture-result-*`, `rpi5-media-cold-power-observation-*`, `rpi5-unfused-runtime-facts-*` | Media stagers/verifiers, contract finalizer, cold-power and unfused-runtime correlation |
 
@@ -50,6 +51,8 @@ and version constants for these interfaces live with their strict decoders:
 | Operator prompt | `internal/provisioning/operatorprompt` | Unix peer authentication and exact server-selected acknowledgement phrases |
 | Workflow proposals | `internal/provisioning/operatorworkflow` and `plancompiler` | Authority-free draft reconstruction and typed approval/intent/evidence transitions |
 | Release binding | `internal/provisioning/releasebinding` | Exact equality over signed release, lane package, compiled artifacts, customer key, EEPROM, and boot image digests |
+| Stable release verification and handoff | `internal/provisioning/stableverifier` and `stablehandoff` | Inline root/delegated signatures, exact release roles, retained descriptors, fixed credential archive, and kexec boundary |
+| Non-production authorization and evidence | `internal/provisioning/releaseauthorization`, `verifierevents`, and `stableevidence` | TLS 1.3 with explicit roots, one-use challenge binding, structured UART events, and allowlisted spike evidence |
 
 Persisted runtime formats are versioned independently. In particular, a
 nonempty lane journal is not a migration input: incompatible state must be
@@ -69,6 +72,7 @@ inputs rather than general runtime selectors.
 | Signing and receipt verification | `mkDevelopmentYubiKeySigning`, `mkRpi5VerifiedSignedBoot`, `mkRpi5VerifiedSignedEEPROM`, `mkRpi5VerifiedOwnedRecovery`, `mkRpi5VerifiedSigningReceipts` |
 | Bundle and release verification | `mkRpi5VerifiedRPIBootBundles`, `mkRpi5VerifiedSignedRelease`, `mkRpi5VerifiedUnfusedCapsule`, `mkRpi5UnfusedVerifier` |
 | Media | `mkRpi5MediaStagingFixture`, `mkRpi5ProductionMedia` |
+| Stable-verifier spike | `mkRpi5StableVerifierUnsignedBoot`, `mkRpi5StableVerifierTestSD`, `mkRpi5DelegatedReleaseSpike`, `mkRpi5StableVerifierSpikeRig` |
 | Physical development lane | `mkRpi5PhysicalLaneGuard`, `mkRpi5DevelopmentSecureBootRunner`, `mkRpi5DevelopmentSecureBootOperationalPayload` |
 | Deployment and ceremony | `mkDevelopmentSigningCeremony`, `mkUbuntuProvisioningAuthorityDeployment`, `mkUbuntuSigningGateDeployment` |
 
@@ -90,6 +94,7 @@ The root `nixosModules` set exports:
 - `provisioning-signing-gate`
 - `provisioning-station-demo`
 - `secure-boot-target`
+- `stable-verifier-spike`
 
 Modules default to non-authoritative or disabled behavior. The lane guard, for
 example, requires an explicit immutable package and defaults
@@ -106,6 +111,7 @@ The following package groups are exported for both `x86_64-linux` and
 | Rehearsal and UI | `kaiba-provision-rehearsal`, `kaiba-provision-integrated-rehearsal`, `kaiba-provision-station-demo`, `kaiba-provision-station-pages` |
 | Public signing and release tools | `kaiba-provision-signing-approval`, `kaiba-provision-signing-receipts`, `kaiba-provision-sign-boot`, `kaiba-provision-sign-eeprom`, `kaiba-provision-rpiboot-bundles`, `kaiba-provision-finalize-release` |
 | Media and unfused tools | `kaiba-provision-media-contract`, `kaiba-provision-unfused-compat`, `kaiba-provision-unfused-evidence`, `kaiba-provision-unfused-runtime-record` |
+| Stable-verifier spike | `kaiba-rpi5-stable-verifier`, `kaiba-rpi5-verifier-test-authority`, `kaiba-rpi5-one-boot-prove` (development-only, static executables) |
 | Fail-closed foundations | `kaiba-provision-signer-foundation`, `kaiba-provision-signing-client-foundation`, `kaiba-provision-signing-gate-foundation`, `kaiba-provision-yubikey-wrapper-foundation` |
 | Suites and immutable inputs | `provisioning-suite`, `provisioning-services`, `provisioning-test-result`, `rpi5-physical-lane-guard-fixture`, `rpi5-probe-bundle`, `rpi5-eeprom-release` |
 | Deployment bundles | `ubuntu-provisioning-authority-deployment`, `ubuntu-signing-gate-deployment` |
@@ -126,8 +132,9 @@ closed. An operational helper must instead be created with
 ## Checks
 
 `nix --accept-flake-config flake check -L` evaluates the schema/profile,
-artifact, EEPROM, signing, receipt, RPIBOOT, signed-release, media, module,
-deployment, station UI, and Go-suite contracts declared in `flake.nix`.
+artifact, EEPROM, signing, receipt, RPIBOOT, signed-release, media,
+stable-verifier spike, module, deployment, station UI, and Go-suite contracts
+declared in `flake.nix`.
 Most are deliberately software-only. Their descriptions in
 `tests/report-input.json` state the authority and hardware claims they do not
 make; those negative claims are part of the contract, not boilerplate.

@@ -18,6 +18,9 @@
 
 let
   version = "0.1.0";
+  stableVerifierSpike = import ./stable-verifier-spike.nix {
+    inherit lib pkgs;
+  };
   # moduleRoot is either the single-pass fileset above or an explicitly scoped
   # caller input. Do not filter it again: a second pass over a store-backed
   # subpath can leave an unmaterialized source path under lazy-tree Nix.
@@ -157,6 +160,122 @@ let
     # link step separate prevents probe-only build-time paths from becoming
     # ambient configuration for the control and station processes.
     doCheck = false;
+  };
+
+  stableVerifierTool = pkgs.buildGoModule {
+    pname = "kaiba-rpi5-stable-verifier";
+    inherit version;
+    src = goSource;
+    subPackages = [ "cmd/kaiba-rpi5-stable-verifier" ];
+    vendorHash = null;
+    env.CGO_ENABLED = 0;
+    ldflags = [
+      "-s"
+      "-w"
+    ];
+    # checks.unit runs the complete Go suite once for this source tree.
+    doCheck = false;
+    postInstall = ''
+      ${pkgs.file}/bin/file "$out/bin/kaiba-rpi5-stable-verifier" \
+        | ${pkgs.gnugrep}/bin/grep -F 'statically linked' > /dev/null
+    '';
+    passthru.kaibaRpi5StableVerifier = {
+      runtimeBoundary = "initramfs_only";
+      staticallyLinked = true;
+      nonProductionOnly = true;
+      productionReady = false;
+      hardwareObserved = false;
+      privateKeyMaterialEmbedded = false;
+      generatesEphemeralPrivateKeys = true;
+      networkClient = true;
+      signingCapable = true;
+      authoritySigningCapable = false;
+      signingAuthorityConfigured = false;
+      kexecCapable = true;
+    };
+    meta = {
+      mainProgram = "kaiba-rpi5-stable-verifier";
+      description = "Development-only static Raspberry Pi 5 initramfs release verifier";
+      platforms = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
+    };
+  };
+
+  verifierTestAuthority = pkgs.buildGoModule {
+    pname = "kaiba-rpi5-verifier-test-authority";
+    inherit version;
+    src = goSource;
+    subPackages = [ "cmd/kaiba-rpi5-verifier-test-authority" ];
+    vendorHash = null;
+    env.CGO_ENABLED = 0;
+    ldflags = [
+      "-s"
+      "-w"
+    ];
+    # checks.unit runs the complete Go suite once for this source tree.
+    doCheck = false;
+    postInstall = ''
+      ${pkgs.file}/bin/file "$out/bin/kaiba-rpi5-verifier-test-authority" \
+        | ${pkgs.gnugrep}/bin/grep -F 'statically linked' > /dev/null
+    '';
+    passthru.kaibaRpi5VerifierTestAuthority = {
+      runtimeBoundary = "isolated_non_production_test_authority";
+      staticallyLinked = true;
+      nonProductionOnly = true;
+      productionReady = false;
+      hardwareObserved = false;
+      privateKeyMaterialEmbedded = false;
+      requiresRuntimePrivateKeys = true;
+      signingCapable = true;
+    };
+    meta = {
+      mainProgram = "kaiba-rpi5-verifier-test-authority";
+      description = "Isolated non-production authorization authority for the Raspberry Pi 5 verifier spike";
+      platforms = lib.platforms.linux;
+    };
+  };
+
+  oneBootProveTool = pkgs.buildGoModule {
+    pname = "kaiba-rpi5-one-boot-prove";
+    inherit version;
+    src = goSource;
+    subPackages = [ "cmd/kaiba-rpi5-one-boot-prove" ];
+    vendorHash = null;
+    env.CGO_ENABLED = 0;
+    ldflags = [
+      "-s"
+      "-w"
+    ];
+    # checks.unit runs the complete Go suite once for this source tree.
+    doCheck = false;
+    postInstall = ''
+      ${pkgs.file}/bin/file "$out/bin/kaiba-rpi5-one-boot-prove" \
+        | ${pkgs.gnugrep}/bin/grep -F 'statically linked' > /dev/null
+    '';
+    passthru.kaibaRpi5OneBootProve = {
+      runtimeBoundary = "delegated_os_one_boot_proof";
+      staticallyLinked = true;
+      nonProductionOnly = true;
+      productionReady = false;
+      hardwareObserved = false;
+      privateKeyMaterialEmbedded = false;
+      readsHandoffCredential = true;
+      readsRuntimePrivateKey = true;
+      deletesOneBootPrivateKeyBeforeNetwork = true;
+      networkClient = true;
+      signingCapable = true;
+      authoritySigningCapable = false;
+    };
+    meta = {
+      mainProgram = "kaiba-rpi5-one-boot-prove";
+      description = "Development-only one-boot possession proof client for the Raspberry Pi 5 verifier spike";
+      platforms = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
+    };
   };
 
   signingApprovalTool = pkgs.buildGoModule {
@@ -1784,6 +1903,20 @@ let
 
 in
 {
+  inherit (stableVerifierSpike)
+    mkRpi5DelegatedReleaseSpike
+    mkRpi5StableVerifierSpikeRig
+    mkRpi5StableVerifierTestSD
+    mkRpi5StableVerifierUnsignedBoot
+    ;
+  mkRpi5StableVerifierSpikeContractCheck =
+    args:
+    stableVerifierSpike.mkRpi5StableVerifierSpikeContractCheck (
+      args
+      // {
+        verifierPackage = stableVerifierTool;
+      }
+    );
   inherit
     audit
     authorityBridge
@@ -1818,6 +1951,7 @@ in
     mkRpi5VerifiedSignedEEPROM
     mkRpi5VerifiedOwnedRecovery
     mkRpi5VerifiedUnfusedCapsule
+    oneBootProveTool
     provision
     rehearsal
     rpiboot
@@ -1840,7 +1974,9 @@ in
     signingApprovalTool
     signingReceiptsTool
     signedReleaseTool
+    stableVerifierTool
     suite
+    verifierTestAuthority
     yubiKeyWrapperFoundation
     ;
 }

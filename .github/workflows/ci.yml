@@ -59,7 +59,10 @@ jobs:
       - name: Install Nix
         uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342 # v31.11.0
         with:
-          enable_kvm: false
+          # The verifier checks boot NixOS guests and is marked with Nix's
+          # `kvm` system feature. Expose the hosted runner's KVM device and
+          # advertise that feature to the Nix daemon.
+          enable_kvm: true
           github_access_token: ${{ github.token }}
 
       - name: Configure binary caches (read-only)
@@ -160,6 +163,8 @@ jobs:
       - name: Install Nix
         uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342 # v31.11.0
         with:
+          # GitHub's native ARM64 runners do not expose KVM; the AArch64 VM
+          # check uses the NixOS test framework's QEMU TCG fallback.
           enable_kvm: false
           github_access_token: ${{ github.token }}
 

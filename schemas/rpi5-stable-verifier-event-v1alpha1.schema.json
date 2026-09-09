@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provisioning.kaiba.network/schemas/rpi5-stable-verifier-event-v1alpha1.schema.json",
+  "title": "Kaiba Raspberry Pi 5 stable-verifier UART event v1alpha1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "sequence", "source", "event"],
+  "properties": {
+    "schema_version": {
+      "const": "kaiba.provisioning.rpi5-stable-verifier-event/v1alpha1"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4294967295
+    },
+    "source": { "const": "verifier-uart" },
+    "event": {
+      "enum": [
+        "verifier-started",
+        "release-verified",
+        "bootstrap-key-ready",
+        "authorization-granted",
+        "handoff-loaded",
+        "handoff-executing",
+        "verifier-failed"
+      ]
+    },
+    "policy_digest": { "$ref": "#/$defs/digest" },
+    "manifest_digest": { "$ref": "#/$defs/digest" },
+    "bootstrap_public_key": { "$ref": "#/$defs/ed25519_public_key" },
+    "one_boot_public_key": { "$ref": "#/$defs/ed25519_public_key" },
+    "failure_code": { "$ref": "#/$defs/identifier" }
+  },
+  "dependentRequired": {
+    "policy_digest": ["manifest_digest"],
+    "manifest_digest": ["policy_digest"],
+    "bootstrap_public_key": ["policy_digest", "manifest_digest"],
+    "one_boot_public_key": [
+      "policy_digest",
+      "manifest_digest",
+      "bootstrap_public_key"
+    ]
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "event": { "const": "verifier-failed" } },
+        "required": ["event"]
+      },
+      "then": { "required": ["failure_code"] },
+      "else": { "not": { "required": ["failure_code"] } }
+    },
+    {
+      "if": {
+        "properties": { "event": { "const": "verifier-started" } },
+        "required": ["event"]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["policy_digest"] },
+            { "required": ["manifest_digest"] },
+            { "required": ["bootstrap_public_key"] },
+            { "required": ["one_boot_public_key"] }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "event": { "const": "release-verified" } },
+        "required": ["event"]
+      },
+      "then": {
+        "required": ["policy_digest", "manifest_digest"],
+        "not": {
+          "anyOf": [
+            { "required": ["bootstrap_public_key"] },
+            { "required": ["one_boot_public_key"] }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "event": { "const": "bootstrap-key-ready" } },
+        "required": ["event"]
+      },
+      "then": {
+        "required": [
+          "policy_digest",
+          "manifest_digest",
+          "bootstrap_public_key"
+        ],
+        "not": { "required": ["one_boot_public_key"] }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event": {
+            "enum": [
+              "authorization-granted",
+              "handoff-loaded",
+              "handoff-executing"
+            ]
+          }
+        },
+        "required": ["event"]
+      },
+      "then": {
+        "required": [
+          "policy_digest",
+          "manifest_digest",
+          "bootstrap_public_key",
+          "one_boot_public_key"
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._:-]{0,127}$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "ed25519_public_key": {
+      "type": "string",
+      "pattern": "^ed25519:[0-9a-f]{64}$"
+    }
+  }
+}

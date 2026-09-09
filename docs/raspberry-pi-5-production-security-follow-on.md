@@ -232,14 +232,11 @@ credentials; local cryptographic rejection of every old volume is not claimed.
 ## Stable verifier and delegated boot
 
 The first production milestone is a stable-verifier spike on the sacrificial
-board. Two bounded candidates are acceptable:
+board using a minimal customer-root-signed Linux/initramfs verifier. It
+validates a complete manifest and securely loads verified second-stage bytes.
+U-Boot and FIT comparison work is deferred and is not part of this milestone.
 
-- a minimal customer-root-signed Linux/initramfs verifier that validates a
-  complete manifest and securely loads verified second-stage bytes; or
-- a customer-root-signed U-Boot verified-boot image with required keys in its
-  trusted control DTB and required signatures on selected FIT configurations.
-
-The chosen verifier needs one non-interactive path, no unsigned or legacy
+The verifier needs one non-interactive path, no unsigned or legacy
 fallback, and authentication of every byte influencing kernel, initramfs, DTB,
 overlays, command line, root hash, and slot.
 
@@ -390,8 +387,9 @@ mutation primitive.
 
 ### Workstream 2: stable verifier
 
-- [ ] Build and test both bounded verifier candidates on the sacrificial Pi.
-- [ ] Select one implementation and remove every alternative boot path.
+- [ ] Build and test the initramfs verifier on the sacrificial Pi.
+- [ ] Make the initramfs verifier the exclusive gate and remove every
+      alternative boot path.
 - [ ] Implement delegated policy, threshold, revocation, and release checks.
 - [ ] Bind every boot component, root selection, slot, and epoch, then enforce
       the fresh server exchange before handoff.
@@ -526,4 +524,3 @@ linked NixOS integration is an unmerged pull request, not a platform contract.
 - [Raspberry Pi cryptsetup passphrase agent](https://github.com/raspberrypi/cryptsetup-passphrase-agent)
 - [NixOS Raspberry Pi OTP-derived key integration proposal](https://github.com/nvmd/nixos-raspberrypi/pull/179)
 - [Linux dm-verity documentation](https://www.kernel.org/doc/html/latest/admin-guide/device-mapper/verity.html)
-- [U-Boot FIT signature verification](https://docs.u-boot.org/en/latest/usage/fit/signature.html)

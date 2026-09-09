@@ -150,16 +150,23 @@ def der_sequence(*values: bytes) -> bytes:
     return b"\x30" + der_length(len(payload)) + payload
 
 
-def private_key_der() -> bytes:
-    p = derive_prime(b"p")
-    q = derive_prime(b"q")
-    if p == q:
-        raise RuntimeError("deterministic fixture primes unexpectedly collide")
+def private_key_der(label: bytes = b"") -> bytes:
+    # Keep the unlabeled output byte-for-byte compatible with the original
+    # fixture while allowing tests to derive independent trust roles.
+    prefix = b"" if not label else label + b"\x00"
+    p = derive_prime(prefix + b"p")
+    for q_index in range(16):
+        q_label = prefix + b"q"
+        if q_index:
+            q_label += b"\x00" + q_index.to_bytes(1, "big")
+        q = derive_prime(q_label)
+        if p != q and (p * q).bit_length() == KEY_BITS:
+            break
+    else:
+        raise RuntimeError("deterministic fixture could not derive an RSA-2048 modulus")
     if p < q:
         p, q = q, p
     modulus = p * q
-    if modulus.bit_length() != KEY_BITS:
-        raise RuntimeError("deterministic fixture modulus is not RSA-2048")
     totient = (p - 1) * (q - 1)
     private_exponent = pow(PUBLIC_EXPONENT, -1, totient)
     return der_sequence(
@@ -188,8 +195,11 @@ def pem(label: str, encoded: bytes) -> bytes:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--private", required=True, type=Path)
+    parser.add_argument("--label", default="")
     args = parser.parse_args()
-    args.private.write_bytes(pem("RSA PRIVATE KEY", private_key_der()))
+    args.private.write_bytes(
+        pem("RSA PRIVATE KEY", private_key_der(args.label.encode("utf-8")))
+    )
     os.chmod(args.private, 0o600)
 
 

@@ -34,6 +34,7 @@ The canonical development posture remains
 | [Production readiness](production-readiness.md) | What the repository establishes and what still blocks production | Implemented policy plus scoped evidence and planned work |
 | [Contracts reference](contracts-reference.md) | JSON schemas, Go wire contracts, Nix constructors, modules, and exported packages | Implemented |
 | [Production security follow-on](raspberry-pi-5-production-security-follow-on.md) | Security goals and the follow-on work needed to close them | Planned and tracked against current controls |
+| [Initramfs stable-verifier spike](stable-verifier-spike.md) | Software contracts, Nix assembly interfaces, QEMU checks, and the remaining Raspberry Pi 5 hardware gate | Software and VM checks implemented; physical validation pending |
 | [Device identity lifecycle](device-identity.md) | Proposed bootstrap, enrollment, rotation, revocation, recovery, and retirement model | Planned; not implemented by this repository |
 | [Production-station architecture](provisioning-station-production.md) | Proposed host, authority, network, credential, and lifecycle boundaries | Planned; not implemented by this repository |
 
