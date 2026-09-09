@@ -153,7 +153,7 @@ jobs:
   aarch64:
     name: Native ARM64 checks and operator packages
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       - name: Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
