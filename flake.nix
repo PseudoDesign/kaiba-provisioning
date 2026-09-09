@@ -437,13 +437,17 @@
           };
           stable-verifier-rpi5-hardware-eval =
             pkgs.runCommand "kaiba-stable-verifier-rpi5-hardware-eval"
-              {
-                firmwareTree = stableVerifierHardwareSystem.firmwareTree;
-                nativeBuildInputs = [
-                  pkgs.findutils
-                  pkgs.gnugrep
-                ];
-              }
+              (
+                {
+                  nativeBuildInputs = [
+                    pkgs.findutils
+                    pkgs.gnugrep
+                  ];
+                }
+                // lib.optionalAttrs (system == "aarch64-linux") {
+                  firmwareTree = stableVerifierHardwareSystem.firmwareTree;
+                }
+              )
               ''
                 test ${lib.escapeShellArg stableVerifierHardwareSystem.platformRevision} = \
                   7e39508bcf9c1da82cf11c1e22f74f9d9fd0fe10
@@ -457,24 +461,26 @@
                   /dev/disk/by-partlabel/KAIBA_RELEASE
                 test ${lib.escapeShellArg stableVerifierHardwareSystem.nixosSystem.config.kaiba.stableVerifierSpike.networkInterface} = \
                   end0
-                find "$firmwareTree" -type f -printf '%P\n' | sort > "$TMPDIR/actual-files"
-                printf '%s\n' \
-                  bcm2712-rpi-5-b.dtb \
-                  cmdline.txt \
-                  config.txt \
-                  initrd \
-                  kernel.img \
-                  overlays/README \
-                  overlays/bcm2712d0.dtbo \
-                  overlays/overlay_map.dtb \
-                  > "$TMPDIR/expected-files"
-                cmp "$TMPDIR/expected-files" "$TMPDIR/actual-files"
-                test -z "$(find "$firmwareTree" -type l -print -quit)"
-                test -z "$(find "$firmwareTree" ! -type d ! -type f -print -quit)"
-                test -s "$firmwareTree/initrd"
-                test -s "$firmwareTree/kernel.img"
-                ! grep -Eq '(^|[[:space:]])init=' "$firmwareTree/cmdline.txt"
-                ! grep -Eq '^dtoverlay=(vc4-kms-v3d|dwc2)$' "$firmwareTree/config.txt"
+                ${lib.optionalString (system == "aarch64-linux") ''
+                  find "$firmwareTree" -type f -printf '%P\n' | sort > "$TMPDIR/actual-files"
+                  printf '%s\n' \
+                    bcm2712-rpi-5-b.dtb \
+                    cmdline.txt \
+                    config.txt \
+                    initrd \
+                    kernel.img \
+                    overlays/README \
+                    overlays/bcm2712d0.dtbo \
+                    overlays/overlay_map.dtb \
+                    > "$TMPDIR/expected-files"
+                  cmp "$TMPDIR/expected-files" "$TMPDIR/actual-files"
+                  test -z "$(find "$firmwareTree" -type l -print -quit)"
+                  test -z "$(find "$firmwareTree" ! -type d ! -type f -print -quit)"
+                  test -s "$firmwareTree/initrd"
+                  test -s "$firmwareTree/kernel.img"
+                  ! grep -Eq '(^|[[:space:]])init=' "$firmwareTree/cmdline.txt"
+                  ! grep -Eq '^dtoverlay=(vc4-kms-v3d|dwc2)$' "$firmwareTree/config.txt"
+                ''}
                 mkdir -p "$out"
                 printf '%s\n' 'stable-verifier Raspberry Pi 5 hardware evaluation: pass' > "$out/result.txt"
               '';
