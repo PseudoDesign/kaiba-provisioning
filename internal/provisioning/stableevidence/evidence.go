@@ -18,14 +18,15 @@ import (
 )
 
 const (
-	SchemaV1Alpha1   = "kaiba.provisioning.rpi5-stable-verifier-spike-evidence/v1alpha1"
-	CampaignV1Alpha1 = "kaiba.provisioning.rpi5-stable-verifier-campaign/v1alpha1"
-	DeviceClass      = "raspberry-pi-5-model-b-v1alpha1"
-	BoardRevision    = "a04171"
-	Classification   = "development-only"
-	OutcomeValidated = "validated"
-	OutcomeBlocked   = "blocked"
-	MaxBytes         = 1024 * 1024
+	SchemaV1Alpha1                           = "kaiba.provisioning.rpi5-stable-verifier-spike-evidence/v1alpha1"
+	CampaignV1Alpha1                         = "kaiba.provisioning.rpi5-stable-verifier-campaign/v1alpha1"
+	DeviceClass                              = "raspberry-pi-5-model-b-v1alpha1"
+	BoardRevision                            = "a04171"
+	Classification                           = "development-only"
+	DevelopmentCustomerKeyHash bundle.Digest = "sha256:b8818acea4e71173903ee003e33ed37e969def7d2ea67bec15c0b73cb36c3895"
+	OutcomeValidated                         = "validated"
+	OutcomeBlocked                           = "blocked"
+	MaxBytes                                 = 1024 * 1024
 )
 
 var (
@@ -52,12 +53,13 @@ var (
 )
 
 type Hardware struct {
-	DeviceClass      string `json:"device_class"`
-	BoardRevision    string `json:"board_revision"`
-	SerialRedacted   bool   `json:"serial_redacted"`
-	CustomerKeyState string `json:"customer_key_state"`
-	OTPChanged       bool   `json:"otp_changed"`
-	EEPROMChanged    bool   `json:"eeprom_changed"`
+	DeviceClass      string        `json:"device_class"`
+	BoardRevision    string        `json:"board_revision"`
+	SerialRedacted   bool          `json:"serial_redacted"`
+	CustomerKeyState string        `json:"customer_key_state"`
+	CustomerKeyHash  bundle.Digest `json:"customer_key_hash"`
+	OTPChanged       bool          `json:"otp_changed"`
+	EEPROMChanged    bool          `json:"eeprom_changed"`
 }
 
 type Software struct {
@@ -216,8 +218,9 @@ func (hardware Hardware) validate() error {
 	if hardware.DeviceClass != DeviceClass || hardware.BoardRevision != BoardRevision {
 		return errors.New("hardware must identify the approved a04171 Raspberry Pi 5 target")
 	}
-	if !hardware.SerialRedacted || hardware.CustomerKeyState != "unfused" || hardware.OTPChanged || hardware.EEPROMChanged {
-		return errors.New("hardware evidence must redact the serial and attest no OTP or EEPROM changes")
+	if !hardware.SerialRedacted || hardware.CustomerKeyState != "development-key-fused" ||
+		hardware.CustomerKeyHash != DevelopmentCustomerKeyHash || hardware.OTPChanged || hardware.EEPROMChanged {
+		return errors.New("hardware evidence must bind the fused development key, redact the serial, and attest no campaign OTP or EEPROM changes")
 	}
 	return nil
 }

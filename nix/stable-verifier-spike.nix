@@ -323,6 +323,7 @@ let
     {
       stableVerifierUnsignedBoot,
       bootSignature,
+      firmwareSigningPublicKey,
       bootFilesystemSizeMiB ? 128,
       name ? "kaiba-rpi5-stable-verifier-test-sd",
     }:
@@ -334,18 +335,16 @@ let
     ) "stableVerifierUnsignedBoot must be produced by mkRpi5StableVerifierUnsignedBoot";
     assert lib.assertMsg (storeBacked bootSignature)
       "bootSignature must be one fixed public Nix-store path";
+    assert lib.assertMsg (storeBacked firmwareSigningPublicKey)
+      "firmwareSigningPublicKey must be one fixed public Nix-store path";
     assert lib.assertMsg (
       builtins.isInt bootFilesystemSizeMiB && bootFilesystemSizeMiB >= 112 && bootFilesystemSizeMiB <= 256
     ) "bootFilesystemSizeMiB must be an integer from 112 through 256";
-    let
-      bootContract = stableVerifierUnsignedBoot.kaibaRpi5StableVerifierUnsignedBoot;
-      rootPublicKey = bootContract.rootPublicKey;
-    in
     pkgs.runCommand name
       {
         bootInput = stableVerifierUnsignedBoot;
         bootSignatureInput = bootSignature;
-        rootPublicKeyInput = rootPublicKey;
+        firmwareSigningPublicKeyInput = firmwareSigningPublicKey;
         nativeBuildInputs = [
           pkgs.coreutils
           pkgs.dosfstools
@@ -360,7 +359,7 @@ let
           inherit
             bootFilesystemSizeMiB
             bootSignature
-            rootPublicKey
+            firmwareSigningPublicKey
             stableVerifierUnsignedBoot
             ;
           artifactSchemaVersion = "kaiba.provisioning.rpi5-stable-verifier-test-sd/v1alpha1";
@@ -401,7 +400,7 @@ let
         printf '%s' "''${signature_line#rsa2048: }" | xxd -r -p > "$TMPDIR/boot-signature.bin"
         test "$(stat --format=%s "$TMPDIR/boot-signature.bin")" -eq 256
         openssl dgst -sha256 \
-          -verify "$rootPublicKeyInput" \
+          -verify "$firmwareSigningPublicKeyInput" \
           -signature "$TMPDIR/boot-signature.bin" \
           "$boot_image" > "$TMPDIR/signature-verification.txt"
         grep -Fx 'Verified OK' "$TMPDIR/signature-verification.txt" > /dev/null
@@ -590,6 +589,7 @@ let
     {
       stableVerifierUnsignedBoot,
       bootSignature,
+      firmwareSigningPublicKey,
       delegatedRelease,
       bootFilesystemSizeMiB ? 128,
       name ? "kaiba-rpi5-stable-verifier-spike-rig",
@@ -599,7 +599,12 @@ let
     ) "delegatedRelease must be produced by mkRpi5DelegatedReleaseSpike";
     let
       testSD = mkRpi5StableVerifierTestSD {
-        inherit bootFilesystemSizeMiB bootSignature stableVerifierUnsignedBoot;
+        inherit
+          bootFilesystemSizeMiB
+          bootSignature
+          firmwareSigningPublicKey
+          stableVerifierUnsignedBoot
+          ;
         name = "${name}-test-sd";
       };
       rig = pkgs.linkFarm name [
@@ -692,6 +697,7 @@ let
       fixtureTestSD = mkRpi5StableVerifierTestSD {
         stableVerifierUnsignedBoot = fixtureSignedBoot;
         bootSignature = ../tests/fixtures/signed-boot-finalizer/boot.sig;
+        firmwareSigningPublicKey = fixtureRootPublicKey;
         bootFilesystemSizeMiB = 112;
       };
       fixtureRelease = pkgs.runCommand "kaiba-delegated-release-fixture" { } ''
@@ -782,6 +788,7 @@ let
       fixtureRig = mkRpi5StableVerifierSpikeRig {
         stableVerifierUnsignedBoot = fixtureSignedBoot;
         bootSignature = ../tests/fixtures/signed-boot-finalizer/boot.sig;
+        firmwareSigningPublicKey = fixtureRootPublicKey;
         delegatedRelease = delegatedRelease;
         bootFilesystemSizeMiB = 112;
       };

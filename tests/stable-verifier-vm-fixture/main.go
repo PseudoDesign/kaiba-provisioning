@@ -1,6 +1,8 @@
-// Command stable-verifier-vm-fixture creates deterministic, non-production
-// trust and release inputs for the NixOS QEMU tests. It is deliberately kept
-// below tests/ and is not exported as a repository package.
+// Command stable-verifier-vm-fixture creates non-production trust and release
+// inputs for verifier tests. Its defaults are deterministic for the NixOS
+// QEMU checks; hardware tests must supply independently generated authority
+// and TLS keys. It is deliberately kept below tests/ and is not exported as a
+// repository package.
 package main
 
 import (
@@ -28,7 +30,7 @@ import (
 )
 
 const (
-	fixtureSchema   = "kaiba.provisioning.rpi5-stable-verifier-vm-fixture/v1alpha1"
+	fixtureSchema   = "kaiba.provisioning.rpi5-stable-verifier-test-fixture/v1alpha1"
 	rootKeyID       = "root-vm"
 	releaseKeyID    = "release-vm"
 	authorityKeyID  = "authorization-vm"
@@ -41,16 +43,27 @@ const (
 )
 
 type config struct {
-	outputDir              string
-	rootRSAPrivateKey      string
-	delegatedRSAPrivateKey string
-	kernel                 string
-	initramfs              string
-	deviceTree             string
-	commandLine            string
-	rootImage              string
-	dmVerity               string
-	slot                   string
+	outputDir               string
+	rootRSAPrivateKey       string
+	delegatedRSAPrivateKey  string
+	authorityPrivateKey     string
+	authorityCA             string
+	authorityTLSCertificate string
+	authorityTLSPrivateKey  string
+	authorityKeyID          string
+	logicalIdentity         string
+	audience                string
+	cohortID                string
+	slotID                  string
+	policyID                string
+	releaseID               string
+	kernel                  string
+	initramfs               string
+	deviceTree              string
+	commandLine             string
+	rootImage               string
+	dmVerity                string
+	slot                    string
 }
 
 type fixtureMetadata struct {
@@ -73,6 +86,17 @@ func main() {
 	flags.StringVar(&cfg.outputDir, "output", "", "output directory")
 	flags.StringVar(&cfg.rootRSAPrivateKey, "root-rsa-private-key", "", "fixture-only root RSA-2048 private key")
 	flags.StringVar(&cfg.delegatedRSAPrivateKey, "delegated-rsa-private-key", "", "fixture-only delegated RSA-2048 private key")
+	flags.StringVar(&cfg.authorityPrivateKey, "authority-private-key", "", "optional externally generated fixture-only Ed25519 PKCS#8 private key")
+	flags.StringVar(&cfg.authorityCA, "authority-ca", "", "optional externally generated fixture-only CA certificate")
+	flags.StringVar(&cfg.authorityTLSCertificate, "authority-tls-cert", "", "optional externally generated fixture-only TLS certificate")
+	flags.StringVar(&cfg.authorityTLSPrivateKey, "authority-tls-key", "", "optional externally generated fixture-only TLS private key")
+	flags.StringVar(&cfg.authorityKeyID, "authority-key-id", authorityKeyID, "canonical authority key identifier")
+	flags.StringVar(&cfg.logicalIdentity, "logical-identity", logicalIdentity, "canonical logical test identity")
+	flags.StringVar(&cfg.audience, "audience", audience, "canonical authorization audience")
+	flags.StringVar(&cfg.cohortID, "cohort-id", cohortID, "canonical verifier cohort")
+	flags.StringVar(&cfg.slotID, "slot-id", slotID, "canonical release slot")
+	flags.StringVar(&cfg.policyID, "policy-id", "policy:vm", "canonical stable-verifier policy identifier")
+	flags.StringVar(&cfg.releaseID, "release-id", "release:vm", "canonical delegated release identifier")
 	flags.StringVar(&cfg.kernel, "kernel", "", "second-stage kernel bytes")
 	flags.StringVar(&cfg.initramfs, "initramfs", "", "second-stage initramfs bytes")
 	flags.StringVar(&cfg.deviceTree, "device-tree", "", "second-stage device tree bytes")
@@ -106,6 +130,19 @@ func run(cfg config) error {
 			return fmt.Errorf("%s is required", name)
 		}
 	}
+	externalAuthorityInputs := []string{
+		cfg.authorityPrivateKey, cfg.authorityCA,
+		cfg.authorityTLSCertificate, cfg.authorityTLSPrivateKey,
+	}
+	externalAuthorityCount := 0
+	for _, value := range externalAuthorityInputs {
+		if value != "" {
+			externalAuthorityCount++
+		}
+	}
+	if externalAuthorityCount != 0 && externalAuthorityCount != len(externalAuthorityInputs) {
+		return errors.New("external authority inputs must be supplied together")
+	}
 	if !filepath.IsAbs(cfg.outputDir) || filepath.Clean(cfg.outputDir) != cfg.outputDir {
 		return errors.New("--output must be a clean absolute path")
 	}
@@ -127,7 +164,15 @@ func run(cfg config) error {
 		return err
 	}
 
-	authorityPrivate := deterministicEd25519("authorization")
+	var authorityPrivate ed25519.PrivateKey
+	if cfg.authorityPrivateKey == "" {
+		authorityPrivate = deterministicEd25519("authorization")
+	} else {
+		authorityPrivate, err = loadEd25519PrivateKey(cfg.authorityPrivateKey)
+		if err != nil {
+			return err
+		}
+	}
 	defer clear(authorityPrivate)
 	authorityPublic := authorityPrivate.Public().(ed25519.PublicKey)
 	encodedAuthorityPublic, err := releaseauthorization.EncodePublicKey(authorityPublic)
@@ -137,13 +182,13 @@ func run(cfg config) error {
 
 	policy := stableverifier.Policy{
 		SchemaVersion:             stableverifier.PolicySchemaV1Alpha1,
-		PolicyID:                  "policy:vm",
+		PolicyID:                  cfg.policyID,
 		DeviceClass:               stableverifier.DeviceClass,
-		CohortID:                  cohortID,
+		CohortID:                  cfg.cohortID,
 		SecurityEpoch:             securityEpoch,
 		MinimumVerifierVersion:    verifierVersion,
 		ReleaseSignatureThreshold: 1,
-		AllowedSlotIDs:            []string{slotID},
+		AllowedSlotIDs:            []string{cfg.slotID},
 		RootKeyID:                 rootKeyID,
 		RootKeyFingerprint:        rootFingerprint,
 		DelegatedKeys: []stableverifier.DelegatedKey{{
@@ -152,7 +197,7 @@ func run(cfg config) error {
 			Status: "active",
 		}},
 		AuthorizationAuthorities: []stableverifier.AuthorizationAuthority{{
-			KeyID: authorityKeyID, Algorithm: stableverifier.Ed25519Algorithm,
+			KeyID: cfg.authorityKeyID, Algorithm: stableverifier.Ed25519Algorithm,
 			PublicKey: encodedAuthorityPublic,
 		}},
 	}
@@ -199,9 +244,9 @@ func run(cfg config) error {
 	}
 	manifest := stableverifier.Manifest{
 		SchemaVersion: stableverifier.ManifestSchemaV1Alpha1,
-		ReleaseID:     "release:vm", DeviceClass: stableverifier.DeviceClass,
-		CohortID: cohortID, PolicyDigest: policyDigest,
-		SecurityEpoch: securityEpoch, SlotID: slotID,
+		ReleaseID:     cfg.releaseID, DeviceClass: stableverifier.DeviceClass,
+		CohortID: cfg.cohortID, PolicyDigest: policyDigest,
+		SecurityEpoch: securityEpoch, SlotID: cfg.slotID,
 		Components: components, Overlays: []stableverifier.Overlay{},
 	}
 	manifestPreimage, err := manifest.SigningPreimage()
@@ -244,9 +289,25 @@ func run(cfg config) error {
 		}
 	}
 
-	caPEM, serverCertificatePEM, serverPrivatePEM, err := tlsMaterial()
-	if err != nil {
-		return err
+	var caPEM, serverCertificatePEM, serverPrivatePEM []byte
+	if cfg.authorityCA == "" {
+		caPEM, serverCertificatePEM, serverPrivatePEM, err = tlsMaterial()
+		if err != nil {
+			return err
+		}
+	} else {
+		caPEM, err = os.ReadFile(cfg.authorityCA)
+		if err != nil {
+			return fmt.Errorf("read authority CA: %w", err)
+		}
+		serverCertificatePEM, err = os.ReadFile(cfg.authorityTLSCertificate)
+		if err != nil {
+			return fmt.Errorf("read authority TLS certificate: %w", err)
+		}
+		serverPrivatePEM, err = os.ReadFile(cfg.authorityTLSPrivateKey)
+		if err != nil {
+			return fmt.Errorf("read authority TLS private key: %w", err)
+		}
 	}
 	if err := writeFile(filepath.Join(cfg.outputDir, "authority-ca.pem"), caPEM, 0o644); err != nil {
 		return err
@@ -268,10 +329,10 @@ func run(cfg config) error {
 	}
 
 	metadataJSON, err := json.Marshal(fixtureMetadata{
-		SchemaVersion: fixtureSchema, AuthorityKeyID: authorityKeyID,
+		SchemaVersion: fixtureSchema, AuthorityKeyID: cfg.authorityKeyID,
 		AuthorityPublicKey: encodedAuthorityPublic,
-		LogicalIdentity:    logicalIdentity, Audience: audience,
-		VerifierVersion: verifierVersion, CohortID: cohortID, SlotID: slotID,
+		LogicalIdentity:    cfg.logicalIdentity, Audience: cfg.audience,
+		VerifierVersion: verifierVersion, CohortID: cfg.cohortID, SlotID: cfg.slotID,
 		SecurityEpoch: securityEpoch, PolicyDigest: string(policyDigest),
 		ManifestDigest: string(manifestDigest),
 	})
@@ -316,6 +377,27 @@ func loadRSAPrivateKey(path string) (*rsa.PrivateKey, error) {
 	}
 	if err := key.Validate(); err != nil {
 		return nil, fmt.Errorf("validate RSA private key: %w", err)
+	}
+	return key, nil
+}
+
+func loadEd25519PrivateKey(path string) (ed25519.PrivateKey, error) {
+	encoded, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read authority private key: %w", err)
+	}
+	defer clear(encoded)
+	block, remainder := pem.Decode(encoded)
+	if block == nil || len(remainder) != 0 || block.Type != "PRIVATE KEY" {
+		return nil, errors.New("authority private key must be one PKCS#8 PRIVATE KEY PEM block")
+	}
+	parsed, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("parse authority private key: %w", err)
+	}
+	key, ok := parsed.(ed25519.PrivateKey)
+	if !ok {
+		return nil, errors.New("authority private key is not Ed25519")
 	}
 	return key, nil
 }

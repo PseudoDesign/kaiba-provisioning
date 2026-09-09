@@ -68,7 +68,7 @@ handoff.
 | --- | --- |
 | `nixosModules.stable-verifier-spike` | Installs the verifier and public trust inputs in a systemd initramfs, mounts `KAIBA_RELEASE` read-only, configures bounded networking, and creates the fail-closed verifier unit |
 | `mkRpi5StableVerifierUnsignedBoot` | Builds a deterministic `boot.img` from an exact caller-supplied firmware tree plus public verifier inputs; requires an exact Pi platform revision and NAR hash |
-| `mkRpi5StableVerifierTestSD` | Verifies an externally produced canonical Raspberry Pi `boot.sig` under the selected RSA-2048 root public key, then emits the outer FAT boot filesystem containing only `boot.img`, `boot.sig`, and `config.txt` |
+| `mkRpi5StableVerifierTestSD` | Verifies an externally produced canonical Raspberry Pi `boot.sig` under the separately supplied Pi firmware-signing public key, then emits the outer FAT boot filesystem containing only `boot.img`, `boot.sig`, and `config.txt` |
 | `mkRpi5DelegatedReleaseSpike` | Copies the fixed release roles and optional `.dtbo` overlays into an exact, read-only `nvme-release/` payload; runtime signature validation remains the verifier's responsibility |
 | `mkRpi5StableVerifierSpikeRig` | Groups a verified test-SD filesystem artifact with its delegated NVMe release payload without writing a device |
 
@@ -78,10 +78,13 @@ negative capability metadata such as `hardwareObserved = false` and
 `productionReady = false`. The test-SD output is a FAT filesystem image, not a
 whole-device image or permission to write an SD card.
 
-The stable policy contains its root signature inline. `boot.sig` is a distinct
-Raspberry Pi signature over the complete `boot.img`; it must be created outside
-Nix and is cryptographically checked before the test-SD artifact is assembled.
-Private signing material must never be passed to a constructor.
+The stable policy contains its release-policy-root signature inline. `boot.sig`
+is a distinct Raspberry Pi signature over the complete `boot.img`; it must be
+created outside Nix and is checked against the separately supplied Pi
+firmware-signing public key before the test-SD artifact is assembled. This
+preserves the design's separation between the rarely used Pi customer key and
+the release-policy hierarchy. Private signing material must never be passed to
+a constructor.
 
 The flake also exports static `kaiba-rpi5-stable-verifier`,
 `kaiba-rpi5-verifier-test-authority`, and `kaiba-rpi5-one-boot-prove`
@@ -157,21 +160,27 @@ remains required before making any hardware or production-readiness claim.
 
 ## Supplying the Pi platform
 
-This flake intentionally does not add a floating `nixos-raspberrypi` input.
-Before a hardware build, select and review one immutable upstream commit, lock
-its NAR hash, and use that same source to produce the Pi firmware tree, vendor
-kernel, modules, DTB, and initramfs. Pass its exact revision and NAR hash to
-`mkRpi5StableVerifierUnsignedBoot`; changing either changes the declared boot
-provenance.
+The flake pins `nixos-raspberrypi` revision
+`7e39508bcf9c1da82cf11c1e22f74f9d9fd0fe10` with source NAR hash
+`sha256-KT/OleUMpSKsWgi0eTuqS/0GD4ucPQcvLgmvlw8ZuCM=`. It supplies the matched
+Pi 5 vendor kernel `6.18.34-unstable_20260604` and firmware `1.20260521` used by
+`mkRpi5StableVerifierHardwareSystem`. The hardware constructor imports the Pi
+5 base module, selects direct `kernelboot-legacy-unsupported` firmware loading
+without U-Boot, evaluates the stable-verifier initramfs, and exposes a
+deterministic firmware tree for the unsigned-boot constructor. Changing the
+platform revision or NAR hash changes the declared boot provenance and
+requires renewed review and hardware qualification.
 
-The caller must extend `initrdKernelModules` with the exact RP1 storage and
-network drivers supplied by that pinned kernel. The default contains only
-`nvme` and is an evaluation-safe baseline, not a hardware-qualified driver
-list.
+The reviewed kernel builds the BCM2712 PCIe host, NVMe, and RP1 `macb` Ethernet
+drivers into the kernel. The hardware composition retains `nvme` in
+`initrdKernelModules` so a future reviewed platform that modularizes it cannot
+silently omit it. Any platform-pin change requires the storage and network
+driver disposition to be reviewed again.
 
 ## Remaining hardware gate
 
-The spike is not validated until the unfused sacrificial `a04171` Pi completes
+The spike is not validated until the development-key-fused sacrificial
+`a04171` Pi completes
 the positive, delegated-key replacement, mutation, replay, one-boot-key, and
 DTB/command-line observation matrix described in the
 [production security follow-on](raspberry-pi-5-production-security-follow-on.md).
@@ -186,6 +195,12 @@ outcome carries the same fixed-order matrix; tests not reached in a stopped
 campaign use the `blocked` code. Test results are closed codes rather than
 free-form output, and raw observations remain outside the publishable evidence
 envelope behind their record digests.
+
+The campaign is bound to development customer-key hash
+`sha256:b8818acea4e71173903ee003e33ed37e969def7d2ea67bec15c0b73cb36c3895`.
+The board was fused before this campaign; `otp_changed: false` and
+`eeprom_changed: false` attest that this campaign performed no further OTP or
+EEPROM mutation. They do not describe an unfused board.
 
 - approved release boots;
 - offline authorization is rejected;

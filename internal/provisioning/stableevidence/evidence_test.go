@@ -94,7 +94,8 @@ func validEvidence() Evidence {
 		CampaignProfile: CampaignV1Alpha1,
 		Hardware: Hardware{
 			DeviceClass: DeviceClass, BoardRevision: BoardRevision, SerialRedacted: true,
-			CustomerKeyState: "unfused", OTPChanged: false, EEPROMChanged: false,
+			CustomerKeyState: "development-key-fused", CustomerKeyHash: DevelopmentCustomerKeyHash,
+			OTPChanged: false, EEPROMChanged: false,
 		},
 		Software: Software{
 			SourceRevision: strings.Repeat("a", 40), VerifierVersion: 1,

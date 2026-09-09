@@ -53,7 +53,19 @@ let
         32)
           image_hash="$(od -An -tx1 -v "$chosen/boot_img_sha256" | tr -d ' \n')"
           ;;
-        64|65)
+        64)
+          # Current Pi 5 firmware may expose the 32-byte binary digest in a
+          # fixed 64-byte DT property padded with 32 NUL bytes.  Distinguish
+          # that representation from the also-supported 64-byte ASCII hex
+          # form before applying the canonical lowercase-hex checks below.
+          trailing_hex="$(tail -c 32 "$chosen/boot_img_sha256" | od -An -tx1 -v | tr -d ' \n')"
+          if test "$trailing_hex" = "$(printf '0%.0s' {1..64})"; then
+            image_hash="$(head -c 32 "$chosen/boot_img_sha256" | od -An -tx1 -v | tr -d ' \n')"
+          else
+            image_hash="$(tr -d '\000' < "$chosen/boot_img_sha256")"
+          fi
+          ;;
+        65)
           image_hash="$(tr -d '\000' < "$chosen/boot_img_sha256")"
           ;;
         *)

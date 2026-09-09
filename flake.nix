@@ -2,9 +2,14 @@
   description = "Kaiba device provisioning";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/70ce234312134a463ba7728e94da2486a1d237ac";
+  inputs.nixos-raspberrypi.url = "github:nvmd/nixos-raspberrypi/7e39508bcf9c1da82cf11c1e22f74f9d9fd0fe10";
 
   outputs =
-    { self, nixpkgs }:
+    {
+      self,
+      nixpkgs,
+      nixos-raspberrypi,
+    }:
     let
       lib = nixpkgs.lib;
       # Build the UI test tree in one pass from the flake's original path.
@@ -210,6 +215,14 @@
           { system, ... }@args:
           packagesBySystem.${system}.mkRpi5StableVerifierSpikeRig (builtins.removeAttrs args [ "system" ]);
 
+        mkRpi5StableVerifierHardwareSystem =
+          args:
+          import ./nix/stable-verifier-hardware.nix {
+            nixosRaspberryPi = nixos-raspberrypi;
+            stableVerifierModule = modules.stable-verifier-spike;
+            stableVerifierPackage = packagesBySystem.aarch64-linux.stableVerifierTool;
+          } args;
+
         mkRpi5PhysicalLaneGuard =
           { system, ... }@args:
           packagesBySystem.${system}.mkRpi5PhysicalLaneGuard (builtins.removeAttrs args [ "system" ]);
@@ -383,6 +396,26 @@
             guestPkgs = aarch64GuestPkgs;
             built = aarch64GuestBuilt;
           };
+          stableVerifierHardwareSystem =
+            import ./nix/stable-verifier-hardware.nix
+              {
+                nixosRaspberryPi = nixos-raspberrypi;
+                stableVerifierModule = modules.stable-verifier-spike;
+                stableVerifierPackage = packagesBySystem.aarch64-linux.stableVerifierTool;
+              }
+              {
+                policy = builtins.toFile "kaiba-stable-verifier-hardware-check-policy.json" "{}";
+                rootPublicKey = ./tests/fixtures/development-boot-public.pem;
+                authorityCACertificate = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
+                verifierVersion = 1;
+                cohortID = "development";
+                slotID = "a";
+                minimumSecurityEpoch = 1;
+                authorityURL = "https://192.0.2.1:8443";
+                authorityKeyID = "development-authority";
+                audience = "stable-verifier";
+                logicalIdentity = "development-pi";
+              };
         in
         {
           asset-api = import ./tests/assets.nix { inherit assets pkgs; };
@@ -402,6 +435,49 @@
           stable-verifier-spike = built.mkRpi5StableVerifierSpikeContractCheck {
             verifierPackage = built.stableVerifierTool;
           };
+          stable-verifier-rpi5-hardware-eval =
+            pkgs.runCommand "kaiba-stable-verifier-rpi5-hardware-eval"
+              {
+                firmwareTree = stableVerifierHardwareSystem.firmwareTree;
+                nativeBuildInputs = [
+                  pkgs.findutils
+                  pkgs.gnugrep
+                ];
+              }
+              ''
+                test ${lib.escapeShellArg stableVerifierHardwareSystem.platformRevision} = \
+                  7e39508bcf9c1da82cf11c1e22f74f9d9fd0fe10
+                test ${lib.escapeShellArg stableVerifierHardwareSystem.platformNarHash} = \
+                  sha256-KT/OleUMpSKsWgi0eTuqS/0GD4ucPQcvLgmvlw8ZuCM=
+                test ${lib.escapeShellArg stableVerifierHardwareSystem.kernelVersion} = \
+                  6.18.34-unstable_20260604
+                test ${lib.escapeShellArg stableVerifierHardwareSystem.nixosSystem.config.boot.loader.raspberry-pi.bootloader} = \
+                  kernelboot-legacy-unsupported
+                test ${lib.escapeShellArg stableVerifierHardwareSystem.nixosSystem.config.kaiba.stableVerifierSpike.releaseDevice} = \
+                  /dev/disk/by-partlabel/KAIBA_RELEASE
+                test ${lib.escapeShellArg stableVerifierHardwareSystem.nixosSystem.config.kaiba.stableVerifierSpike.networkInterface} = \
+                  end0
+                find "$firmwareTree" -type f -printf '%P\n' | sort > "$TMPDIR/actual-files"
+                printf '%s\n' \
+                  bcm2712-rpi-5-b.dtb \
+                  cmdline.txt \
+                  config.txt \
+                  initrd \
+                  kernel.img \
+                  overlays/README \
+                  overlays/bcm2712d0.dtbo \
+                  overlays/overlay_map.dtb \
+                  > "$TMPDIR/expected-files"
+                cmp "$TMPDIR/expected-files" "$TMPDIR/actual-files"
+                test -z "$(find "$firmwareTree" -type l -print -quit)"
+                test -z "$(find "$firmwareTree" ! -type d ! -type f -print -quit)"
+                test -s "$firmwareTree/initrd"
+                test -s "$firmwareTree/kernel.img"
+                ! grep -Eq '(^|[[:space:]])init=' "$firmwareTree/cmdline.txt"
+                ! grep -Eq '^dtoverlay=(vc4-kms-v3d|dwc2)$' "$firmwareTree/config.txt"
+                mkdir -p "$out"
+                printf '%s\n' 'stable-verifier Raspberry Pi 5 hardware evaluation: pass' > "$out/result.txt"
+              '';
           media-staging-fixture = provisioning.mediaStagingFixtureContract;
           production-media-staging = provisioning.productionMediaStagingContract;
           signed-release-manifest = provisioning.signedReleaseManifestContract;

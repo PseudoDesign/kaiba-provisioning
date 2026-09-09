@@ -40,6 +40,7 @@
         "board_revision",
         "serial_redacted",
         "customer_key_state",
+        "customer_key_hash",
         "otp_changed",
         "eeprom_changed"
       ],
@@ -47,7 +48,10 @@
         "device_class": { "const": "raspberry-pi-5-model-b-v1alpha1" },
         "board_revision": { "const": "a04171" },
         "serial_redacted": { "const": true },
-        "customer_key_state": { "const": "unfused" },
+        "customer_key_state": { "const": "development-key-fused" },
+        "customer_key_hash": {
+          "const": "sha256:b8818acea4e71173903ee003e33ed37e969def7d2ea67bec15c0b73cb36c3895"
+        },
         "otp_changed": { "const": false },
         "eeprom_changed": { "const": false }
       }
