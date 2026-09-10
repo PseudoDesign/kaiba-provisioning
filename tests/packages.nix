@@ -286,6 +286,9 @@ let
     expectedCustomerKeyHash = developmentYubiKeyCustomerKeyHash;
     grantRegistryPath = "/etc/kaiba-provisioning/signing-grants.json";
   };
+  developmentYubiKeySigningClosure = pkgs.closureInfo {
+    rootPaths = [ developmentYubiKeySigning ];
+  };
   unfusedVerifierFixture = built.mkRpi5UnfusedVerifier {
     name = "kaiba-rpi5-unfused-verifier-fixture";
     trustedPublicKeyFingerprint = developmentYubiKeySigning.kaibaSigning.publicKeyFingerprint;
@@ -5436,7 +5439,14 @@ let
         test '${developmentYubiKeySigning.kaibaSigning.signedBootConfiguration.publicKeyFingerprint}' = \
           '${developmentYubiKeyPublicKeyFingerprint}'
         test '${developmentYubiKeySigning.kaibaSigning.signedBootConfiguration.expectedPublicKeyPath}' = \
-          '${developmentYubiKeyPublicKeyPEM}'
+          '${developmentYubiKeySigning.kaibaSigning.reviewedPublicKeyPEM}'
+        test -f '${developmentYubiKeySigning.kaibaSigning.reviewedPublicKeyPEM}'
+        cmp \
+          '${developmentYubiKeyPublicKeyPEM}' \
+          '${developmentYubiKeySigning.kaibaSigning.reviewedPublicKeyPEM}'
+        grep -Fx \
+          '${developmentYubiKeySigning.kaibaSigning.customerKeyContract}' \
+          '${developmentYubiKeySigningClosure}/store-paths'
         test '${builtins.toJSON developmentYubiKeySigning.kaibaSigning.signedBootConfiguration.runtimeAuthoritySelectors}' = \
           'false'
         test "$(cat ${developmentYubiKeySigning.kaibaSigning.customerKeyHashFile})" = \

@@ -1630,6 +1630,9 @@ let
             install -m 0444 \
               "$TMPDIR/customer-public-key.bin" \
               "$out/share/kaiba/customer-public-key.bin"
+            install -m 0444 \
+              ${publicKeyPEM} \
+              "$out/share/kaiba/reviewed-boot-public.pem"
             printf '%s\n' "$actual_customer_key_hash" \
               > "$out/share/kaiba/customer-key-hash"
             printf '%s\n' "$signer_policy_json" \
@@ -1660,6 +1663,7 @@ let
         pkcs11-module-login-behavior = always
         activate = 1
       '';
+      reviewedPublicKeyPEM = "${customerKeyContract}/share/kaiba/reviewed-boot-public.pem";
       buildCommand =
         {
           pname,
@@ -1683,7 +1687,7 @@ let
           "-X=main.ykcs11ModulePath=${ykcs11Module}"
           "-X=main.yubiKeyPKCS11URI=${pkcs11URI}"
           "-X=main.yubiKeyPINCredentialPath=${pinCredentialPath}"
-          "-X=main.yubiKeyPublicKeyPEMPath=${toString publicKeyPEM}"
+          "-X=main.yubiKeyPublicKeyPEMPath=${reviewedPublicKeyPEM}"
           "-X=main.yubiKeyExpectedPublicKeyFingerprint=${publicKeyFingerprint}"
         ];
       };
@@ -1724,7 +1728,7 @@ let
           "-X=main.signerID=${signerID}"
           "-X=main.cohortID=${cohortID}"
           "-X=main.signingPKCS11URI=${pkcs11URI}"
-          "-X=main.expectedPublicKeyPath=${toString publicKeyPEM}"
+          "-X=main.expectedPublicKeyPath=${reviewedPublicKeyPEM}"
           "-X=main.expectedPublicKeyFingerprint=${publicKeyFingerprint}"
         ];
       };
@@ -1753,6 +1757,7 @@ let
           pinCredentialPath
           pkcs11URI
           publicKeyFingerprint
+          reviewedPublicKeyPEM
           signedBoot
           signerID
           signerPolicyDigest
@@ -1772,7 +1777,7 @@ let
             publicKeyFingerprint
             signerID
             ;
-          expectedPublicKeyPath = toString publicKeyPEM;
+          expectedPublicKeyPath = reviewedPublicKeyPEM;
           runtimeAuthoritySelectors = false;
         };
         customerKeyHashFile = "${customerKeyContract}/share/kaiba/customer-key-hash";
