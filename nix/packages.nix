@@ -19,7 +19,7 @@
 let
   version = "0.1.0";
   stableVerifierSpike = import ./stable-verifier-spike.nix {
-    inherit lib pkgs;
+    inherit lib pkgs rpi5KexecInputValidator;
   };
   # moduleRoot is either the single-pass fileset above or an explicitly scoped
   # caller input. Do not filter it again: a second pass over a store-backed
@@ -192,6 +192,8 @@ let
       authoritySigningCapable = false;
       signingAuthorityConfigured = false;
       kexecCapable = true;
+      defaultKexecMode = "legacy-explicit-dtb";
+      experimentalFileLiveFDT = true;
     };
     meta = {
       mainProgram = "kaiba-rpi5-stable-verifier";
@@ -202,6 +204,137 @@ let
       ];
     };
   };
+
+  rpi5KexecInputValidator = pkgs.buildGoModule {
+    pname = "kaiba-rpi5-kexec-input-validate";
+    inherit version;
+    src = goSource;
+    subPackages = [ "cmd/kaiba-rpi5-kexec-input-validate" ];
+    vendorHash = null;
+    env.CGO_ENABLED = 0;
+    ldflags = [
+      "-s"
+      "-w"
+    ];
+    # checks.unit runs the complete Go suite once for this source tree.
+    doCheck = false;
+    passthru.kaibaRpi5KexecInputValidator = {
+      commandLinePolicy = "explicit-ttyAMA10-and-earlycon";
+      firmwareConsoleAliasesAccepted = false;
+      nonProductionOnly = true;
+      productionReady = false;
+      raw640MiBDeviceTreeAccepted = false;
+    };
+    meta = {
+      mainProgram = "kaiba-rpi5-kexec-input-validate";
+      description = "Validate resolved Pi 5 device-tree and command-line inputs before delegated kexec";
+      platforms = lib.platforms.linux;
+    };
+  };
+
+  rpi5SelfKexecDiagnostic =
+    let
+      runtimeInputs = [
+        pkgs.bash
+        pkgs.coreutils
+        pkgs.cpio
+        pkgs.findutils
+        pkgs.gnugrep
+        pkgs.gnused
+        pkgs.kexec-tools
+        pkgs.util-linux
+      ];
+    in
+    pkgs.runCommand "kaiba-rpi5-self-kexec-diagnostic-${version}"
+      {
+        nativeBuildInputs = [ pkgs.makeWrapper ];
+        passthru.kaibaRpi5SelfKexecDiagnostic = {
+          architecture = "aarch64-linux";
+          defaultOperation = "prepare-only";
+          defaultMode = "legacy-explicit-dtb";
+          executionConfirmation = "EXECUTE-DEVELOPMENT-RPI5-SELF-KEXEC";
+          fileLiveFdtDifferential = true;
+          fileLiveFdtExecutionConfirmation = "EXECUTE-DEVELOPMENT-RPI5-FILE-LIVE-FDT-SELF-KEXEC";
+          legacyKexecLoad = true;
+          liveFirmwareDeviceTree = true;
+          nonProductionOnly = true;
+          purgatorySerialDisabled = true;
+          physicalExecutionPerformed = false;
+          productionReady = false;
+          uart = "ttyAMA10";
+        };
+        meta = {
+          mainProgram = "kaiba-rpi5-self-kexec-diagnostic";
+          description = "Prepare or explicitly execute the development Pi 5 self-kexec isolation diagnostic";
+          platforms = [ "aarch64-linux" ];
+        };
+      }
+      ''
+        mkdir -p "$out/bin" "$out/libexec/kaiba-rpi5-self-kexec-diagnostic"
+        install -m 0555 \
+          ${../scripts/diagnostics/rpi5-self-kexec/kaiba-rpi5-self-kexec-diagnostic.sh} \
+          "$out/libexec/kaiba-rpi5-self-kexec-diagnostic/kaiba-rpi5-self-kexec-diagnostic.sh"
+        install -m 0555 \
+          ${../scripts/diagnostics/rpi5-self-kexec/beacon-init} \
+          "$out/libexec/kaiba-rpi5-self-kexec-diagnostic/beacon-init"
+        install -m 0555 \
+          ${../scripts/diagnostics/rpi5-self-kexec/test.sh} \
+          "$out/libexec/kaiba-rpi5-self-kexec-diagnostic/test"
+        patchShebangs \
+          "$out/libexec/kaiba-rpi5-self-kexec-diagnostic/kaiba-rpi5-self-kexec-diagnostic.sh" \
+          "$out/libexec/kaiba-rpi5-self-kexec-diagnostic/test"
+        makeWrapper \
+          "$out/libexec/kaiba-rpi5-self-kexec-diagnostic/kaiba-rpi5-self-kexec-diagnostic.sh" \
+          "$out/bin/kaiba-rpi5-self-kexec-diagnostic" \
+          --prefix PATH : ${lib.makeBinPath runtimeInputs} \
+          --set KAIBA_RPI5_SELF_KEXEC_BUSYBOX ${pkgs.pkgsStatic.busybox}/bin/busybox
+        makeWrapper \
+          "$out/libexec/kaiba-rpi5-self-kexec-diagnostic/test" \
+          "$out/libexec/kaiba-rpi5-self-kexec-diagnostic/contract-test" \
+          --prefix PATH : ${lib.makeBinPath runtimeInputs} \
+          --set KAIBA_RPI5_SELF_KEXEC_BUSYBOX ${pkgs.pkgsStatic.busybox}/bin/busybox \
+          --set KAIBA_SELF_KEXEC_EXPECT_GNU_TOOLS 1
+      '';
+
+  rpi5SelfKexecDiagnosticCheck =
+    let
+      # The runtime package is intentionally exported only for aarch64, but
+      # this shell-only variant lets the host check exercise the identical
+      # wrapper, PATH, companion layout, and initramfs construction contract.
+      hostContractPackage = rpi5SelfKexecDiagnostic.overrideAttrs (old: {
+        meta = old.meta // {
+          platforms = lib.platforms.linux;
+        };
+      });
+    in
+    pkgs.runCommand "kaiba-rpi5-self-kexec-diagnostic-check"
+      {
+        nativeBuildInputs = [ hostContractPackage ];
+      }
+      ''
+        ${hostContractPackage}/libexec/kaiba-rpi5-self-kexec-diagnostic/contract-test
+        mkdir -p "$out"
+        printf '%s\n' 'Raspberry Pi 5 self-kexec diagnostic contract: pass' \
+          > "$out/result.txt"
+      '';
+
+  mkRpi5ReleasePayloadQemuVirt =
+    args:
+    import ../tests/rpi5-release-payload-qemu-virt.nix (
+      {
+        inherit lib pkgs;
+      }
+      // args
+    );
+
+  mkRpi5KernelQemuVirtBeacon =
+    args:
+    import ../tests/rpi5-kernel-qemu-virt-beacon.nix (
+      {
+        inherit lib pkgs;
+      }
+      // args
+    );
 
   verifierTestAuthority = pkgs.buildGoModule {
     pname = "kaiba-rpi5-verifier-test-authority";
@@ -1947,6 +2080,8 @@ in
     mkRpi5ProductionMedia
     mkRpi5MediaStagingFixture
     mkRpi5OwnedRecoverySigningPlan
+    mkRpi5KernelQemuVirtBeacon
+    mkRpi5ReleasePayloadQemuVirt
     mkRpi5VerifiedRPIBootBundles
     mkRpi5VerifiedSigningReceipts
     mkRpi5VerifiedSignedRelease
@@ -1964,7 +2099,10 @@ in
     rpibootSource
     rpi5EEPROMRelease
     rpi5EEPROMReleaseVerifier
+    rpi5KexecInputValidator
     rpi5ProbeBundle
+    rpi5SelfKexecDiagnostic
+    rpi5SelfKexecDiagnosticCheck
     stationDemo
     stationGraphGenerator
     stationPages

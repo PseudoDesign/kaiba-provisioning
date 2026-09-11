@@ -1,0 +1,125 @@
+#!/bin/busybox sh
+
+# This initramfs is intentionally independent of the Kaiba verifier and target
+# release.  Its only job is to make second-kernel progress unmistakable on the
+# Raspberry Pi 5 debug UART, record a few facts, and power the board off.
+
+bb=/bin/busybox
+export PATH=/bin
+cpu_online_timeout_seconds=10
+cpu_dmesg_tail_lines=80
+
+"$bb" mkdir -p /dev /proc /sys
+"$bb" mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
+"$bb" mount -t proc proc /proc 2>/dev/null || true
+"$bb" mount -t sysfs sysfs /sys 2>/dev/null || true
+
+if "$bb" test -c /dev/console; then
+  exec </dev/console >/dev/console 2>&1
+fi
+
+emit() {
+  "$bb" printf '%s\n' "$*"
+  if "$bb" test -c /dev/ttyAMA10; then
+    "$bb" printf '%s\n' "$*" >/dev/ttyAMA10
+  fi
+}
+
+emit_cpu_set() {
+  label="$1"
+  path="/sys/devices/system/cpu/$2"
+  value=unavailable
+  if "$bb" test -r "$path"; then
+    value="$("$bb" tr -d '[:space:]' <"$path")"
+    if "$bb" test -z "$value"; then
+      value=empty
+    fi
+  fi
+  emit "KAIBA_RPI5_SELF_KEXEC_CPU_${label}:$value"
+}
+
+online_offline_secondary_cpus() {
+  for cpu_dir in /sys/devices/system/cpu/cpu[0-9]*; do
+    "$bb" test -d "$cpu_dir" || continue
+    cpu="${cpu_dir##*/}"
+    "$bb" test "$cpu" = cpu0 && continue
+
+    online_path="$cpu_dir/online"
+    if ! "$bb" test -r "$online_path"; then
+      emit "KAIBA_RPI5_SELF_KEXEC_CPU_ONLINE_SKIPPED:$cpu:no-online-interface"
+      continue
+    fi
+
+    online="$("$bb" tr -d '[:space:]' <"$online_path")"
+    case "$online" in
+      1)
+        emit "KAIBA_RPI5_SELF_KEXEC_CPU_ONLINE_SKIPPED:$cpu:already-online"
+        ;;
+      0)
+        emit "KAIBA_RPI5_SELF_KEXEC_CPU_ONLINE_ATTEMPT:$cpu"
+        if "$bb" timeout -s KILL "$cpu_online_timeout_seconds" \
+          "$bb" sh -c 'printf "1\n" >"$1"' sh "$online_path"; then
+          online="$("$bb" tr -d '[:space:]' <"$online_path")"
+          if "$bb" test "$online" = 1; then
+            emit "KAIBA_RPI5_SELF_KEXEC_CPU_ONLINE_SUCCESS:$cpu"
+          else
+            emit "KAIBA_RPI5_SELF_KEXEC_CPU_ONLINE_FAILURE:$cpu"
+            emit "KAIBA_RPI5_SELF_KEXEC_CPU_ONLINE_FAILURE_DETAIL:$cpu:readback-$online"
+          fi
+        else
+          status="$?"
+          emit "KAIBA_RPI5_SELF_KEXEC_CPU_ONLINE_FAILURE:$cpu"
+          emit "KAIBA_RPI5_SELF_KEXEC_CPU_ONLINE_FAILURE_DETAIL:$cpu:write-exit-$status"
+        fi
+        ;;
+      *)
+        emit "KAIBA_RPI5_SELF_KEXEC_CPU_ONLINE_SKIPPED:$cpu:invalid-state-$online"
+        ;;
+    esac
+  done
+}
+
+emit_cpu_dmesg_tail() {
+  emit 'KAIBA_RPI5_SELF_KEXEC_CPU_DMESG_BEGIN'
+  "$bb" dmesg 2>/dev/null \
+    | "$bb" grep -Ei '(^|[^[:alpha:]])(cpu|smp|psci|secondary)([^[:alpha:]]|$)' \
+    | "$bb" tail -n "$cpu_dmesg_tail_lines" \
+    | while IFS= read -r line; do
+        emit "KAIBA_RPI5_SELF_KEXEC_CPU_DMESG:$line"
+      done
+  emit 'KAIBA_RPI5_SELF_KEXEC_CPU_DMESG_END'
+}
+
+emit 'KAIBA_RPI5_SELF_KEXEC_BEACON:v1'
+emit "KAIBA_RPI5_SELF_KEXEC_UNAME:$("$bb" uname -a 2>&1)"
+if "$bb" test -r /proc/cmdline; then
+  emit "KAIBA_RPI5_SELF_KEXEC_CMDLINE:$("$bb" cat /proc/cmdline)"
+fi
+if "$bb" test -r /proc/device-tree/model; then
+  model="$("$bb" tr -d '\000' </proc/device-tree/model)"
+  emit "KAIBA_RPI5_SELF_KEXEC_MODEL:$model"
+fi
+if "$bb" test -r /sys/firmware/fdt; then
+  emit "KAIBA_RPI5_SELF_KEXEC_LIVE_FDT_SHA256:$("$bb" sha256sum /sys/firmware/fdt | "$bb" cut -d ' ' -f 1)"
+fi
+
+emit 'KAIBA_RPI5_SELF_KEXEC_RESULT:second-stage-init-reached'
+emit 'KAIBA_RPI5_SELF_KEXEC_CPU_DIAGNOSTIC:v1'
+emit_cpu_set PRESENT present
+emit_cpu_set ONLINE_BEFORE online
+emit_cpu_set OFFLINE_BEFORE offline
+online_offline_secondary_cpus
+emit_cpu_set ONLINE_AFTER online
+emit_cpu_set OFFLINE_AFTER offline
+emit_cpu_dmesg_tail
+"$bb" sync
+"$bb" sleep 5
+emit 'KAIBA_RPI5_SELF_KEXEC_POWEROFF'
+"$bb" poweroff -f
+
+# A failed poweroff must remain visible rather than falling out of PID 1 and
+# panicking without a diagnostic marker.
+while true; do
+  emit 'KAIBA_RPI5_SELF_KEXEC_POWEROFF_RETURNED'
+  "$bb" sleep 10
+done

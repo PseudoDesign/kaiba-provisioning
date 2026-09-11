@@ -1,0 +1,56 @@
+From: Kaiba Provisioning <noreply@example.invalid>
+Subject: [PATCH] arm64: optionally require in-place kexec_file loads
+
+The kexec file loader first attempts to allocate every segment from CMA, but
+silently falls back to relocation pages when a contiguous allocation fails.
+Allow a platform policy to reject that fallback before the image is installed.
+
+Check IND_DONE because it is the exact predicate machine_kexec() later uses to
+select the direct cpu_soft_restart path instead of arm64 relocation.  Limit the
+policy to normal file-mode images so legacy kexec_load and crash kernels keep
+their existing behavior.
+
+---
+ arch/arm64/Kconfig                | 11 +++++++++++
+ arch/arm64/kernel/machine_kexec.c |  8 ++++++++
+ 2 files changed, 19 insertions(+)
+
+diff --git a/arch/arm64/Kconfig b/arch/arm64/Kconfig
+--- a/arch/arm64/Kconfig
++++ b/arch/arm64/Kconfig
+@@ -1595,6 +1595,17 @@ config ARCH_SUPPORTS_KEXEC
+ config ARCH_SUPPORTS_KEXEC_FILE
+ 	def_bool y
+ 
++config ARM64_KEXEC_FILE_REQUIRE_IN_PLACE
++	bool "Require in-place kexec_file loads"
++	depends on ARCH_SUPPORTS_KEXEC_FILE
++	select KEXEC_FILE
++	help
++	  Refuse normal kexec_file_load operations if any segment requires
++	  relocation at execution time. This is intended for systems that rely
++	  on CMA-backed direct handoff and must not silently use the arm64
++	  relocation fallback. Legacy kexec_load and crash kernels are
++	  unaffected.
++
+ config ARCH_SELECTS_KEXEC_FILE
+ 	def_bool y
+ 	depends on KEXEC_FILE
+diff --git a/arch/arm64/kernel/machine_kexec.c b/arch/arm64/kernel/machine_kexec.c
+--- a/arch/arm64/kernel/machine_kexec.c
++++ b/arch/arm64/kernel/machine_kexec.c
+@@ -121,6 +121,14 @@ int machine_kexec_post_load(struct kimage *kimage)
+ 		return 0;
+ 	}
+ 
++	if (IS_ENABLED(CONFIG_ARM64_KEXEC_FILE_REQUIRE_IN_PLACE) &&
++	    kimage->file_mode && kimage->type == KEXEC_TYPE_DEFAULT &&
++	    !(kimage->head & IND_DONE)) {
++		kexec_image_info(kimage);
++		pr_err("Refusing kexec_file image that requires relocation\n");
++		return -EOPNOTSUPP;
++	}
++
+ 	kimage->arch.el2_vectors = 0;
+ 	if (is_hyp_nvhe()) {
+ 		rc = trans_pgd_copy_el2_vectors(&info,

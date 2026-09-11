@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/bundle"
+	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/rpi5kexecinput"
 )
 
 const (
@@ -69,7 +70,7 @@ var componentMaximums = map[ComponentRole]uint64{
 	RoleKernel:             256 * 1024 * 1024,
 	RoleInitramfs:          512 * 1024 * 1024,
 	RoleResolvedDeviceTree: 8 * 1024 * 1024,
-	RoleKernelCommandLine:  4096,
+	RoleKernelCommandLine:  uint64(rpi5kexecinput.MaxCommandLineBytes + 1),
 	RoleRootImage:          64 * 1024 * 1024 * 1024,
 	RoleDMVerityMetadata:   1024 * 1024,
 	RoleSlotMetadata:       4096,

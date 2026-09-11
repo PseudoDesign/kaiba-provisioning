@@ -14,12 +14,26 @@ import (
 	"sync"
 )
 
-const MaxCommandLineBytes = 4096
+// arm64's COMMAND_LINE_SIZE is 2048 bytes including the terminating NUL.
+// Reject a payload the next kernel would silently truncate.
+const MaxCommandLineBytes = 2047
+
+// KexecMode selects the kernel-loading syscall and device-tree source. The
+// zero value preserves the existing legacy kexec_load behavior, which passes
+// an explicitly authenticated device tree. The file/live-device-tree mode is
+// experimental and must be selected explicitly.
+type KexecMode uint8
+
+const (
+	KexecModeLegacyExplicitDeviceTree KexecMode = iota
+	KexecModeExperimentalFileLiveDeviceTree
+)
 
 // Plan identifies retained, already verified release objects. The caller
 // retains ownership of Kernel and DeviceTree. PrepareInitramfs returns a new
 // sealed in-memory file owned by the caller.
 type Plan struct {
+	Mode        KexecMode
 	KexecPath   string
 	Kernel      *os.File
 	Initramfs   *os.File
@@ -91,9 +105,10 @@ func PrepareInitramfs(base *os.File, credential Credential) (*os.File, error) {
 
 // Load asks the pinned kexec tool to copy retained release objects into the
 // kernel. /proc/self/fd paths refer only to descriptors inherited explicitly
-// by the child; no original release path is reopened. The compatibility
-// kexec_load syscall is required on arm64 because kexec_file_load does not
-// consume the explicitly authenticated device tree.
+// by the child; no original release path is reopened. The default compatibility
+// kexec_load mode consumes the explicitly authenticated device tree. The
+// experimental kexec_file_load mode instead relies on the live device tree
+// supplied by the running kernel and deliberately does not inherit DeviceTree.
 func (plan Plan) Load(ctx context.Context) (*Loaded, error) {
 	if ctx == nil {
 		return nil, errors.New("kexec load requires a context")
@@ -107,18 +122,26 @@ func (plan Plan) Load(ctx context.Context) (*Loaded, error) {
 	const firstInheritedFD = 3
 	kernelFD := firstInheritedFD
 	initramfsFD := firstInheritedFD + 1
-	dtbFD := firstInheritedFD + 2
 	arguments := []string{
-		"--kexec-syscall", "--load", fmt.Sprintf("/proc/self/fd/%d", kernelFD),
+		"--load", fmt.Sprintf("/proc/self/fd/%d", kernelFD),
 		fmt.Sprintf("--initrd=/proc/self/fd/%d", initramfsFD),
-		fmt.Sprintf("--dtb=/proc/self/fd/%d", dtbFD),
-		"--command-line=" + plan.CommandLine,
 	}
+	extraFiles := []*os.File{plan.Kernel, plan.Initramfs}
+	switch plan.Mode {
+	case KexecModeLegacyExplicitDeviceTree:
+		dtbFD := firstInheritedFD + 2
+		arguments = append([]string{"--kexec-syscall"}, arguments...)
+		arguments = append(arguments, fmt.Sprintf("--dtb=/proc/self/fd/%d", dtbFD))
+		extraFiles = append(extraFiles, plan.DeviceTree)
+	case KexecModeExperimentalFileLiveDeviceTree:
+		arguments = append([]string{"--kexec-file-syscall"}, arguments...)
+	}
+	arguments = append(arguments, "--command-line="+plan.CommandLine)
 	if err := plan.runner().Run(
 		ctx,
 		plan.KexecPath,
 		arguments,
-		[]*os.File{plan.Kernel, plan.Initramfs, plan.DeviceTree},
+		extraFiles,
 		plan.Output,
 	); err != nil {
 		return nil, fmt.Errorf("load verified release with kexec: %w", err)
@@ -159,9 +182,14 @@ func (plan Plan) validate() error {
 	if err := plan.validateExecutable(); err != nil {
 		return err
 	}
-	for name, file := range map[string]*os.File{
-		"kernel": plan.Kernel, "initramfs": plan.Initramfs, "device tree": plan.DeviceTree,
+	for _, retained := range []struct {
+		name string
+		file *os.File
+	}{
+		{name: "kernel", file: plan.Kernel},
+		{name: "initramfs", file: plan.Initramfs},
 	} {
+		name, file := retained.name, retained.file
 		if file == nil {
 			return fmt.Errorf("%s retained file is required", name)
 		}
@@ -169,6 +197,22 @@ func (plan Plan) validate() error {
 		if err != nil || !identity.Mode().IsRegular() {
 			return fmt.Errorf("%s retained file must be an open regular file", name)
 		}
+	}
+	switch plan.Mode {
+	case KexecModeLegacyExplicitDeviceTree:
+		if plan.DeviceTree == nil {
+			return errors.New("device tree retained file is required in legacy explicit-device-tree mode")
+		}
+		identity, err := plan.DeviceTree.Stat()
+		if err != nil || !identity.Mode().IsRegular() {
+			return errors.New("device tree retained file must be an open regular file")
+		}
+	case KexecModeExperimentalFileLiveDeviceTree:
+		if plan.DeviceTree != nil {
+			return errors.New("device tree retained file must be omitted in experimental file/live-device-tree mode")
+		}
+	default:
+		return fmt.Errorf("unsupported kexec mode %d", plan.Mode)
 	}
 	if plan.CommandLine == "" || len(plan.CommandLine) > MaxCommandLineBytes ||
 		strings.ContainsAny(plan.CommandLine, "\x00\r\n") {

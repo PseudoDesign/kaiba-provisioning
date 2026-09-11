@@ -203,6 +203,42 @@ func TestVerifyReleaseRejectsUntrustedInputs(t *testing.T) {
 			want: "embedded line break",
 		},
 		{
+			name: "firmware console alias",
+			mutate: func(t *testing.T, fixture *verifierFixture) {
+				fixture.components[RoleKernelCommandLine] = []byte("console=serial0,115200n8 ro\n")
+				fixture.updateComponentBinding(RoleKernelCommandLine)
+				fixture.signManifest(t, "release-a", keys.delegatedA)
+			},
+			want: "firmware-only console alias",
+		},
+		{
+			name: "firmware uart alias",
+			mutate: func(t *testing.T, fixture *verifierFixture) {
+				fixture.components[RoleKernelCommandLine] = []byte("console=uart0,115200n8 ro\n")
+				fixture.updateComponentBinding(RoleKernelCommandLine)
+				fixture.signManifest(t, "release-a", keys.delegatedA)
+			},
+			want: "firmware-only console alias",
+		},
+		{
+			name: "quoted firmware console alias",
+			mutate: func(t *testing.T, fixture *verifierFixture) {
+				fixture.components[RoleKernelCommandLine] = []byte("console=\"serial0,115200n8\" ro\n")
+				fixture.updateComponentBinding(RoleKernelCommandLine)
+				fixture.signManifest(t, "release-a", keys.delegatedA)
+			},
+			want: "double quotes",
+		},
+		{
+			name: "noncanonical kernel command line spacing",
+			mutate: func(t *testing.T, fixture *verifierFixture) {
+				fixture.components[RoleKernelCommandLine] = []byte("console=ttyAMA10  ro\n")
+				fixture.updateComponentBinding(RoleKernelCommandLine)
+				fixture.signManifest(t, "release-a", keys.delegatedA)
+			},
+			want: "exactly one ASCII space",
+		},
+		{
 			name: "extra release entry",
 			mutate: func(t *testing.T, fixture *verifierFixture) {
 				fixture.writeExtra = func(inputs Inputs) error {
@@ -325,6 +361,41 @@ func TestVerifyReleaseRejectsUntrustedInputs(t *testing.T) {
 				t.Fatalf("VerifyRelease error = %v, want containing %q", err, test.want)
 			}
 		})
+	}
+}
+
+func TestKernelCommandLineBoundMatchesArm64Buffer(t *testing.T) {
+	keys := generateVerifierTestKeys(t)
+	fixture := newVerifierFixture(t, keys)
+	for index := range fixture.manifest.Components {
+		if fixture.manifest.Components[index].Role == RoleKernelCommandLine {
+			fixture.manifest.Components[index].SizeBytes = 2049
+			break
+		}
+	}
+	if err := fixture.manifest.validate(); err == nil || !strings.Contains(err.Error(), "between 1 and 2048 bytes") {
+		t.Fatalf("over-limit manifest command line error = %v", err)
+	}
+
+	read := func(contents string) (string, error) {
+		t.Helper()
+		path := filepath.Join(t.TempDir(), "cmdline.txt")
+		if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		file, err := os.Open(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer file.Close()
+		return readKernelCommandLine(file)
+	}
+	atLimit := strings.Repeat("x", 2047)
+	if commandLine, err := read(atLimit + "\n"); err != nil || commandLine != atLimit {
+		t.Fatalf("command line at arm64 limit = %q, error %v", commandLine, err)
+	}
+	if _, err := read(strings.Repeat("x", 2048) + "\n"); err == nil || !strings.Contains(err.Error(), "fixed bound") {
+		t.Fatalf("over-limit command-line file error = %v", err)
 	}
 }
 

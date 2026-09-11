@@ -215,6 +215,14 @@
           { system, ... }@args:
           packagesBySystem.${system}.mkRpi5StableVerifierSpikeRig (builtins.removeAttrs args [ "system" ]);
 
+        mkRpi5ReleasePayloadQemuVirt =
+          { system, ... }@args:
+          packagesBySystem.${system}.mkRpi5ReleasePayloadQemuVirt (builtins.removeAttrs args [ "system" ]);
+
+        mkRpi5KernelQemuVirtBeacon =
+          { system, ... }@args:
+          packagesBySystem.${system}.mkRpi5KernelQemuVirtBeacon (builtins.removeAttrs args [ "system" ]);
+
         mkRpi5StableVerifierHardwareSystem =
           args:
           import ./nix/stable-verifier-hardware.nix {
@@ -343,6 +351,7 @@
           kaiba-provision-unfused-compat = built.unfusedCompat;
           kaiba-provision-unfused-evidence = built.unfusedEvidence;
           kaiba-provision-unfused-runtime-record = built.unfusedRuntimeRecordTool;
+          kaiba-rpi5-kexec-input-validate = built.rpi5KexecInputValidator;
           kaiba-rpi5-one-boot-prove = built.oneBootProveTool;
           kaiba-rpi5-stable-verifier = built.stableVerifierTool;
           kaiba-rpi5-verifier-test-authority = built.verifierTestAuthority;
@@ -364,6 +373,9 @@
             sourceRevision = "0000000000000000000000000000000000000000";
             sourceTreeClean = false;
           };
+        }
+        // lib.optionalAttrs (system == "aarch64-linux") {
+          kaiba-rpi5-self-kexec-diagnostic = built.rpi5SelfKexecDiagnostic;
         }
       );
 
@@ -396,6 +408,12 @@
             guestPkgs = aarch64GuestPkgs;
             built = aarch64GuestBuilt;
           };
+          stableHandoffAarch64KexecFileVM = import ./tests/stable-handoff-aarch64-kexec-file-vm.nix {
+            inherit pkgs;
+            guestPkgs = aarch64GuestPkgs;
+            requireInPlacePatch = ./nix/patches/arm64-kexec-file-require-in-place.patch;
+            source = repositorySource;
+          };
           stableVerifierHardwareSystem =
             import ./nix/stable-verifier-hardware.nix
               {
@@ -426,6 +444,7 @@
           module-eval = provisioning.moduleEval;
           provisioning-test-result = provisioning.provisioningTestResult;
           rpi5-probe-bundle = provisioning.probeBundleIntegrity;
+          rpi5-self-kexec-diagnostic = built.rpi5SelfKexecDiagnosticCheck;
           rpi5-eeprom-release = provisioning.eepromReleaseContract;
           rpi5-eeprom-signing = provisioning.eepromSigningContract;
           rpi5-rpiboot-bundles = provisioning.rpibootBundleContract;
@@ -462,12 +481,42 @@
                 test ${lib.escapeShellArg stableVerifierHardwareSystem.nixosSystem.config.kaiba.stableVerifierSpike.networkInterface} = \
                   end0
                 test ${
+                  toString (
+                    lib.count (
+                      parameter: parameter == "cma=128M"
+                    ) stableVerifierHardwareSystem.nixosSystem.config.boot.kernelParams
+                  )
+                } = 1
+                test ${
+                  if
+                    lib.any (
+                      parameter: lib.hasPrefix "cma=" parameter && parameter != "cma=128M"
+                    ) stableVerifierHardwareSystem.nixosSystem.config.boot.kernelParams
+                  then
+                    "false"
+                  else
+                    "true"
+                } = true
+                test ${
                   if
                     lib.any (
                       patch:
                       patch.name == "kaiba-rpi5-stable-verifier-kexec-load"
                       && patch.structuredExtraConfig ? SUSPEND
                       && patch.structuredExtraConfig ? KEXEC
+                    ) stableVerifierHardwareSystem.nixosSystem.config.boot.kernelPatches
+                  then
+                    "true"
+                  else
+                    "false"
+                } = true
+                test ${
+                  if
+                    lib.any (
+                      patch:
+                      patch.name == "kaiba-rpi5-stable-verifier-kexec-file-require-in-place"
+                      && patch.patch != null
+                      && patch.structuredExtraConfig ? ARM64_KEXEC_FILE_REQUIRE_IN_PLACE
                     ) stableVerifierHardwareSystem.nixosSystem.config.boot.kernelPatches
                   then
                     "true"
@@ -482,6 +531,10 @@
                   grep -Fx 'CONFIG_ARCH_SUPPORTS_KEXEC=y' \
                     ${stableVerifierHardwareSystem.kernel.configfile} > /dev/null
                   grep -Fx 'CONFIG_KEXEC=y' \
+                    ${stableVerifierHardwareSystem.kernel.configfile} > /dev/null
+                  grep -Fx 'CONFIG_CMA=y' \
+                    ${stableVerifierHardwareSystem.kernel.configfile} > /dev/null
+                  grep -Fx 'CONFIG_ARM64_KEXEC_FILE_REQUIRE_IN_PLACE=y' \
                     ${stableVerifierHardwareSystem.kernel.configfile} > /dev/null
                   find "$firmwareTree" -type f -printf '%P\n' | sort > "$TMPDIR/actual-files"
                   printf '%s\n' \
@@ -499,6 +552,10 @@
                   test -z "$(find "$firmwareTree" ! -type d ! -type f -print -quit)"
                   test -s "$firmwareTree/initrd"
                   test -s "$firmwareTree/kernel.img"
+                  test "$(tr ' ' '\n' < "$firmwareTree/cmdline.txt" | grep -Fxc 'cma=128M')" = 1
+                  ! tr ' ' '\n' < "$firmwareTree/cmdline.txt" \
+                    | grep -E '^cma=' \
+                    | grep -Fvx 'cma=128M' > /dev/null
                   ! grep -Eq '(^|[[:space:]])init=' "$firmwareTree/cmdline.txt"
                   ! grep -Eq '^dtoverlay=(vc4-kms-v3d|dwc2)$' "$firmwareTree/config.txt"
                 ''}
@@ -576,6 +633,7 @@
           # on the native ARM64 CI runner; exporting it under x86_64-linux makes
           # the x86 job require an otherwise unconfigured ARM builder.
           stable-verifier-aarch64-kexec-vm = stableVerifierAarch64KexecVM;
+          stable-handoff-aarch64-kexec-file-vm = stableHandoffAarch64KexecFileVM;
           operator-packages = pkgs.linkFarm "kaiba-operator-packages-check" [
             {
               name = "kaiba-provision";
