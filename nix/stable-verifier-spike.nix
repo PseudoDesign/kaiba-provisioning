@@ -1,6 +1,7 @@
 {
   lib,
   pkgs,
+  rpi5KexecInputValidator,
 }:
 
 let
@@ -488,6 +489,7 @@ let
           pkgs.findutils
           pkgs.gnugrep
           pkgs.jq
+          rpi5KexecInputValidator
         ];
         passthru.kaibaRpi5DelegatedReleaseSpike = {
           inherit
@@ -535,6 +537,10 @@ let
           exit 1
         fi
         ${sensitiveMaterialScan ''"$releaseTreeInput"''}
+
+        kaiba-rpi5-kexec-input-validate \
+          --device-tree "$releaseTreeInput/device-tree.dtb" \
+          --command-line "$releaseTreeInput/cmdline.txt"
 
         mkdir -p "$out/nvme-release/overlays"
         while IFS= read -r relative_path; do
@@ -700,15 +706,58 @@ let
         firmwareSigningPublicKey = fixtureRootPublicKey;
         bootFilesystemSizeMiB = 112;
       };
+      fixtureResolvedDeviceTree =
+        pkgs.runCommand "kaiba-stable-verifier-resolved-device-tree-fixture"
+          { nativeBuildInputs = [ pkgs.dtc ]; }
+          ''
+            cat > "$TMPDIR/fixture.dts" <<'EOF'
+            /dts-v1/;
+
+            / {
+              compatible = "raspberrypi,5-model-b", "brcm,bcm2712";
+              model = "Raspberry Pi 5 Model B test fixture";
+              #address-cells = <2>;
+              #size-cells = <2>;
+
+              memory@0 {
+                device_type = "memory";
+                reg = <0 0 0 0x3fc00000>;
+              };
+
+              aliases {
+                serial10 = &debug_uart;
+              };
+
+              chosen {
+                stdout-path = "serial10:115200n8";
+              };
+
+              soc@107c000000 {
+                #address-cells = <1>;
+                #size-cells = <1>;
+                ranges = <0 0x10 0 0x80000000>;
+
+                debug_uart: serial@7d001000 {
+                  compatible = "arm,pl011-axi", "arm,pl011", "arm,primecell";
+                  reg = <0x7d001000 0x200>;
+                  status = "okay";
+                };
+              };
+            };
+            EOF
+            dtc -I dts -O dtb -o "$out" "$TMPDIR/fixture.dts"
+          '';
       fixtureRelease = pkgs.runCommand "kaiba-delegated-release-fixture" { } ''
         mkdir -p "$out/overlays"
         printf '%s\n' '{"schema_version":"kaiba.provisioning.rpi5-delegated-release-manifest/v1alpha1"}' \
           > "$out/release-manifest.json"
         printf '%s\n' fixture-kernel > "$out/kernel"
         printf '%s\n' fixture-initramfs > "$out/initramfs"
-        printf '%s\n' fixture-dtb > "$out/device-tree.dtb"
+        install -m 0444 ${fixtureResolvedDeviceTree} "$out/device-tree.dtb"
         printf '%s\n' fixture-overlay > "$out/overlays/fixture.dtbo"
-        printf '%s\n' 'console=serial0,115200' > "$out/cmdline.txt"
+        printf '%s\n' \
+          'console=ttyAMA10,115200n8 console=tty1 earlycon=pl011,0x107d001000,115200n8' \
+          > "$out/cmdline.txt"
         printf '%s\n' fixture-root-data > "$out/root.img"
         printf '%s\n' '{"root_hash":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' \
           > "$out/dm-verity.json"
@@ -720,8 +769,10 @@ let
           > "$out/release-manifest.json"
         printf '%s\n' fixture-kernel > "$out/kernel"
         printf '%s\n' fixture-initramfs > "$out/initramfs"
-        printf '%s\n' fixture-dtb > "$out/device-tree.dtb"
-        printf '%s\n' 'console=serial0,115200' > "$out/cmdline.txt"
+        install -m 0444 ${fixtureResolvedDeviceTree} "$out/device-tree.dtb"
+        printf '%s\n' \
+          'console=ttyAMA10,115200n8 console=tty1 earlycon=pl011,0x107d001000,115200n8' \
+          > "$out/cmdline.txt"
         printf '%s\n' fixture-root-data > "$out/root.img"
         printf '%s\n' '{"root_hash":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' \
           > "$out/dm-verity.json"
@@ -792,12 +843,40 @@ let
         delegatedRelease = delegatedRelease;
         bootFilesystemSizeMiB = 112;
       };
-      evaluated =
+      reviewedKexecFileRequireInPlacePatch = ./patches/arm64-kexec-file-require-in-place.patch;
+      enabledKexecFileRequireInPlaceKernelPatch = {
+        name = "kaiba-stable-verifier-contract-kexec-file-require-in-place";
+        patch = reviewedKexecFileRequireInPlacePatch;
+        structuredExtraConfig.ARM64_KEXEC_FILE_REQUIRE_IN_PLACE = lib.kernel.yes;
+      };
+      conflictingStructuredKexecFileKernelPatch = {
+        name = "kaiba-stable-verifier-contract-conflicting-structured-config";
+        patch = null;
+        structuredExtraConfig.ARM64_KEXEC_FILE_REQUIRE_IN_PLACE = lib.kernel.no;
+      };
+      conflictingForcedStructuredKexecFileKernelPatch = {
+        name = "kaiba-stable-verifier-contract-conflicting-forced-structured-config";
+        patch = null;
+        structuredExtraConfig.ARM64_KEXEC_FILE_REQUIRE_IN_PLACE = lib.mkForce lib.kernel.no;
+      };
+      conflictingLegacyKexecFileKernelPatch = {
+        name = "kaiba-stable-verifier-contract-conflicting-legacy-config";
+        patch = null;
+        extraConfig = ''
+          ARM64_KEXEC_FILE_REQUIRE_IN_PLACE n
+        '';
+      };
+      evaluateModule =
+        {
+          kexecMode,
+          kernelPatches ? [ ],
+        }:
         (lib.nixosSystem {
           system = pkgs.stdenv.hostPlatform.system;
           modules = [
             {
               boot.loader.grub.devices = [ "nodev" ];
+              boot.kernelPatches = kernelPatches;
               fileSystems."/" = {
                 device = "none";
                 fsType = "tmpfs";
@@ -821,13 +900,69 @@ let
                 authorityURL = "https://192.0.2.10:8443";
                 logicalIdentity = "rpi5-spike:test";
                 networkInterface = "eth0";
+                inherit kexecMode;
               };
             }
           ];
         }).config;
+      fileModeEvaluationRejected =
+        kernelPatches:
+        !(builtins.tryEval (
+          builtins.deepSeq
+            (evaluateModule {
+              kexecMode = "experimental-file-live-fdt";
+              inherit kernelPatches;
+            }).system.build.toplevel
+            true
+        )).success;
+      evaluated = evaluateModule { kexecMode = "legacy-explicit-dtb"; };
+      fileModeEvaluated = evaluateModule {
+        kexecMode = "experimental-file-live-fdt";
+        kernelPatches = [ enabledKexecFileRequireInPlaceKernelPatch ];
+      };
+      fileModePatchRejections =
+        fileModeEvaluationRejected [ ]
+        && fileModeEvaluationRejected [
+          (enabledKexecFileRequireInPlaceKernelPatch // { patch = null; })
+        ]
+        && fileModeEvaluationRejected [
+          (enabledKexecFileRequireInPlaceKernelPatch // { patch = fixturePolicy; })
+        ]
+        && fileModeEvaluationRejected [
+          (
+            enabledKexecFileRequireInPlaceKernelPatch
+            // {
+              structuredExtraConfig.ARM64_KEXEC_FILE_REQUIRE_IN_PLACE = lib.kernel.no;
+            }
+          )
+        ]
+        && fileModeEvaluationRejected [
+          enabledKexecFileRequireInPlaceKernelPatch
+          conflictingStructuredKexecFileKernelPatch
+        ]
+        && fileModeEvaluationRejected [
+          enabledKexecFileRequireInPlaceKernelPatch
+          conflictingForcedStructuredKexecFileKernelPatch
+        ]
+        && fileModeEvaluationRejected [
+          enabledKexecFileRequireInPlaceKernelPatch
+          conflictingLegacyKexecFileKernelPatch
+        ]
+        && fileModeEvaluationRejected [
+          enabledKexecFileRequireInPlaceKernelPatch
+          enabledKexecFileRequireInPlaceKernelPatch
+        ];
       moduleAssertionsPass = builtins.all (assertion: assertion.assertion) evaluated.assertions;
       verifierService = evaluated.boot.initrd.systemd.services.kaiba-stable-verifier;
       verifierExecStart = verifierService.serviceConfig.ExecStart;
+      fileModeAssertionsPass = builtins.all (assertion: assertion.assertion) fileModeEvaluated.assertions;
+      fileModeVerifierService = fileModeEvaluated.boot.initrd.systemd.services.kaiba-stable-verifier;
+      fileModeVerifierExecStart = fileModeVerifierService.serviceConfig.ExecStart;
+      fileModeBoundary =
+        fileModeAssertionsPass
+        && fileModeVerifierService.serviceConfig.CapabilityBoundingSet == [ "CAP_SYS_BOOT" ]
+        && fileModeVerifierService.serviceConfig.AmbientCapabilities == [ "CAP_SYS_BOOT" ]
+        && lib.hasInfix ''"--kexec-mode" "experimental-file-live-fdt"'' fileModeVerifierExecStart;
       moduleBoundary =
         moduleAssertionsPass
         && evaluated.boot.initrd.systemd.enable
@@ -867,6 +1002,7 @@ let
         && lib.hasInfix "--audience" verifierExecStart
         && lib.hasInfix "--logical-identity" verifierExecStart
         && lib.hasInfix "--kexec" verifierExecStart
+        && lib.hasInfix ''"--kexec-mode" "legacy-explicit-dtb"'' verifierExecStart
         && !(lib.hasInfix "--policy-signature" verifierExecStart)
         && !evaluated.services.openssh.enable;
     in
@@ -874,6 +1010,10 @@ let
       "delegated-release constructor admitted a non-canonical overlay path";
     assert lib.assertMsg moduleBoundary
       "stable-verifier initramfs module evaluation did not preserve its fail-closed boundary";
+    assert lib.assertMsg fileModeBoundary
+      "stable-verifier experimental file/live-FDT mode did not preserve its explicit reduced-capability boundary";
+    assert lib.assertMsg fileModePatchRejections
+      "stable-verifier experimental file/live-FDT mode admitted a missing, null, substituted, duplicated, disabled, or competing arm64 in-place patch policy";
     pkgs.runCommand "kaiba-rpi5-stable-verifier-spike-contract-check"
       {
         unsignedBootInput = unsignedBoot;

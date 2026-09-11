@@ -3,6 +3,7 @@
 package stableverifier
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -15,9 +16,8 @@ import (
 	"syscall"
 	"unicode/utf8"
 
-	"context"
-
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/bundle"
+	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/rpi5kexecinput"
 )
 
 type fileIdentity struct {
@@ -374,10 +374,50 @@ func readKernelCommandLine(file *os.File) (string, error) {
 	if strings.ContainsAny(commandLine, "\x00\r\n") {
 		return "", errors.New("kernel command line contains NUL or an embedded line break")
 	}
+	commandLine, err = rpi5kexecinput.ParseCommandLineFile(contents)
+	if err != nil {
+		return "", fmt.Errorf("kernel command line is not canonical: %w", err)
+	}
+	for _, argument := range strings.Split(commandLine, " ") {
+		if firmwareConsoleAlias(argument) {
+			return "", fmt.Errorf(
+				"kernel command line uses firmware-only console alias %q; delegated kexec requires a resolved Linux tty name",
+				argument,
+			)
+		}
+	}
 	if _, err := file.Seek(0, 0); err != nil {
 		return "", fmt.Errorf("rewind kernel command line: %w", err)
 	}
 	return commandLine, nil
+}
+
+func firmwareConsoleAlias(argument string) bool {
+	const optionPrefix = "console="
+	if !strings.HasPrefix(argument, optionPrefix) {
+		return false
+	}
+	device := strings.TrimPrefix(argument, optionPrefix)
+	if comma := strings.IndexByte(device, ','); comma >= 0 {
+		device = device[:comma]
+	}
+	for _, aliasPrefix := range []string{"serial", "uart"} {
+		digits := strings.TrimPrefix(device, aliasPrefix)
+		if digits == device || digits == "" {
+			continue
+		}
+		decimal := true
+		for _, character := range digits {
+			if character < '0' || character > '9' {
+				decimal = false
+				break
+			}
+		}
+		if decimal {
+			return true
+		}
+	}
+	return false
 }
 
 func duplicateRetained(source retainedFile) (*os.File, error) {

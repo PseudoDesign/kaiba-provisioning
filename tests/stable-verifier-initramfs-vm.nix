@@ -467,7 +467,46 @@ let
         --manifest-digest "$manifest_digest" \
         --security-epoch ${toString binding.securityEpoch} \
         --challenge-max-age 60s \
-        --authorization-max-age 60s
+      --authorization-max-age 60s
+    '';
+  };
+
+  authorityReadiness = pkgs.writeShellApplication {
+    name = "kaiba-wait-for-initramfs-vm-authority";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = ''
+      set -euo pipefail
+      for _ in $(seq 1 6000); do
+        if test -S ${authorityAdminSocket}; then
+          printf '%s\n' KAIBA_INITRAMFS_VM_AUTHORITY_READY
+          exit 0
+        fi
+        sleep 0.1
+      done
+      printf '%s\n' KAIBA_INITRAMFS_VM_AUTHORITY_NOT_READY >&2
+      exit 1
+    '';
+  };
+
+  authorityNetworkReadiness = pkgs.writeShellApplication {
+    name = "kaiba-wait-for-initramfs-vm-authority-network";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.gnugrep
+      pkgs.iproute2
+    ];
+    text = ''
+      set -euo pipefail
+      for _ in $(seq 1 6000); do
+        if ip -4 -o address show \
+          | grep -Eq ' inet 192[.]168[.]1[.]1/24([[:space:]]|$)'; then
+          printf '%s\n' KAIBA_INITRAMFS_VM_AUTHORITY_NETWORK_READY
+          exit 0
+        fi
+        sleep 0.1
+      done
+      printf '%s\n' KAIBA_INITRAMFS_VM_AUTHORITY_NETWORK_NOT_READY >&2
+      exit 1
     '';
   };
 
@@ -488,7 +527,9 @@ let
 
   signedHandoffTest = pkgs.testers.runNixOSTest {
     name = "kaiba-stable-verifier-initramfs-signed-handoff";
-    globalTimeout = 300;
+    # This test boots an authority VM before the verifier VM. Builders without
+    # KVM legitimately need several minutes for the first TCG boot alone.
+    globalTimeout = 900;
     passthru.kaibaStableVerifierInitramfsVM = {
       architecture = "x86_64-linux";
       expectedFailureCode = "kexec-execute-failed";
@@ -498,6 +539,7 @@ let
       realKexecSyscalls = false;
       signedReleaseVerified = true;
       testAuthorityObserved = true;
+      testAuthorityNetworkReadinessObserved = true;
       productionReady = false;
       raspberryPiHardwareObserved = false;
     };
@@ -516,9 +558,14 @@ let
             after = [ "network-online.target" ];
             serviceConfig = {
               Type = "simple";
+              ExecStartPre = "${authorityNetworkReadiness}/bin/kaiba-wait-for-initramfs-vm-authority-network";
               ExecStart = "${authorityRunner}/bin/kaiba-run-initramfs-vm-authority";
+              ExecStartPost = "${authorityReadiness}/bin/kaiba-wait-for-initramfs-vm-authority";
               RuntimeDirectory = "kaiba-verifier-authority";
               RuntimeDirectoryMode = "0700";
+              StandardOutput = "journal+console";
+              StandardError = "journal+console";
+              TimeoutStartSec = 660;
               UMask = "0077";
             };
           };
@@ -538,6 +585,8 @@ let
       import shlex
 
       authority.start()
+      authority.wait_for_console_text("KAIBA_INITRAMFS_VM_AUTHORITY_NETWORK_READY", timeout=600)
+      authority.wait_for_console_text("KAIBA_INITRAMFS_VM_AUTHORITY_READY", timeout=600)
       authority.wait_for_unit("kaiba-verifier-test-authority.service")
       authority.wait_until_succeeds("test -S ${authorityAdminSocket}")
 

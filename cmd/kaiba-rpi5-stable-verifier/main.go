@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/releaseauthorization"
+	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/rpi5kexecinput"
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/stablehandoff"
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/stableverifier"
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/verifierevents"
@@ -36,6 +37,10 @@ const (
 	defaultClientTimeout       = 5 * time.Second
 	registrationRetryInterval  = 250 * time.Millisecond
 	maxPublicInputBytes        = 1024 * 1024
+	liveDeviceTreePath         = "/sys/firmware/fdt"
+
+	kexecModeLegacyExplicitDTB       = "legacy-explicit-dtb"
+	kexecModeExperimentalFileLiveFDT = "experimental-file-live-fdt"
 )
 
 type config struct {
@@ -52,6 +57,7 @@ type config struct {
 	logicalIdentity              string
 	audience                     string
 	kexecPath                    string
+	kexecMode                    stablehandoff.KexecMode
 	bootstrapRegistrationTimeout time.Duration
 	clientTimeout                time.Duration
 }
@@ -91,6 +97,14 @@ func run(ctx context.Context, arguments []string, output io.Writer) int {
 	defer release.Close()
 	details := verifierevents.Details{
 		PolicyDigest: release.PolicyDigest(), ManifestDigest: release.ManifestDigest(),
+	}
+	if err := validateKexecPlatform(
+		cfg.kexecMode,
+		release.KernelCommandLine(),
+		readBoundedFile,
+		rpi5kexecinput.Validate,
+	); err != nil {
+		return fail(emitter, details, "kexec-platform-validation-failed", exitVerification)
 	}
 	if _, _, err := emitter.Emit(verifierevents.EventReleaseVerified, details); err != nil {
 		return exitOutput
@@ -186,11 +200,13 @@ func run(ctx context.Context, arguments []string, output io.Writer) int {
 		return fail(emitter, details, "initramfs-handoff-open-failed", exitHandoff)
 	}
 	defer baseInitramfs.Close()
-	deviceTree, err := release.OpenComponent(stableverifier.RoleResolvedDeviceTree)
+	deviceTree, err := openHandoffDeviceTree(cfg.kexecMode, release.OpenComponent)
 	if err != nil {
 		return fail(emitter, details, "device-tree-handoff-open-failed", exitHandoff)
 	}
-	defer deviceTree.Close()
+	if deviceTree != nil {
+		defer deviceTree.Close()
+	}
 	dmVerityMetadata, err := readRetained(release, stableverifier.RoleDMVerityMetadata, stablehandoff.MaxDMVerityBytes)
 	if err != nil {
 		return fail(emitter, details, "dm-verity-handoff-read-failed", exitHandoff)
@@ -217,7 +233,7 @@ func run(ctx context.Context, arguments []string, output io.Writer) int {
 		return fail(emitter, details, "authorization-expired-before-load", exitAuthorization)
 	}
 	loaded, err := (stablehandoff.Plan{
-		KexecPath: cfg.kexecPath, Kernel: kernel, Initramfs: preparedInitramfs,
+		Mode: cfg.kexecMode, KexecPath: cfg.kexecPath, Kernel: kernel, Initramfs: preparedInitramfs,
 		DeviceTree: deviceTree, CommandLine: release.KernelCommandLine(), Output: os.Stderr,
 	}).Load(ctx)
 	if err != nil {
@@ -251,6 +267,7 @@ func run(ctx context.Context, arguments []string, output io.Writer) int {
 
 func parseConfig(arguments []string) (config, error) {
 	var cfg config
+	kexecMode := kexecModeLegacyExplicitDTB
 	flags := flag.NewFlagSet("kaiba-rpi5-stable-verifier", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	flags.StringVar(&cfg.policyPath, "policy", "", "root-signed stable-verifier policy")
@@ -266,6 +283,12 @@ func parseConfig(arguments []string) (config, error) {
 	flags.StringVar(&cfg.logicalIdentity, "logical-identity", "", "explicit non-production logical identity")
 	flags.StringVar(&cfg.audience, "audience", "", "intended authorization audience")
 	flags.StringVar(&cfg.kexecPath, "kexec", "", "pinned kexec executable")
+	flags.StringVar(
+		&kexecMode,
+		"kexec-mode",
+		kexecModeLegacyExplicitDTB,
+		"kernel handoff mode: legacy-explicit-dtb or experimental-file-live-fdt",
+	)
 	flags.DurationVar(
 		&cfg.bootstrapRegistrationTimeout,
 		"bootstrap-registration-timeout",
@@ -275,6 +298,14 @@ func parseConfig(arguments []string) (config, error) {
 	flags.DurationVar(&cfg.clientTimeout, "authority-client-timeout", defaultClientTimeout, "per-request authority timeout")
 	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 {
 		return config{}, errors.New("invalid verifier arguments")
+	}
+	switch kexecMode {
+	case kexecModeLegacyExplicitDTB:
+		cfg.kexecMode = stablehandoff.KexecModeLegacyExplicitDeviceTree
+	case kexecModeExperimentalFileLiveFDT:
+		cfg.kexecMode = stablehandoff.KexecModeExperimentalFileLiveDeviceTree
+	default:
+		return config{}, errors.New("--kexec-mode is invalid")
 	}
 	for name, value := range map[string]string{
 		"policy": cfg.policyPath, "root-public-key": cfg.rootPublicKeyPath,
@@ -297,6 +328,71 @@ func parseConfig(arguments []string) (config, error) {
 		return config{}, errors.New("--authority-client-timeout must be positive and at most 30 seconds")
 	}
 	return cfg, nil
+}
+
+type boundedFileReader func(string, int) ([]byte, error)
+
+type platformInputValidator func([]byte, string) error
+
+type releaseComponentOpener func(stableverifier.ComponentRole) (*os.File, error)
+
+func validateKexecPlatform(
+	mode stablehandoff.KexecMode,
+	commandLine string,
+	readFile boundedFileReader,
+	validate platformInputValidator,
+) error {
+	switch mode {
+	case stablehandoff.KexecModeLegacyExplicitDeviceTree:
+		return nil
+	case stablehandoff.KexecModeExperimentalFileLiveDeviceTree:
+		if readFile == nil || validate == nil {
+			return errors.New("experimental file/live-FDT validation dependencies are required")
+		}
+		deviceTree, err := readFile(liveDeviceTreePath, rpi5kexecinput.MaxDeviceTreeBytes)
+		if err != nil {
+			return fmt.Errorf("read live firmware device tree: %w", err)
+		}
+		if err := validate(deviceTree, commandLine); err != nil {
+			return fmt.Errorf("validate live firmware device tree: %w", err)
+		}
+		return nil
+	default:
+		return fmt.Errorf("unsupported kexec mode %d", mode)
+	}
+}
+
+func openHandoffDeviceTree(mode stablehandoff.KexecMode, open releaseComponentOpener) (*os.File, error) {
+	switch mode {
+	case stablehandoff.KexecModeLegacyExplicitDeviceTree:
+		if open == nil {
+			return nil, errors.New("release component opener is required in legacy explicit-DTB mode")
+		}
+		return open(stableverifier.RoleResolvedDeviceTree)
+	case stablehandoff.KexecModeExperimentalFileLiveDeviceTree:
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("unsupported kexec mode %d", mode)
+	}
+}
+
+func readBoundedFile(path string, maximum int) ([]byte, error) {
+	if maximum <= 0 {
+		return nil, errors.New("file size bound must be positive")
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	contents, err := io.ReadAll(io.LimitReader(file, int64(maximum)+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(contents) == 0 || len(contents) > maximum {
+		return nil, fmt.Errorf("file must contain between 1 and %d bytes", maximum)
+	}
+	return contents, nil
 }
 
 func selectedAuthorityKey(policy stableverifier.Policy, keyID string) (ed25519.PublicKey, error) {

@@ -56,6 +56,13 @@ let
           };
           hardware.raspberry-pi.config.cm5.dt-overlays.dwc2.enable = lib.mkForce false;
 
+          # A complete delegated kernel plus its augmented one-boot initramfs
+          # does not fit reliably in the vendor kernel's 32 MiB CMA default.
+          # The experimental file-mode loader is kernel-enforced fail closed,
+          # but reserve enough contiguous memory for the intended 128 MiB
+          # direct-handoff envelope.
+          boot.kernelParams = [ "cma=128M" ];
+
           # arm64 exposes the segment-based kexec_load syscall only when
           # PM_SLEEP_SMP makes ARCH_SUPPORTS_KEXEC available. The verifier
           # intentionally uses that syscall because kexec_file_load cannot
@@ -69,6 +76,17 @@ let
               structuredExtraConfig = with lib.kernel; {
                 SUSPEND = yes;
                 KEXEC = yes;
+              };
+            }
+            {
+              # The verifier still uses legacy kexec_load by default. Keep a
+              # future file-mode experiment fail closed: a successful
+              # kexec_file_load must select arm64's direct, non-relocating
+              # IND_DONE path rather than silently falling back to relocation.
+              name = "kaiba-rpi5-stable-verifier-kexec-file-require-in-place";
+              patch = ./patches/arm64-kexec-file-require-in-place.patch;
+              structuredExtraConfig = with lib.kernel; {
+                ARM64_KEXEC_FILE_REQUIRE_IN_PLACE = yes;
               };
             }
           ];

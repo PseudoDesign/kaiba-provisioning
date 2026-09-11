@@ -19,7 +19,12 @@ let
     && !(verifierPackageContract.hardwareObserved or true)
     && !(verifierPackageContract.privateKeyMaterialEmbedded or true)
     && !(verifierPackageContract.authoritySigningCapable or true)
-    && !(verifierPackageContract.signingAuthorityConfigured or true);
+    && !(verifierPackageContract.signingAuthorityConfigured or true)
+    && (verifierPackageContract.defaultKexecMode or null) == "legacy-explicit-dtb"
+    && (
+      cfg.kexecMode != "experimental-file-live-fdt"
+      || (verifierPackageContract.experimentalFileLiveFDT or false)
+    );
   releaseMountUnit = "${utils.escapeSystemdPath cfg.releaseDirectory}.mount";
   publicInputs =
     pkgs.runCommand "kaiba-rpi5-stable-verifier-public-inputs"
@@ -92,6 +97,8 @@ let
       cfg.logicalIdentity
       "--kexec"
       "${cfg.kexecPackage}/bin/kexec"
+      "--kexec-mode"
+      cfg.kexecMode
     ]
     ++ cfg.extraArguments
   );
@@ -107,8 +114,59 @@ let
     && !(lib.hasSuffix "/.." value);
   reservedArgument =
     value:
-    builtins.match "--?(policy|root-public-key|release-dir|verifier-version|cohort-id|slot-id|minimum-security-epoch|authority-url|authority-ca|authority-key-id|audience|logical-identity|kexec|bootstrap-registration-timeout|authority-client-timeout)(=.*)?" value
+    builtins.match "--?(policy|root-public-key|release-dir|verifier-version|cohort-id|slot-id|minimum-security-epoch|authority-url|authority-ca|authority-key-id|audience|logical-identity|kexec|kexec-mode|bootstrap-registration-timeout|authority-client-timeout)(=.*)?" value
     != null;
+  handoffCapabilities = lib.optional (cfg.kexecMode == "legacy-explicit-dtb") "CAP_SYS_ADMIN" ++ [
+    "CAP_SYS_BOOT"
+  ];
+  kexecFileRequireInPlaceOption = "ARM64_KEXEC_FILE_REQUIRE_IN_PLACE";
+  reviewedKexecFileRequireInPlacePatch = ../patches/arm64-kexec-file-require-in-place.patch;
+  # Inspect the kernel's combined patch list, not only boot.kernelPatches, so
+  # package-supplied patch configuration cannot silently compete with this
+  # module's reviewed declaration. Recursing through module-value wrappers
+  # also catches forms such as `lib.mkForce { OPTION = ...; }`.
+  effectiveKernelPatches =
+    config.boot.kernelPackages.kernel.kernelPatches or config.boot.kernelPatches;
+  configTreeMentionsKexecFileRequireInPlace =
+    value:
+    if builtins.isAttrs value then
+      builtins.hasAttr kexecFileRequireInPlaceOption value
+      || lib.any configTreeMentionsKexecFileRequireInPlace (builtins.attrValues value)
+    else if builtins.isList value then
+      lib.any configTreeMentionsKexecFileRequireInPlace value
+    else
+      false;
+  patchStructuredConfig = kernelPatch: kernelPatch.structuredExtraConfig or { };
+  reviewedKexecFileRequireInPlacePatches = lib.filter (
+    kernelPatch:
+    (kernelPatch.patch or null) != null
+    && toString kernelPatch.patch == toString reviewedKexecFileRequireInPlacePatch
+  ) effectiveKernelPatches;
+  kexecFileRequireInPlaceConfigPatches = lib.filter (
+    kernelPatch: configTreeMentionsKexecFileRequireInPlace (patchStructuredConfig kernelPatch)
+  ) effectiveKernelPatches;
+  patchLegacyConfigDoesNotMentionKexecFileRequireInPlace =
+    kernelPatch:
+    let
+      extraConfig = kernelPatch.extraConfig or "";
+    in
+    builtins.isString extraConfig && !(lib.hasInfix kexecFileRequireInPlaceOption extraConfig);
+  kernelBaseStructuredConfig = config.boot.kernelPackages.kernel.structuredExtraConfig or { };
+  reviewedKexecFileRequireInPlacePatchEnabled =
+    builtins.length reviewedKexecFileRequireInPlacePatches == 1
+    && (
+      let
+        reviewedPatch = builtins.head reviewedKexecFileRequireInPlacePatches;
+        structuredExtraConfig = patchStructuredConfig reviewedPatch;
+      in
+      builtins.isAttrs structuredExtraConfig
+      && (structuredExtraConfig.${kexecFileRequireInPlaceOption} or null) == lib.kernel.yes
+    );
+  kexecFileRequireInPlacePolicyEnforced =
+    reviewedKexecFileRequireInPlacePatchEnabled
+    && builtins.length kexecFileRequireInPlaceConfigPatches == 1
+    && lib.all patchLegacyConfigDoesNotMentionKexecFileRequireInPlace effectiveKernelPatches
+    && !(configTreeMentionsKexecFileRequireInPlace kernelBaseStructuredConfig);
 in
 {
   options.kaiba.stableVerifierSpike = {
@@ -226,6 +284,18 @@ in
       description = "Pinned kexec implementation passed to the verifier.";
     };
 
+    kexecMode = lib.mkOption {
+      type = lib.types.enum [
+        "legacy-explicit-dtb"
+        "experimental-file-live-fdt"
+      ];
+      default = "legacy-explicit-dtb";
+      description = ''
+        Explicit kernel handoff mechanism. The file/live-FDT mode remains
+        experimental and does not make the signed release DTB executable.
+      '';
+    };
+
     extraArguments = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [ ];
@@ -257,6 +327,10 @@ in
       {
         assertion = !(builtins.any reservedArgument cfg.extraArguments);
         message = "kaiba.stableVerifierSpike.extraArguments cannot override a core verifier argument";
+      }
+      {
+        assertion = cfg.kexecMode != "experimental-file-live-fdt" || kexecFileRequireInPlacePolicyEnforced;
+        message = "kaiba.stableVerifierSpike experimental-file-live-fdt mode requires exactly one reviewed non-null arm64 kexec_file in-place patch, its structured policy enabled, and no competing structured or legacy config declaration";
       }
     ];
 
@@ -336,17 +410,11 @@ in
               ProtectKernelTunables = true;
               ProtectSystem = "strict";
               ReadOnlyPaths = [ cfg.releaseDirectory ];
-              # arm64 kexec-tools reads /proc/iomem before kexec_load. Linux
-              # masks that map without CAP_SYS_ADMIN. Keep the temporary broad
-              # capability explicit and deny its mount-family syscall surface.
-              CapabilityBoundingSet = [
-                "CAP_SYS_ADMIN"
-                "CAP_SYS_BOOT"
-              ];
-              AmbientCapabilities = [
-                "CAP_SYS_ADMIN"
-                "CAP_SYS_BOOT"
-              ];
+              # The legacy arm64 loader reads /proc/iomem, which Linux masks
+              # without CAP_SYS_ADMIN. File mode does not need that broad
+              # capability. Both modes require CAP_SYS_BOOT.
+              CapabilityBoundingSet = handoffCapabilities;
+              AmbientCapabilities = handoffCapabilities;
               LockPersonality = true;
               MemoryDenyWriteExecute = true;
               RestrictAddressFamilies = [

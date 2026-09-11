@@ -200,6 +200,23 @@ func TestPlanValidationRejectsUnsafeInputs(t *testing.T) {
 	}
 }
 
+func TestPlanValidationEnforcesArm64CommandLineBufferBoundary(t *testing.T) {
+	plan := Plan{
+		KexecPath:   "/run/current-system/sw/bin/kexec",
+		Kernel:      writeRetainedFile(t, "kernel"),
+		Initramfs:   writeRetainedFile(t, "initramfs"),
+		DeviceTree:  writeRetainedFile(t, "dtb"),
+		CommandLine: strings.Repeat("x", MaxCommandLineBytes),
+	}
+	if err := plan.validate(); err != nil {
+		t.Fatalf("command line at arm64 limit was rejected: %v", err)
+	}
+	plan.CommandLine += "x"
+	if err := plan.validate(); err == nil || !strings.Contains(err.Error(), "between 1 and 2047 bytes") {
+		t.Fatalf("over-limit command line error = %v", err)
+	}
+}
+
 func TestPlanLoadUsesOnlyRetainedDescriptors(t *testing.T) {
 	kernel := writeRetainedFile(t, "kernel")
 	initramfs := writeRetainedFile(t, "initramfs")
@@ -227,6 +244,88 @@ func TestPlanLoadUsesOnlyRetainedDescriptors(t *testing.T) {
 	}
 	if len(runner.extraFiles) != 3 || runner.extraFiles[0] != kernel || runner.extraFiles[1] != initramfs || runner.extraFiles[2] != dtb {
 		t.Fatalf("unexpected retained descriptor order: %#v", runner.extraFiles)
+	}
+}
+
+func TestPlanExperimentalFileLiveDeviceTreeModeUsesOnlyKernelAndInitramfs(t *testing.T) {
+	kernel := writeRetainedFile(t, "kernel")
+	initramfs := writeRetainedFile(t, "initramfs")
+	runner := &recordingRunner{}
+	plan := Plan{
+		Mode:        KexecModeExperimentalFileLiveDeviceTree,
+		KexecPath:   "/nix/store/test/bin/kexec",
+		Kernel:      kernel,
+		Initramfs:   initramfs,
+		CommandLine: "root=/dev/dm-0 ro",
+		Runner:      runner,
+	}
+	loaded, err := plan.Load(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded == nil {
+		t.Fatal("load returned no execution capability")
+	}
+	wantArguments := []string{
+		"--kexec-file-syscall", "--load", "/proc/self/fd/3", "--initrd=/proc/self/fd/4",
+		"--command-line=root=/dev/dm-0 ro",
+	}
+	if runner.path != plan.KexecPath || !slices.Equal(runner.arguments, wantArguments) {
+		t.Fatalf("unexpected kexec invocation: path=%q arguments=%q", runner.path, runner.arguments)
+	}
+	if len(runner.extraFiles) != 2 || runner.extraFiles[0] != kernel || runner.extraFiles[1] != initramfs {
+		t.Fatalf("unexpected retained descriptor order: %#v", runner.extraFiles)
+	}
+}
+
+func TestPlanValidationRejectsContradictoryKexecModeInputs(t *testing.T) {
+	base := func() Plan {
+		return Plan{
+			KexecPath:   "/nix/store/test/bin/kexec",
+			Kernel:      writeRetainedFile(t, "kernel"),
+			Initramfs:   writeRetainedFile(t, "initramfs"),
+			CommandLine: "ro",
+			Runner:      &recordingRunner{},
+		}
+	}
+	tests := []struct {
+		name      string
+		configure func(*Plan)
+		wantError string
+	}{
+		{
+			name:      "default legacy mode requires explicit device tree",
+			configure: func(*Plan) {},
+			wantError: "device tree retained file is required in legacy explicit-device-tree mode",
+		},
+		{
+			name: "experimental file mode rejects explicit device tree",
+			configure: func(plan *Plan) {
+				plan.Mode = KexecModeExperimentalFileLiveDeviceTree
+				plan.DeviceTree = writeRetainedFile(t, "dtb")
+			},
+			wantError: "device tree retained file must be omitted in experimental file/live-device-tree mode",
+		},
+		{
+			name: "unknown mode is rejected",
+			configure: func(plan *Plan) {
+				plan.Mode = KexecMode(255)
+			},
+			wantError: "unsupported kexec mode 255",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			plan := base()
+			test.configure(&plan)
+			_, err := plan.Load(context.Background())
+			if err == nil || !strings.Contains(err.Error(), test.wantError) {
+				t.Fatalf("load error = %v, want error containing %q", err, test.wantError)
+			}
+			if runner := plan.Runner.(*recordingRunner); runner.calls != 0 {
+				t.Fatalf("validation failure invoked runner %d times", runner.calls)
+			}
+		})
 	}
 }
 

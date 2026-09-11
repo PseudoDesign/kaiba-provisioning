@@ -50,6 +50,7 @@ The canonical development posture remains
 | [Station kiosk](provisioning-station-kiosk.md) | Separation between the live station and the browser-only simulation |
 | [Development target access](raspberry-pi-5-development-target-access.md) | Optional root-equivalent USB-gadget SSH and UART-bound recovery access |
 | [Software-only rehearsals](software-rehearsals.md) | In-memory, durable, browser, unfused, and regular-file assurance levels |
+| [Pi 5 self-kexec diagnostic](../scripts/diagnostics/rpi5-self-kexec/README.md) | Prepare-only-by-default isolation of the physical legacy-kexec transition using the running kernel, live firmware DTB, minimal initramfs, and trusted UART |
 
 ## Source and adaptation
 
