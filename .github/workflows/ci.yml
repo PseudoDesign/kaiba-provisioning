@@ -184,7 +184,18 @@ jobs:
           extraPullNames: nixos-raspberrypi
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-      - name: Build ARM64 checks and operator-facing packages
+      # The hosted ARM64 runner currently falls back to TCG for NixOS VM
+      # tests. Running both VM checks alongside kernel builds can starve the
+      # guest long enough to hit the test driver's fixed shell-connect limit.
+      # Build them one at a time; the full check below then reuses the outputs.
+      - name: Build ARM64 VM checks without build contention
+        run: |
+          nix --accept-flake-config build -L --no-link \
+            .#checks.aarch64-linux.stable-verifier-aarch64-kexec-vm
+          nix --accept-flake-config build -L --no-link \
+            .#checks.aarch64-linux.stable-handoff-aarch64-kexec-file-vm
+
+      - name: Build remaining ARM64 checks and operator-facing packages
         run: nix --accept-flake-config flake check -L
 
   pages:
