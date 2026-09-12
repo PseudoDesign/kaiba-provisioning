@@ -5561,11 +5561,64 @@ let
         test -x ${built.serviceSuite}/bin/kaiba-provision-station
         test -x ${built.serviceSuite}/bin/kaiba-provision-yubikey-wrapper
         test -x ${built.stableVerifierTool}/bin/kaiba-rpi5-stable-verifier
+        test -x ${built.stableCampaignGPTInspector}/bin/kaiba-rpi5-stable-campaign-gpt-inspect
+        ${built.stableCampaignGPTInspector}/bin/kaiba-rpi5-stable-campaign-gpt-inspect \
+          --help \
+          > "$TMPDIR/stable-campaign-gpt-inspect-help.stdout" \
+          2> "$TMPDIR/stable-campaign-gpt-inspect-help.stderr"
+        test ! -s "$TMPDIR/stable-campaign-gpt-inspect-help.stdout"
+        grep -F -- '--disk-guid OPERATOR_ASSERTED_LOWERCASE_GUID' \
+          "$TMPDIR/stable-campaign-gpt-inspect-help.stderr" > /dev/null
+        ! grep -F -- '--output' "$TMPDIR/stable-campaign-gpt-inspect-help.stderr" > /dev/null
+        ! grep -F -- '--capture-id' "$TMPDIR/stable-campaign-gpt-inspect-help.stderr" > /dev/null
+        test -x ${built.stableCampaignPlanTool}/bin/kaiba-rpi5-stable-campaign-plan
         test -x ${built.verifierTestAuthority}/bin/kaiba-rpi5-verifier-test-authority
         test -x ${built.oneBootProveTool}/bin/kaiba-rpi5-one-boot-prove
         test '${built.stableVerifierTool.kaibaRpi5StableVerifier.runtimeBoundary}' = 'initramfs_only'
         test '${builtins.toJSON built.stableVerifierTool.kaibaRpi5StableVerifier.staticallyLinked}' = 'true'
         test '${builtins.toJSON built.stableVerifierTool.kaibaRpi5StableVerifier.productionReady}' = 'false'
+        test '${builtins.toJSON built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.artifactMutationCapable}' = 'false'
+        test '${built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.artifactRoleProvenance}' = caller-declared-not-independently-derived
+        test '${builtins.toJSON built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.blockDeviceReadsPerformed}' = 'false'
+        test '${builtins.toJSON built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.blockDeviceWritesPerformed}' = 'false'
+        test '${builtins.toJSON built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.crossRoleFileIdentityReuseRejected}' = 'true'
+        test '${builtins.toJSON built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.deviceWritesAuthorized}' = 'false'
+        test '${built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.inputPathAccess}' = caller-selected-absolute-paths-opened-read-only
+        test '${builtins.toJSON built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.networkAccess}' = 'false'
+        test '${built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.nonRegularInputs}' = rejected-after-open-before-content-read
+        test '${builtins.toJSON built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.opaqueCallerFileBytesRead}' = 'true'
+        test '${builtins.toJSON built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.physicalExecutionReady}' = 'false'
+        test '${builtins.toJSON built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.privateKeyOperations}' = 'false'
+        test '${builtins.toJSON built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.privateKeySemanticUse}' = 'false'
+        test '${builtins.toJSON built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.privateMaterialAbsenceProven}' = 'false'
+        test '${builtins.toJSON (builtins.hasAttr "privateKeyAccess" built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan)}' = 'false'
+        test '${built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.privateKeyPEMMarkerRejection}' = scoped-defense-in-depth-only
+        test '${builtins.toJSON built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.productionReady}' = 'false'
+        test '${toString built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.publicInputCount}' = 27
+        test '${builtins.toJSON built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.signingAuthorized}' = 'false'
+        test '${built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.blockDeviceAccess}' = 'fixed-selector-pinned-inactive-read-only'
+        test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.destructiveStagingReady}' = 'false'
+        test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.deviceAttachmentAuthenticated}' = 'false'
+        test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.directHardwareAccess}' = 'true'
+        test '${built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.diskGUIDAuthority}' = 'operator-asserted-not-authenticated'
+        test '${built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.evidenceAssurance}' = 'unauthenticated-range-read-consistency-only'
+        test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.filesystemOutputPathAuthority}' = 'false'
+        test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.hardwareObserved}' = 'true'
+        test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.opaqueWholePartitionByteReadsPossible}' = 'true'
+        test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.physicalQuiescenceProven}' = 'false'
+        test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.privateKeyOperations}' = 'false'
+        test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.privateKeySemanticUse}' = 'false'
+        test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.privateMaterialAbsenceProven}' = 'false'
+        test '${builtins.toJSON (builtins.hasAttr "privateKeyAccess" built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect)}' = 'false'
+        test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.productionReady}' = 'false'
+        test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.rangeScopedSequentialReread}' = 'true'
+        test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.fixedHostnameStringRequired}' = 'true'
+        test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.signingAuthorized}' = 'false'
+        test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.stdoutCanonicalEnvelope}' = 'true'
+        test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.targetDescriptorOpenedReadOnly}' = 'true'
+        test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.targetDescriptorWritesPerformed}' = 'false'
+        test '${builtins.toJSON built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.stagingCapable}' = 'false'
+        test '${toString built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.byteMutationTargetCount}' = 10
         test '${builtins.toJSON built.verifierTestAuthority.kaibaRpi5VerifierTestAuthority.nonProductionOnly}' = 'true'
         test '${builtins.toJSON built.verifierTestAuthority.kaibaRpi5VerifierTestAuthority.privateKeyMaterialEmbedded}' = 'false'
         test '${builtins.toJSON built.oneBootProveTool.kaibaRpi5OneBootProve.deletesOneBootPrivateKeyBeforeNetwork}' = 'true'

@@ -878,8 +878,14 @@ let
 
     testScript = ''
       console_timeout = 600
+      backdoor_console_marker = r"connecting to host\.\.\."
 
       negative.start()
+      # The NixOS test driver's guest-shell handshake has a fixed 300-second
+      # budget. A cold four-vCPU AArch64 guest under TCG can legitimately take
+      # longer than that to start the backdoor. Follow the already-live serial
+      # console to the instrumentation's readiness marker, then connect.
+      negative.wait_for_console_text(backdoor_console_marker, timeout=console_timeout)
       negative.wait_for_unit("multi-user.target")
       negative.succeed("test \"$(tr -d '\\n' </sys/devices/system/cpu/online)\" = 0")
       negative.succeed("""test "$(awk '$1 == "CmaTotal:" { print $2 }' /proc/meminfo)" = 0""")
@@ -894,6 +900,7 @@ let
       negative.shutdown()
 
       positive.start()
+      positive.wait_for_console_text(backdoor_console_marker, timeout=console_timeout)
       positive.wait_for_unit("multi-user.target")
       positive.succeed("test \"$(tr -d '\\n' </sys/devices/system/cpu/online)\" = 0")
       positive.succeed("""test "$(awk '$1 == "CmaTotal:" { print $2 }' /proc/meminfo)" = 131072""")

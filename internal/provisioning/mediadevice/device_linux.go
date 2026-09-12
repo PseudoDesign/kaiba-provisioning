@@ -116,6 +116,26 @@ func (policy StationPolicy) ValidateTarget(facts mediainventory.TargetFacts) err
 
 type Inspector struct {
 	Inventory mediainventory.Inventory
+
+	validateLogicalSector func(uint64, string) error
+	validateInactiveGraph func(string) error
+}
+
+// ReadOnlyTargetGeometry is the minimum fixed geometry needed to inspect and
+// pin an inactive block device without importing a staging-plan schema. It is
+// deliberately descriptive: it does not authorize a write or identify the
+// physical media by model, serial number, WWID, or content.
+type ReadOnlyTargetGeometry struct {
+	SizeBytes              uint64
+	LogicalSectorSizeBytes uint64
+}
+
+func (geometry ReadOnlyTargetGeometry) validate() error {
+	if geometry.SizeBytes == 0 || geometry.LogicalSectorSizeBytes == 0 ||
+		geometry.SizeBytes%geometry.LogicalSectorSizeBytes != 0 {
+		return errors.New("read-only target geometry must have a positive whole-sector size")
+	}
+	return nil
 }
 
 func (inspector Inspector) inventory() mediainventory.Inventory {
@@ -125,11 +145,40 @@ func (inspector Inspector) inventory() mediainventory.Inventory {
 	return mediainventory.SystemInventory{}
 }
 
+func (inspector Inspector) logicalSectorValidator() func(uint64, string) error {
+	if inspector.validateLogicalSector != nil {
+		return inspector.validateLogicalSector
+	}
+	return validateLogicalSectorSizeBytes
+}
+
+func (inspector Inspector) inactiveGraphValidator() func(string) error {
+	if inspector.validateInactiveGraph != nil {
+		return inspector.validateInactiveGraph
+	}
+	return validateInactiveBlockGraph
+}
+
 // InspectSelected proves the read-only safety inventory and required geometry
 // for one explicit station-local selector. Physical-media identity is not part
 // of the media plan and is not inferred from model, serial, WWID, or by-id data.
 func (inspector Inspector) InspectSelected(ctx context.Context, plan mediacontract.Plan, selectedPath string) (mediainventory.TargetFacts, error) {
 	if err := plan.Validate(); err != nil {
+		return mediainventory.TargetFacts{}, err
+	}
+	return inspector.InspectInactiveSelected(ctx, selectedPath, ReadOnlyTargetGeometry{
+		SizeBytes:              plan.Target.SizeBytes,
+		LogicalSectorSizeBytes: plan.Target.LogicalSectorSizeBytes,
+	})
+}
+
+// InspectInactiveSelected resolves one explicit station-local selector and
+// requires a whole, inactive block-device attachment with the exact expected
+// geometry. It performs no write and grants no staging authority. The returned
+// boot-local facts must still be pinned with OpenLocked and revalidated around
+// every content read.
+func (inspector Inspector) InspectInactiveSelected(ctx context.Context, selectedPath string, geometry ReadOnlyTargetGeometry) (mediainventory.TargetFacts, error) {
+	if err := geometry.validate(); err != nil {
 		return mediainventory.TargetFacts{}, err
 	}
 	inventory := inspector.inventory()
@@ -141,19 +190,26 @@ func (inspector Inspector) InspectSelected(ctx context.Context, plan mediacontra
 	if err != nil {
 		return mediainventory.TargetFacts{}, fmt.Errorf("inspect selected device usage: %w", err)
 	}
-	if err := validateFacts(plan, selectedPath, facts, usage); err != nil {
+	if err := validateReadOnlyFacts(geometry, selectedPath, facts, usage); err != nil {
 		return mediainventory.TargetFacts{}, err
 	}
-	if err := validateLogicalSectorSize(plan.Target, facts.SysfsPath); err != nil {
+	if err := inspector.logicalSectorValidator()(geometry.LogicalSectorSizeBytes, facts.SysfsPath); err != nil {
 		return mediainventory.TargetFacts{}, err
 	}
-	if err := validateInactiveBlockGraph(facts.SysfsPath); err != nil {
+	if err := inspector.inactiveGraphValidator()(facts.SysfsPath); err != nil {
 		return mediainventory.TargetFacts{}, err
 	}
 	return facts, nil
 }
 
 func validateFacts(plan mediacontract.Plan, selectedPath string, facts mediainventory.TargetFacts, usage mediainventory.TargetUsage) error {
+	return validateReadOnlyFacts(ReadOnlyTargetGeometry{
+		SizeBytes:              plan.Target.SizeBytes,
+		LogicalSectorSizeBytes: plan.Target.LogicalSectorSizeBytes,
+	}, selectedPath, facts, usage)
+}
+
+func validateReadOnlyFacts(geometry ReadOnlyTargetGeometry, selectedPath string, facts mediainventory.TargetFacts, usage mediainventory.TargetUsage) error {
 	if facts.RequestedPath != selectedPath {
 		return errors.New("inventory target path differs from the explicit station selector")
 	}
@@ -163,8 +219,8 @@ func validateFacts(plan mediacontract.Plan, selectedPath string, facts mediainve
 	if facts.Kind != mediainventory.TargetBlockDevice || !facts.WholeDevice || facts.DeviceNumber == 0 || facts.DiskSequence == 0 || facts.BootID == "" || facts.SysfsPath == "" {
 		return errors.New("inventory target is not one identified whole block-device attachment")
 	}
-	if facts.SizeBytes != plan.Target.SizeBytes {
-		return fmt.Errorf("inventory target size is %d, expected %d", facts.SizeBytes, plan.Target.SizeBytes)
+	if facts.SizeBytes != geometry.SizeBytes {
+		return fmt.Errorf("inventory target size is %d, expected %d", facts.SizeBytes, geometry.SizeBytes)
 	}
 	if usage.Mounted || usage.System || usage.Root || usage.Swap {
 		return fmt.Errorf("selected target is in use: mounted=%t system=%t root=%t swap=%t", usage.Mounted, usage.System, usage.Root, usage.Swap)
@@ -172,7 +228,7 @@ func validateFacts(plan mediacontract.Plan, selectedPath string, facts mediainve
 	return nil
 }
 
-func validateLogicalSectorSize(target mediacontract.TargetBinding, sysfsPath string) error {
+func validateLogicalSectorSizeBytes(expected uint64, sysfsPath string) error {
 	if sysfsPath == "" || !filepath.IsAbs(sysfsPath) || filepath.Clean(sysfsPath) != sysfsPath || !strings.HasPrefix(sysfsPath, "/sys/") {
 		return errors.New("target sysfs path is not a clean absolute path below /sys")
 	}
@@ -180,7 +236,7 @@ func validateLogicalSectorSize(target mediacontract.TargetBinding, sysfsPath str
 	if err != nil {
 		return fmt.Errorf("read target logical sector size: %w", err)
 	}
-	if logical != target.LogicalSectorSizeBytes {
+	if logical != expected {
 		return errors.New("live logical sector size differs from the required media geometry")
 	}
 	return nil
@@ -300,6 +356,21 @@ func SameAttachment(initial, current mediainventory.TargetFacts) error {
 
 func (inspector Inspector) ReinspectSame(ctx context.Context, plan mediacontract.Plan, selectedPath string, initial mediainventory.TargetFacts) (mediainventory.TargetFacts, error) {
 	current, err := inspector.InspectSelected(ctx, plan, selectedPath)
+	if err != nil {
+		return mediainventory.TargetFacts{}, err
+	}
+	if err := SameAttachment(initial, current); err != nil {
+		return mediainventory.TargetFacts{}, err
+	}
+	return current, nil
+}
+
+// ReinspectInactiveSame repeats the complete inactive-device inventory and
+// requires the same boot-local attachment facts returned by the initial
+// inspection. It is the schema-independent read-only counterpart to
+// ReinspectSame.
+func (inspector Inspector) ReinspectInactiveSame(ctx context.Context, selectedPath string, geometry ReadOnlyTargetGeometry, initial mediainventory.TargetFacts) (mediainventory.TargetFacts, error) {
+	current, err := inspector.InspectInactiveSelected(ctx, selectedPath, geometry)
 	if err != nil {
 		return mediainventory.TargetFacts{}, err
 	}

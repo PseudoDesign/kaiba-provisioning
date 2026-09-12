@@ -186,11 +186,12 @@ panicking.
 
 ## Physical SMP differential
 
-The next development-Pi experiment intentionally starts the first kernel with
-`maxcpus=1` but leaves the diagnostic's fixed second-stage command line
-unchanged. This distinguishes secondary CPUs that were left offline by the
-first kernel from secondary CPUs that fail specifically during the kexec boot.
-It does not change the stable verifier default or qualify an image for release.
+The 2026-09-11 development-Pi experiment intentionally started the first
+kernel with `maxcpus=1` but left the diagnostic's fixed second-stage command
+line unchanged. This distinguishes secondary CPUs that were left offline by
+the first kernel from secondary CPUs that fail specifically during the kexec
+boot. It does not change the stable verifier default or qualify an image for
+release. The following procedure records the reproducible campaign shape.
 
 1. Retain the exact original signed development boot-filesystem image and its
    digest, and confirm that it is the artifact that will be used for
@@ -227,6 +228,27 @@ It does not change the stable verifier default or qualify an image for release.
    boot-filesystem image before any later normal boot. Read it back and verify
    the complete original digest, including its original `boot.img` and
    `boot.sig` pair.
+
+The completed run was classified `SMP_PASS`. Stage one had exactly one
+`maxcpus=1`, CPUs 0 through 3 present, CPU0 online, and CPUs 1 through 3
+offline. The fixed stage-two command line had no `maxcpus`, reached
+`second-stage-init-reached`, and reported CPUs 0 through 3 online both before
+and after the CPU diagnostic, with no online attempts or failures. The
+known-good boot partition was then restored bit-for-bit, read back with SHA-256
+`dd4f2832b40000bbcc7eb67d3302f83edebcf388fa52b956ec8df2f0c001056b`,
+and smoke-tested.
+
+Raw evidence remains outside Git under campaign ID
+`rpi5-maxcpus1-physical-20260911-84808df9` in the operator's protected local
+state directory.
+The prepared archive, execution UART segment, and full UART capture have
+SHA-256 digests
+`ea40524631ff819b37860a5ae14b61f75576f643ff33031d7d9b75233080b401`,
+`da7a2a38fdb05490272a843ac402dfc8c735aeeded7f8511075f11ef676f35e6`,
+and `36017e8f69e330ed10edbd65a4773a4ccaa9b1a744f10e267d975fd43b62786a`
+respectively. This result removes first-stage secondary-CPU initialization as
+the explanation for the earlier observation. It remains a narrow handoff
+diagnostic, not a signed-verifier qualification result.
 
 The result categories are:
 

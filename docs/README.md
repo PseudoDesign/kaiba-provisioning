@@ -34,7 +34,7 @@ The canonical development posture remains
 | [Production readiness](production-readiness.md) | What the repository establishes and what still blocks production | Implemented policy plus scoped evidence and planned work |
 | [Contracts reference](contracts-reference.md) | JSON schemas, Go wire contracts, Nix constructors, modules, and exported packages | Implemented |
 | [Production security follow-on](raspberry-pi-5-production-security-follow-on.md) | Security goals and the follow-on work needed to close them | Planned and tracked against current controls |
-| [Initramfs stable-verifier spike](stable-verifier-spike.md) | Software contracts, Nix assembly interfaces, QEMU checks, and the remaining Raspberry Pi 5 hardware gate | Software and VM checks implemented; physical validation pending |
+| [Initramfs stable-verifier spike](stable-verifier-spike.md) | Software contracts, Nix assembly interfaces, QEMU checks, and the remaining Raspberry Pi 5 hardware gate | Software and VM checks implemented; narrow physical file-handoff/SMP diagnostic passed; full signed-verifier matrix pending |
 | [Device identity lifecycle](device-identity.md) | Proposed bootstrap, enrollment, rotation, revocation, recovery, and retirement model | Planned; not implemented by this repository |
 | [Production-station architecture](provisioning-station-production.md) | Proposed host, authority, network, credential, and lifecycle boundaries | Planned; not implemented by this repository |
 
@@ -50,7 +50,7 @@ The canonical development posture remains
 | [Station kiosk](provisioning-station-kiosk.md) | Separation between the live station and the browser-only simulation |
 | [Development target access](raspberry-pi-5-development-target-access.md) | Optional root-equivalent USB-gadget SSH and UART-bound recovery access |
 | [Software-only rehearsals](software-rehearsals.md) | In-memory, durable, browser, unfused, and regular-file assurance levels |
-| [Pi 5 self-kexec diagnostic](../scripts/diagnostics/rpi5-self-kexec/README.md) | Prepare-only-by-default isolation of the physical legacy-kexec transition using the running kernel, live firmware DTB, minimal initramfs, and trusted UART |
+| [Pi 5 self-kexec diagnostic](../scripts/diagnostics/rpi5-self-kexec/README.md) | Prepare-only-by-default isolation of physical legacy and file-mode kexec transitions, including the completed narrow file-handoff/SMP diagnostic; not verifier qualification |
 
 ## Source and adaptation
 

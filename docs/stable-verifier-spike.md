@@ -3,13 +3,15 @@
 ## Status and boundary
 
 The repository now contains the software contracts and Nix assembly boundary
-for the first stable-verifier spike. It does not contain a completed,
-publishable Raspberry Pi 5 qualification result or a production-approved
-root-signed hardware artifact. The software contract check builds fixture
-artifacts and evaluates the initramfs module, while the VM checks exercise
-representative failure and authenticated handoff paths under QEMU. The VM
-results do not establish NVMe, RP1 networking, the complete signed-verifier
-handoff, or failure behavior on Pi hardware.
+for the first stable-verifier spike. A development Pi has completed the narrow
+file-mode self-kexec and SMP differential described below, but the repository
+does not contain a completed, publishable Raspberry Pi 5 verifier qualification
+result or a production-approved root-signed hardware artifact. The software
+contract check builds fixture artifacts and evaluates the initramfs module,
+while the VM checks exercise representative failure and authenticated handoff
+paths under QEMU. Neither those VM results nor the narrow physical diagnostic
+establish NVMe, RP1 networking, the complete signed-verifier handoff, or its
+failure behavior on Pi hardware.
 
 This slice uses a Linux systemd initramfs as the exclusive verifier gate.
 U-Boot and FIT verification are outside this implementation.
@@ -288,13 +290,13 @@ bounded interpretation:
    signed verifier path with a delegated release that passes the resolved-DTB
    and explicit-console validator.
 
-A self-kexec beacon would establish only that the Pi can perform this narrow
-transition with the running kernel and captured live DTB. Silence, a Linux
-early-console trace without the beacon, and a beacon each narrow the boundary
-differently as described in the runbook. None alone completes the signed
-release campaign.
+The observed self-kexec beacons establish only that this Pi can perform the
+narrow transitions recorded below with the running kernel and the applicable
+live-FDT handoff. Silence, a Linux early-console trace without the beacon, and a
+beacon each narrow the boundary differently as described in the runbook. None
+alone completes the signed-release campaign.
 
-### Development Pi file-handoff observation
+### Development Pi file-handoff observations
 
 On 2026-09-10, the development-key-fused `a04171` Pi completed the bounded
 `file-live-fdt` self-kexec diagnostic with the running 6.18.42 development
@@ -318,19 +320,42 @@ This is positive evidence for the arm64 `kexec_file_load` direct handoff on
 this board. It is not yet a verifier qualification result. The experiment
 changed both the syscall/relocation path and the DTB source relative to the
 failed signed-verifier handoff, so it does not distinguish a legacy relocation
-failure from an explicit-DTB failure. In addition, CPUs 1 through 3 timed out
-while coming online in the second kernel; CPU0 alone reached the beacon. SMP
-bring-up is therefore an explicit blocker even though kernel entry, the
-initramfs, trusted UART, and clean poweroff were observed.
+failure from an explicit-DTB failure. CPUs 1 through 3 timed out while coming
+online in that run, so a separate first-stage CPU-state differential was
+required before attributing the result to persistent second-kernel SMP
+failure.
 
-The next physical differential boots the first stage with `maxcpus=1` and the
-second stage without that restriction, then records both boot-time and
-post-boot CPU-online attempts. Until that result exists, `kexec_file_load`
-remains an experimental candidate rather than the stable verifier's default
-handoff. A candidate file-mode verifier must also validate the live firmware
-DTB under stable platform policy, reserve enough CMA for the complete release
-kernel and augmented initramfs, and fail closed rather than silently falling
-back to the legacy relocation path.
+On 2026-09-11, that differential completed with classification `SMP_PASS`. The
+signed diagnostic first stage contained exactly one `maxcpus=1`: CPUs 0 through
+3 were present, CPU0 was online, and CPUs 1 through 3 were offline. The fixed
+second-stage command line contained no `maxcpus`; it reached
+`KAIBA_RPI5_SELF_KEXEC_RESULT:second-stage-init-reached` with CPUs 0 through 3
+already online both before and after the diagnostic. It made no CPU-online
+attempts and reported no CPU-online failures. This rules out the hypothesis
+that the file-mode handoff depends on secondary CPUs having been initialized by
+the first kernel.
+
+The raw campaign evidence remains outside Git under campaign ID
+`rpi5-maxcpus1-physical-20260911-84808df9` in the operator's protected local
+state directory.
+The prepared archive has SHA-256
+`ea40524631ff819b37860a5ae14b61f75576f643ff33031d7d9b75233080b401`,
+the execution UART segment has SHA-256
+`da7a2a38fdb05490272a843ac402dfc8c735aeeded7f8511075f11ef676f35e6`,
+and the full UART capture has SHA-256
+`36017e8f69e330ed10edbd65a4773a4ccaa9b1a744f10e267d975fd43b62786a`.
+After the diagnostic powered off, the known-good development boot partition was
+restored bit-for-bit, read back as
+`dd4f2832b40000bbcc7eb67d3302f83edebcf388fa52b956ec8df2f0c001056b`,
+and smoke-tested on the Pi.
+
+The successful differential removes SMP initialization as the current blocker;
+it does not make `kexec_file_load` the stable verifier's default handoff or
+complete the physical verifier gate. A candidate file-mode verifier must still
+validate the live firmware DTB under stable platform policy, reserve enough CMA
+for the complete release kernel and augmented initramfs, fail closed rather
+than silently falling back to the legacy relocation path, and pass the complete
+signed-verifier hardware matrix below.
 
 ## Supplying the Pi platform
 
@@ -338,18 +363,36 @@ The flake pins `nixos-raspberrypi` revision
 `7e39508bcf9c1da82cf11c1e22f74f9d9fd0fe10` with source NAR hash
 `sha256-KT/OleUMpSKsWgi0eTuqS/0GD4ucPQcvLgmvlw8ZuCM=`. It supplies the matched
 Pi 5 vendor kernel `6.18.34-unstable_20260604` and firmware `1.20260521` used by
-`mkRpi5StableVerifierHardwareSystem`. The hardware constructor imports the Pi
+`mkRpi5StableVerifierHardwareSystem`. The firmware tag resolves to upstream
+`raspberrypi/firmware` commit
+`09267f5354d40519d82fbd2193b9e211ec304055`, which the constructor exports as
+the evidence-facing firmware revision. The hardware constructor imports the Pi
 5 base module, selects direct `kernelboot-legacy-unsupported` firmware loading
 without U-Boot, evaluates the stable-verifier initramfs, and exposes a
 deterministic firmware tree for the unsigned-boot constructor. Changing the
 platform revision or NAR hash changes the declared boot provenance and
 requires renewed review and hardware qualification.
 
+The generic `mkRpi5StableVerifierHardwareSystem` retains its reviewed legacy
+default. The dedicated
+`mkRpi5StableVerifierFileLiveFDTHardwareSystem` constructor fixes the physical
+candidate to `experimental-file-live-fdt`; its evaluation check requires the
+in-place-only arm64 patch, exact `cma=128M`, `CAP_SYS_BOOT` without
+`CAP_SYS_ADMIN`, and no userspace DTB argument. U-Boot comparison is deferred
+and is not part of this first-cut verifier campaign.
+
 The reviewed kernel builds the BCM2712 PCIe host, NVMe, and RP1 `macb` Ethernet
 drivers into the kernel. The hardware composition retains `nvme` in
 `initrdKernelModules` so a future reviewed platform that modularizes it cannot
 silently omit it. Any platform-pin change requires the storage and network
 driver disposition to be reviewed again.
+
+The authenticated verifier firmware tree also applies the fixed `dwc2`
+peripheral-mode overlay used by the development target's USB gadget management
+lane. In file/live-FDT mode that resolved firmware tree crosses the kexec
+boundary, allowing post-handoff evidence collection on the existing USB link;
+the verifier itself continues to obtain authorization only through its pinned
+RP1 Ethernet interface.
 
 The vendor kernel enables only `kexec_file_load` by default. That syscall
 cannot consume the verifier's separately authenticated device tree, so the
@@ -386,12 +429,105 @@ reliable. Failure of authenticated handoff is a recorded blocker; it does not
 authorize an unsigned fallback or a production-readiness claim.
 
 Machine-readable evidence uses the fixed
-`kaiba.provisioning.rpi5-stable-verifier-campaign/v1alpha1` profile. A
-`validated` result requires one passing result for every test below. Every
-outcome carries the same fixed-order matrix; tests not reached in a stopped
-campaign use the `blocked` code. Test results are closed codes rather than
-free-form output, and raw observations remain outside the publishable evidence
-envelope behind their record digests.
+`kaiba.provisioning.rpi5-stable-verifier-campaign/v1alpha1` planning profile.
+The current `v1alpha2` execution envelope contains `planned_claims`, not
+fulfilled claims, pass/fail, outcome, or disposition fields. Its public
+evidence checker establishes only
+`unauthenticated-record-consistency-only`, and the explicit planned-claim
+closure API always fails closed until claim-specific authenticated witnesses
+and independently derived sealed expectations are implemented. Therefore no
+current execution envelope can be called a validated campaign result.
+
+The code-derived witness-requirement matrix makes that gap explicit for every
+planned claim. Shared requirements include independently resolved run
+artifacts, exact media readback, a provenanced cold-power observation, and an
+authenticated complete verifier trace. Separate claim requirements cover the
+released-OS command line, live-FDT invariant continuity, exact one-boot-proof
+replay rejection, exact bootstrap-signed request replay rejection, stale
+authorization replay, and runtime dm-verity rejection. These are outstanding
+requirements only; the matrix has no observed, satisfied, pass, outcome, or
+closure field.
+
+Those 14 result identifiers are logical groups, not a promise of 14 physical
+boots. The fixed campaign plan derives exactly 33 one-based physical runs and
+37 logical claims: the positive baseline supplies five claims, while each
+single-difference negative fixture has its own run and evidence record.
+Component mutation covers every fixed release component, manifest mutation
+covers one representative occurrence of every security-relevant manifest
+field class, and dm-verity corruption covers both data and hash inputs. The
+manifest cases exercise the shared parser and signature boundary; they do not
+claim one physical run for every repeated component, overlay, or signature
+array element.
+
+`mkRpi5StableVerifierCampaignRun` materializes those 33 fixed runs from the
+sealed positive-baseline artifact set. It accepts only that typed baseline and
+a one-based run index, derives the corresponding run and mutation from the
+campaign plan, and creates a new four-partition payload set in the Nix store.
+The three no-mutation runs preserve all four baseline payload digests. Of the
+30 negative runs, 28 change only the release-filesystem payload, one changes
+only root data, and one changes only the root-hash payload. Every other payload
+must remain byte-identical to the baseline. The manifest-replacement cases also
+prove that every non-target file's contents in the release filesystem are
+unchanged; the byte-XOR cases prove the selected file or direct-media target
+changed at exactly one byte.
+
+The materializer re-resolves all 27 public inputs and 10 mutation targets before
+emitting a domain-separated, digest-bound run materialization record. This is a
+deterministic build-time relationship over newly created files only. It cannot
+write a block device, contact signing hardware, perform a private-key operation,
+execute a run, observe hardware, or close a campaign claim. The original
+positive-baseline `ArtifactSet` remains immutable and mutation-free; staging and
+physical readback require separate, approval-gated capabilities that are not
+implemented in this cut.
+
+`kaiba-rpi5-stable-campaign-plan` constructs descriptive plan data from exactly
+27 named public inputs and 10 named byte-mutation targets. It rejects symlinks,
+rejects non-regular inputs before reading their contents, and rejects reuse of
+one opened `(device, inode)` identity across input roles. It computes mutation
+digests without modifying source files and emits canonical create-only JSON.
+Artifact-role labels remain caller declarations: the tool does not prove that
+the supplied bytes came from the reviewed release tree, artifact set, media,
+or hardware, and its output does not authorize signing, staging, physical
+execution, or claim closure. Its private-key PEM marker check is scoped
+defense-in-depth, not proof that opaque caller files contain no private
+material. `kaiba-rpi5-stable-campaign-gpt-inspect` is a
+separate read-only prerequisite. It requires the leg's fixed hostname string,
+but that string comparison is not host authentication. It resolves only the
+leg's fixed selector, requires a whole and inactive attachment with the exact
+capacity and logical sector size, rejects mounts, swap, and active block-graph
+holders, then pins the resolved device read-only with an exclusive open and
+advisory lock. The boot-local attachment identity and opened descriptor are
+revalidated before and after both sequential range-read passes. The expected
+disk GUID remains explicitly operator-asserted and unauthenticated in this cut.
+
+The inspector generates its capture identifier internally, accepts no output
+path, and emits only the canonical digest-bound envelope plus one newline on
+standard output; diagnostics go to standard error. Its re-read covers the GPT
+and listed fixed payload recovery ranges, not every physical byte, and the two
+passes are not an atomic snapshot or proof of physical quiescence. Hashing whole
+payload ranges means opaque bytes that happen to contain private material can
+enter the process's hashing buffer, although the tool neither interprets nor
+exports those bytes and performs no private-key operation. The envelope always
+has `destructive_staging_ready=false` and accepts no staging-plan or approval
+input. A separate path-free recovery-requirements contract now cross-binds
+exactly one SD envelope and one NVMe envelope to the sealed staging plan and
+enumerates every required recovery range. Durable backup capture, independent
+readback, live-device attachment proof, operator approval, and write authority
+remain absent or hard-false, and no campaign writer exists in this cut.
+
+The earlier signed-verifier attempt replaced only its 128 MiB SD boot
+partition. The running development image still has the release tree on the NVMe
+`KAIBA_RELEASE` partition and the authenticated root-data and hash partitions
+on the SD card. Readback confirmed root-data digest
+`68ebaaad2985e13b445b0d71bc7f3ef16fa064e870ee561f367282f3b4a80313`;
+the used hash-tree bytes have digest
+`91c7c34db1449059d2293858415a0552f1c6b471443280f9303cd5efa3469469`,
+and the complete padded hash partition has digest
+`f27bfe6e09a466ea8d1a8092702db6c30685cba31402033050d00751716cd952`.
+That happens to match the retained development release, but it is not a safe
+assembly rule. The formal campaign must construct, cross-bind, stage, and read
+back the boot, root-data, hash-tree, and release-tree artifacts as one reviewed
+media set before the first positive boot.
 
 The campaign is bound to development customer-key hash
 `sha256:b8818acea4e71173903ee003e33ed37e969def7d2ea67bec15c0b73cb36c3895`.

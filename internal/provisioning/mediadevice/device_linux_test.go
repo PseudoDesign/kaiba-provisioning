@@ -15,6 +15,34 @@ import (
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/mediainventory"
 )
 
+type readOnlyTestInventory struct {
+	facts       []mediainventory.TargetFacts
+	usage       mediainventory.TargetUsage
+	inspectCall int
+}
+
+func (inventory *readOnlyTestInventory) Inspect(ctx context.Context, path string, mode mediainventory.Mode) (mediainventory.TargetFacts, error) {
+	if err := ctx.Err(); err != nil {
+		return mediainventory.TargetFacts{}, err
+	}
+	if mode != mediainventory.ModeSelectedDevice || inventory.inspectCall >= len(inventory.facts) {
+		return mediainventory.TargetFacts{}, errors.New("unexpected read-only inventory inspection")
+	}
+	facts := inventory.facts[inventory.inspectCall]
+	inventory.inspectCall++
+	return facts, nil
+}
+
+func (inventory *readOnlyTestInventory) Usage(ctx context.Context, _ mediainventory.TargetFacts, mode mediainventory.Mode) (mediainventory.TargetUsage, error) {
+	if err := ctx.Err(); err != nil {
+		return mediainventory.TargetUsage{}, err
+	}
+	if mode != mediainventory.ModeSelectedDevice {
+		return mediainventory.TargetUsage{}, errors.New("unexpected read-only inventory mode")
+	}
+	return inventory.usage, nil
+}
+
 func TestHashRangeIsExactAndContextAware(t *testing.T) {
 	reader := bytes.NewReader([]byte("prefix-payload-suffix"))
 	digest, err := HashRange(context.Background(), reader, 7, 7)
@@ -177,6 +205,64 @@ func TestSelectedTargetFactsEnforceGeometryAndUsageWithoutMediaIdentity(t *testi
 	facts.SizeBytes = plan.Target.SizeBytes
 	if err := validateFacts(plan, selected, facts, mediainventory.TargetUsage{Mounted: true}); err == nil || !strings.Contains(err.Error(), "in use") {
 		t.Fatalf("mounted target error = %v", err)
+	}
+}
+
+func TestInspectInactiveSelectedAndReinspectSameEnforceGenericReadOnlyBoundary(t *testing.T) {
+	const selected = "/dev/disk/by-path/platform-example-nvme-1"
+	facts := mediainventory.TargetFacts{
+		RequestedPath: selected, ResolvedPath: "/dev/nvme0n1", Identity: "station-local-selector",
+		SizeBytes: 8 * mediacontract.AlignmentBytes, Kind: mediainventory.TargetBlockDevice, WholeDevice: true,
+		DeviceNumber: 17, DiskSequence: 23, BootID: "11111111-1111-4111-8111-111111111111", SysfsPath: "/sys/devices/example",
+	}
+	geometry := ReadOnlyTargetGeometry{
+		SizeBytes: facts.SizeBytes, LogicalSectorSizeBytes: mediacontract.SectorSizeBytes,
+	}
+	inventory := &readOnlyTestInventory{facts: []mediainventory.TargetFacts{facts, facts}}
+	logicalChecks, graphChecks := 0, 0
+	inspector := Inspector{
+		Inventory: inventory,
+		validateLogicalSector: func(expected uint64, path string) error {
+			logicalChecks++
+			if expected != mediacontract.SectorSizeBytes || path != facts.SysfsPath {
+				t.Fatalf("logical sector check = %d/%q", expected, path)
+			}
+			return nil
+		},
+		validateInactiveGraph: func(path string) error {
+			graphChecks++
+			if path != facts.SysfsPath {
+				t.Fatalf("inactive graph path = %q", path)
+			}
+			return nil
+		},
+	}
+	initial, err := inspector.InspectInactiveSelected(context.Background(), selected, geometry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := inspector.ReinspectInactiveSame(context.Background(), selected, geometry, initial); err != nil {
+		t.Fatal(err)
+	}
+	if logicalChecks != 2 || graphChecks != 2 {
+		t.Fatalf("logical/graph checks = %d/%d", logicalChecks, graphChecks)
+	}
+
+	changed := facts
+	changed.DiskSequence++
+	inventory = &readOnlyTestInventory{facts: []mediainventory.TargetFacts{changed}}
+	inspector.Inventory = inventory
+	if _, err := inspector.ReinspectInactiveSame(context.Background(), selected, geometry, facts); err == nil || !strings.Contains(err.Error(), "attachment identity changed") {
+		t.Fatalf("changed attachment error = %v", err)
+	}
+
+	inventory = &readOnlyTestInventory{facts: []mediainventory.TargetFacts{facts}, usage: mediainventory.TargetUsage{Mounted: true}}
+	inspector.Inventory = inventory
+	if _, err := inspector.InspectInactiveSelected(context.Background(), selected, geometry); err == nil || !strings.Contains(err.Error(), "in use") {
+		t.Fatalf("mounted attachment error = %v", err)
+	}
+	if _, err := inspector.InspectInactiveSelected(context.Background(), selected, ReadOnlyTargetGeometry{}); err == nil || !strings.Contains(err.Error(), "positive whole-sector size") {
+		t.Fatalf("invalid geometry error = %v", err)
 	}
 }
 

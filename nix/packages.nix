@@ -21,6 +21,12 @@ let
   stableVerifierSpike = import ./stable-verifier-spike.nix {
     inherit lib pkgs rpi5KexecInputValidator;
   };
+  mkRpi5StableVerifierCampaignMedia = import ./stable-verifier-campaign-media.nix {
+    inherit lib pkgs;
+  };
+  mkRpi5StableVerifierCampaignRun = import ./stable-verifier-campaign-run.nix {
+    inherit lib pkgs;
+  };
   # moduleRoot is either the single-pass fileset above or an explicitly scoped
   # caller input. Do not filter it again: a second pass over a store-backed
   # subpath can leave an unmaterialized source path under lazy-tree Nix.
@@ -198,6 +204,96 @@ let
     meta = {
       mainProgram = "kaiba-rpi5-stable-verifier";
       description = "Development-only static Raspberry Pi 5 initramfs release verifier";
+      platforms = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
+    };
+  };
+
+  stableCampaignPlanTool = pkgs.buildGoModule {
+    pname = "kaiba-rpi5-stable-campaign-plan";
+    inherit version;
+    src = goSource;
+    subPackages = [ "cmd/kaiba-rpi5-stable-campaign-plan" ];
+    vendorHash = null;
+    env.CGO_ENABLED = 0;
+    ldflags = [
+      "-s"
+      "-w"
+    ];
+    # checks.unit runs the complete Go suite once for this source tree.
+    doCheck = false;
+    passthru.kaibaRpi5StableCampaignPlan = {
+      artifactMutationCapable = false;
+      artifactRoleProvenance = "caller-declared-not-independently-derived";
+      blockDeviceReadsPerformed = false;
+      blockDeviceWritesPerformed = false;
+      crossRoleFileIdentityReuseRejected = true;
+      deviceWritesAuthorized = false;
+      inputPathAccess = "caller-selected-absolute-paths-opened-read-only";
+      networkAccess = false;
+      nonRegularInputs = "rejected-after-open-before-content-read";
+      opaqueCallerFileBytesRead = true;
+      physicalExecutionReady = false;
+      privateKeyOperations = false;
+      privateKeySemanticUse = false;
+      privateMaterialAbsenceProven = false;
+      privateKeyPEMMarkerRejection = "scoped-defense-in-depth-only";
+      productionReady = false;
+      publicInputCount = 27;
+      signingAuthorized = false;
+      stagingCapable = false;
+      byteMutationTargetCount = 10;
+    };
+    meta = {
+      mainProgram = "kaiba-rpi5-stable-campaign-plan";
+      description = "Construct descriptive caller-labelled Raspberry Pi 5 stable-verifier campaign plan data";
+      platforms = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
+    };
+  };
+
+  stableCampaignGPTInspector = pkgs.buildGoModule {
+    pname = "kaiba-rpi5-stable-campaign-gpt-inspect";
+    inherit version;
+    src = goSource;
+    subPackages = [ "cmd/kaiba-rpi5-stable-campaign-gpt-inspect" ];
+    vendorHash = null;
+    env.CGO_ENABLED = 0;
+    ldflags = [
+      "-s"
+      "-w"
+    ];
+    # checks.unit runs the complete Go suite once for this source tree.
+    doCheck = false;
+    passthru.kaibaRpi5StableCampaignGPTInspect = {
+      blockDeviceAccess = "fixed-selector-pinned-inactive-read-only";
+      destructiveStagingReady = false;
+      deviceAttachmentAuthenticated = false;
+      directHardwareAccess = true;
+      diskGUIDAuthority = "operator-asserted-not-authenticated";
+      evidenceAssurance = "unauthenticated-range-read-consistency-only";
+      filesystemOutputPathAuthority = false;
+      hardwareObserved = true;
+      opaqueWholePartitionByteReadsPossible = true;
+      physicalQuiescenceProven = false;
+      privateKeyOperations = false;
+      privateKeySemanticUse = false;
+      privateMaterialAbsenceProven = false;
+      productionReady = false;
+      rangeScopedSequentialReread = true;
+      fixedHostnameStringRequired = true;
+      signingAuthorized = false;
+      stdoutCanonicalEnvelope = true;
+      targetDescriptorOpenedReadOnly = true;
+      targetDescriptorWritesPerformed = false;
+    };
+    meta = {
+      mainProgram = "kaiba-rpi5-stable-campaign-gpt-inspect";
+      description = "Pinned read-only initial-GPT recovery inspector for fixed development Pi 5 campaign selectors";
       platforms = [
         "x86_64-linux"
         "aarch64-linux"
@@ -2074,6 +2170,8 @@ in
     mkRpi5EEPROMRelease
     mkRpi5EEPROMReleaseSigningInputs
     mkRpi5EEPROMSigningPlan
+    mkRpi5StableVerifierCampaignMedia
+    mkRpi5StableVerifierCampaignRun
     mkRpi5PhysicalLaneGuard
     mkRpi5DevelopmentSecureBootOperationalPayload
     mkRpi5DevelopmentSecureBootRunner
@@ -2117,6 +2215,8 @@ in
     signingApprovalTool
     signingReceiptsTool
     signedReleaseTool
+    stableCampaignGPTInspector
+    stableCampaignPlanTool
     stableVerifierTool
     suite
     verifierTestAuthority

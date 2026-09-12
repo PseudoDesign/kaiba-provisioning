@@ -484,6 +484,9 @@ let
 
   vmTestRequiringKVM = pkgs.testers.runNixOSTest {
     name = "kaiba-stable-verifier-aarch64-real-kexec";
+    # Native ARM64 runners do not necessarily expose KVM. Keep the slow-path
+    # serial boot and the real kexec exercise within an explicit bound.
+    globalTimeout = 1200;
     # runNixOSTest defaults nodes to the host package set. Override that one
     # unique value so QEMU/the Python driver remain native while the VM closure
     # and verifier are built for AArch64.
@@ -575,17 +578,22 @@ let
       };
 
     testScript = ''
+      console_timeout = 600
       machine.start()
+      # Do not spend the test driver's fixed 300-second guest-shell handshake
+      # while a cold AArch64 TCG guest is still booting. The serial console is
+      # available from reset; wait for the instrumentation's readiness marker.
+      machine.wait_for_console_text(r"connecting to host\.\.\.", timeout=console_timeout)
       machine.wait_for_unit("multi-user.target")
       machine.succeed("test -r /sys/firmware/fdt")
       machine.succeed("systemctl start --no-block kaiba-stable-verifier-kexec-vm.service")
-      machine.wait_for_console_text("KAIBA_KEXEC_BOOTSTRAP_REGISTERED")
-      machine.wait_for_console_text('"event":"handoff-executing"')
-      machine.wait_for_console_text("KAIBA_KEXEC_SECOND_STAGE_BOOTED")
-      machine.wait_for_console_text("KAIBA_KEXEC_CREDENTIALS_OK")
-      machine.wait_for_console_text("KAIBA_KEXEC_DM_VERITY_METADATA_OK")
-      machine.wait_for_console_text("KAIBA_KEXEC_ONE_BOOT_KEY_REMOVED")
-      machine.wait_for_console_text("KAIBA_KEXEC_SECOND_STAGE_OK")
+      machine.wait_for_console_text("KAIBA_KEXEC_BOOTSTRAP_REGISTERED", timeout=console_timeout)
+      machine.wait_for_console_text('"event":"handoff-executing"', timeout=console_timeout)
+      machine.wait_for_console_text("KAIBA_KEXEC_SECOND_STAGE_BOOTED", timeout=console_timeout)
+      machine.wait_for_console_text("KAIBA_KEXEC_CREDENTIALS_OK", timeout=console_timeout)
+      machine.wait_for_console_text("KAIBA_KEXEC_DM_VERITY_METADATA_OK", timeout=console_timeout)
+      machine.wait_for_console_text("KAIBA_KEXEC_ONE_BOOT_KEY_REMOVED", timeout=console_timeout)
+      machine.wait_for_console_text("KAIBA_KEXEC_SECOND_STAGE_OK", timeout=console_timeout)
       machine.wait_for_shutdown()
     '';
   };
