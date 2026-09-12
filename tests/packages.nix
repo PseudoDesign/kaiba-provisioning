@@ -307,8 +307,23 @@ let
     expectedCustomerKeyHash = developmentYubiKeyCustomerKeyHash;
     grantRegistryPath = "/etc/kaiba-provisioning/signing-grants.json";
   };
+  stableCampaignDevelopmentYubiKeySigning = built.mkDevelopmentYubiKeySigning {
+    name = "kaiba-stable-campaign-development-yubikey-signing-fixture";
+    signerID = "signer:development-fixture";
+    cohortID = "cohort:development-fixture";
+    tokenSerial = "12345678";
+    publicKeyPEM = developmentYubiKeyPublicKeyPEM;
+    publicKeyFingerprint = developmentYubiKeyPublicKeyFingerprint;
+    signerPolicyDigest = developmentYubiKeySignerPolicyDigest;
+    expectedCustomerKeyHash = developmentYubiKeyCustomerKeyHash;
+    grantRegistryPath = "/etc/kaiba-provisioning/signing-grants.json";
+    stableCampaignOnly = true;
+  };
   developmentYubiKeySigningClosure = pkgs.closureInfo {
     rootPaths = [ developmentYubiKeySigning ];
+  };
+  stableCampaignDevelopmentYubiKeySigningClosure = pkgs.closureInfo {
+    rootPaths = [ stableCampaignDevelopmentYubiKeySigning ];
   };
   unfusedVerifierFixture = built.mkRpi5UnfusedVerifier {
     name = "kaiba-rpi5-unfused-verifier-fixture";
@@ -5428,12 +5443,46 @@ let
           test -x ${developmentYubiKeySigning}/bin/"$binary"
         done
 
+        expected_stable_binaries="$(${pkgs.coreutils}/bin/printf '%s\n' \
+          kaiba-provision-signing-gate \
+          kaiba-provision-signing-receipts \
+          kaiba-provision-yubikey-wrapper \
+          kaiba-rpi5-stable-campaign-signing)"
+        actual_stable_binaries="$(
+          find -L ${stableCampaignDevelopmentYubiKeySigning}/bin \
+            -mindepth 1 -maxdepth 1 -type f -printf '%f\n' \
+            | sort
+        )"
+        test "$actual_stable_binaries" = "$expected_stable_binaries"
+        for binary in $expected_stable_binaries; do
+          test -x ${stableCampaignDevelopmentYubiKeySigning}/bin/"$binary"
+        done
+        test '${builtins.toJSON stableCampaignDevelopmentYubiKeySigning.kaibaSigning.stableCampaignOnly}' = \
+          true
+        test '${builtins.toJSON (stableCampaignDevelopmentYubiKeySigning.kaibaSigning ? signingClient)}' = \
+          false
+        test '${builtins.toJSON (stableCampaignDevelopmentYubiKeySigning.kaibaSigning ? signedBoot)}' = \
+          false
+        test '${
+          builtins.toJSON (stableCampaignDevelopmentYubiKeySigning.kaibaSigning ? eepromSigningTool)
+        }' = \
+          false
+        if grep -E \
+          '(kaiba-stable-campaign-development-yubikey-signing-fixture-(client|rpi-wrapper|sign-boot)|kaiba-provision-sign-eeprom)' \
+          ${stableCampaignDevelopmentYubiKeySigningClosure}/store-paths
+        then
+          echo 'stable-campaign signing closure contains a generic configured client' >&2
+          exit 1
+        fi
+
         test '${developmentYubiKeySigning.kaibaSigning.signerID}' = \
           'signer:development-fixture'
         test '${developmentYubiKeySigning.kaibaSigning.cohortID}' = \
           'cohort:development-fixture'
         test '${developmentYubiKeySigning.kaibaSigning.grantRegistryPath}' = \
           '/etc/kaiba-provisioning/signing-grants.json'
+        test '${builtins.toJSON developmentYubiKeySigning.kaibaSigning.stableCampaignOnly}' = \
+          false
         test '${developmentYubiKeySigning.kaibaSigning.pkcs11URI}' = \
           'pkcs11:serial=12345678;id=%02;type=private'
         test '${developmentYubiKeySigning.kaibaSigning.publicKeyFingerprint}' = \

@@ -123,15 +123,17 @@ The following package groups are exported for both `x86_64-linux` and
 | Public signing and release tools | `kaiba-provision-signing-approval`, `kaiba-provision-signing-receipts`, `kaiba-provision-sign-boot`, `kaiba-provision-sign-eeprom`, `kaiba-provision-rpiboot-bundles`, `kaiba-provision-finalize-release` |
 | Media and unfused tools | `kaiba-provision-media-contract`, `kaiba-provision-unfused-compat`, `kaiba-provision-unfused-evidence`, `kaiba-provision-unfused-runtime-record` |
 | Stable-verifier spike | `kaiba-rpi5-stable-verifier`, `kaiba-rpi5-verifier-test-authority`, `kaiba-rpi5-one-boot-prove` (development-only, static executables) |
-| Stable-campaign provisioner | `kaiba-rpi5-stable-campaign-provisioner-unsigned` (`x86_64-linux` only; exported only from a clean, revisioned Git flake) |
+| Stable-campaign provisioner | `kaiba-rpi5-stable-campaign-provisioner-unsigned`, `kaiba-rpi5-stable-campaign-provisioner-signing-plan`, and `kaiba-rpi5-stable-campaign-development-signing` (`x86_64-linux` only; exported only from a clean, revisioned Git flake; signing runtime uses the non-production prototype key) |
 | Fail-closed foundations | `kaiba-provision-signer-foundation`, `kaiba-provision-signing-client-foundation`, `kaiba-provision-signing-gate-foundation`, `kaiba-provision-yubikey-wrapper-foundation` |
 | Suites and immutable inputs | `provisioning-suite`, `provisioning-services`, `provisioning-test-result`, `rpi5-physical-lane-guard-fixture`, `rpi5-probe-bundle`, `rpi5-eeprom-release` |
 | Deployment bundles | `ubuntu-provisioning-authority-deployment`, `ubuntu-signing-gate-deployment` |
 | Ceremony helper | `kaiba-provision-signing-ceremony` (`x86_64-linux` only; placeholder-provenance package for checks) |
 
 The foundation packages deliberately lack a complete live authority binding.
-Likewise, prepared attributes such as `development-signing` and
-`rpi5-prototype-*` are not currently exported by the root flake. Do not copy
+Likewise, prepared attributes such as the historical `development-signing` and
+`rpi5-prototype-*` are not currently exported by the root flake. The dedicated
+stable-campaign development-signing output above does not close that
+five-artifact integration boundary. Do not copy
 historical `nix build` commands for those names without first restoring and
 reviewing the corresponding outputs. The workflow-specific guides call out
 that integration boundary where it matters.

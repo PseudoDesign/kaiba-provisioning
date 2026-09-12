@@ -50,23 +50,25 @@ sudo apt-get install acl jq libccid pcscd polkitd
 ```
 
 > [!IMPORTANT]
-> The standalone root flake does not currently export a configured
-> `development-signing` package. A reviewed release-specific consumer must
-> construct that output with `lib.mkDevelopmentYubiKeySigning` and the exact
-> release signer inputs before this live-host procedure can begin. See the
+> A clean, revisioned Git checkout exports
+> `kaiba-rpi5-stable-campaign-development-signing`, the configured runtime for
+> the stable campaign's one-artifact ceremony. It is fixed to the reviewed
+> sacrificial development YubiKey, exposes only the stable command, receipt
+> tool, gate, and token backend, and is not production-approved. The
+> historical five-artifact `development-signing` composition is still not
+> exported; its separate integration gate remains documented in the
 > [signed-boot workflow](../../docs/raspberry-pi-5-signed-boot-workflow.md#current-standalone-boundary)
-> and [ceremony integration gate](../../docs/ubuntu-rpi5-development-signing-ceremony.md#current-integration-gate).
+> and [development ceremony](../../docs/ubuntu-rpi5-development-signing-ceremony.md#current-integration-gate).
 
 Nix must already contain both the exact configured signing output and the
 immutable deployment bundle. Build them with named result links so the reviewed
-paths remain available until installation. The first flake reference below is
-a placeholder for that separately reviewed consumer; it is not this repository
-root:
+paths remain available until installation. For the stable campaign ceremony,
+build both outputs from the same clean, revisioned repository checkout:
 
 ```console
-nix build /absolute/path/to/reviewed-release-flake#development-signing \
+nix build .#packages.x86_64-linux.kaiba-rpi5-stable-campaign-development-signing \
   --out-link result-development-signing
-nix build path:.#ubuntu-signing-gate-deployment \
+nix build .#packages.x86_64-linux.ubuntu-signing-gate-deployment \
   --out-link result-ubuntu-signing-gate-deployment
 signing_path="$(readlink -e result-development-signing)"
 deployment_path="$(readlink -e result-ubuntu-signing-gate-deployment)"

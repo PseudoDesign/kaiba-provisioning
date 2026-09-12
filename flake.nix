@@ -485,6 +485,19 @@
           kaiba-rpi5-self-kexec-diagnostic = built.rpi5SelfKexecDiagnostic;
         }
         // lib.optionalAttrs (self ? rev && system == "x86_64-linux") {
+          kaiba-rpi5-stable-campaign-development-signing = built.mkDevelopmentYubiKeySigning {
+            name = "kaiba-rpi5-stable-campaign-development-signing";
+            cohortID = "cohort:prototype";
+            expectedCustomerKeyHash = stableCampaignExpectedCustomerKeyHash;
+            publicKeyFingerprint =
+              assets.signers.developmentPrototype.independentReview.public_bindings.public_key_fingerprint;
+            publicKeyPEM = assets.signers.developmentPrototype.reviewedBootPublicKey;
+            signerID = "signer:prototype";
+            signerPolicyDigest =
+              assets.signers.developmentPrototype.independentReview.public_bindings.signer_policy_digest;
+            stableCampaignOnly = true;
+            tokenSerial = assets.signers.developmentPrototype.independentReview.token.serial;
+          };
           kaiba-rpi5-stable-campaign-provisioner-unsigned =
             (mkRpi5StableCampaignProvisioner {
               sourceRevision = stableCampaignSourceRevision;

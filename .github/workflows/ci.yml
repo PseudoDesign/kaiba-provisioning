@@ -121,9 +121,10 @@ jobs:
       # signing: an x86_64 build host cross-building the AArch64 Pi image. The
       # native ARM artifact check is useful independent coverage, but it is not
       # a substitute for building these exact bytes.
-      - name: Build the exact stable signing-plan lineage
+      - name: Build the exact stable signing lineage and configured gate
         run: |
           nix --accept-flake-config build -L --no-link \
+            .#packages.x86_64-linux.kaiba-rpi5-stable-campaign-development-signing \
             .#packages.x86_64-linux.kaiba-rpi5-stable-campaign-provisioner-signing-plan
 
       - name: Configure GitHub Pages
