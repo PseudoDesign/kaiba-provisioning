@@ -21,7 +21,14 @@ const (
 	RecoveryScopeInspectedInitialGPTLineagesAndPlannedPayloads = "inspected-selected-gpt-and-physical-end-gpt-lineages-and-listed-planned-payloads"
 
 	InitialGPTPhysicalEndBackupCompleteness = "valid-standalone-backup-copy"
-	InitialGPTPhysicalEndBackupRelationship = "same-partition-layout-distinct-disk-and-partition-guids"
+	InitialGPTPhysicalEndBackupRelationship = "reviewed-legacy-layout-distinct-disk-and-boot-guids-shared-root-guids"
+)
+
+const (
+	reviewedLegacySDRootDataStartBytes    = uint64(135_266_304)
+	reviewedLegacySDRootDataCapacityBytes = uint64(2_360_344_576)
+	reviewedLegacySDRootHashStartBytes    = uint64(2_495_610_880)
+	reviewedLegacySDRootHashCapacityBytes = uint64(18_874_368)
 )
 
 const (
@@ -307,6 +314,51 @@ func (lineage InitialGPTPhysicalEndBackupLineage) derivedDigest() (bundle.Digest
 	return domainDigest(initialGPTPhysicalEndLineageDigestDomainV1Alpha2, encoded), nil
 }
 
+// reviewedLegacySDPhysicalEndPartitions describes the older full-device GPT
+// backup retained at the physical end of the development SD. Its root extents
+// predate the selected lineage and are deliberately not inferred from it.
+func reviewedLegacySDPhysicalEndPartitions() []fixedPartition {
+	return []fixedPartition{
+		{
+			role: PartitionBootFilesystem, number: 1, typeGUID: ESPTypeGUID,
+			name: "kaiba-boot", byteStart: MalakSDBootStartBytes, capacity: MalakSDBootCapacityBytes,
+		},
+		{
+			role: PartitionRootData, number: 2, typeGUID: ARM64RootTypeGUID,
+			name: "kaiba-root", byteStart: reviewedLegacySDRootDataStartBytes, capacity: reviewedLegacySDRootDataCapacityBytes,
+		},
+		{
+			role: PartitionRootHash, number: 3, typeGUID: ARM64VerityTypeGUID,
+			name: "kaiba-root-verity", byteStart: reviewedLegacySDRootHashStartBytes, capacity: reviewedLegacySDRootHashCapacityBytes,
+		},
+	}
+}
+
+func initialGPTPartitionMatchesFixed(partition InitialGPTPartition, expected fixedPartition) bool {
+	return partition.EntryNumber == expected.number && partition.TypeGUID == expected.typeGUID &&
+		partition.FirstLBA == expected.byteStart/LogicalSectorSizeBytes &&
+		partition.LastLBA == (expected.byteStart+expected.capacity)/LogicalSectorSizeBytes-1 &&
+		partition.Attributes == 0 && partition.Name == expected.name
+}
+
+// fixedPlannedCaptureCovers returns true only when one complete legacy
+// partition extent lies within one of the fixed ranges which
+// validatePlannedPayloadRanges requires the caller to capture. In particular,
+// the older root-hash extent lies inside the selected lineage's larger p2
+// range; it is still covered byte-for-byte even though its historical role
+// differs at that offset.
+func fixedPlannedCaptureCovers(partition InitialGPTPartition, planned []fixedPartition) bool {
+	partitionStart := partition.FirstLBA * LogicalSectorSizeBytes
+	partitionEnd := (partition.LastLBA + 1) * LogicalSectorSizeBytes
+	for _, candidate := range planned {
+		candidateEnd := candidate.byteStart + candidate.capacity
+		if partitionStart >= candidate.byteStart && partitionEnd <= candidateEnd {
+			return true
+		}
+	}
+	return false
+}
+
 func (lineage InitialGPTPhysicalEndBackupLineage) validate(identity DeviceIdentity, selected InitialGPTSnapshot, requireDigest bool) error {
 	physicalTotalLBAs := identity.CapacityBytes / LogicalSectorSizeBytes
 	if lineage.Completeness != InitialGPTPhysicalEndBackupCompleteness || lineage.Relationship != InitialGPTPhysicalEndBackupRelationship {
@@ -333,18 +385,26 @@ func (lineage InitialGPTPhysicalEndBackupLineage) validate(identity DeviceIdenti
 	if len(lineage.Partitions) != len(selected.Partitions) {
 		return errors.New("physical-end GPT lineage partition count differs from the selected lineage")
 	}
-	seen := map[string]struct{}{selected.DiskGUID: {}}
-	for _, partition := range selected.Partitions {
-		seen[partition.UniqueGUID] = struct{}{}
+	fixed, ok := fixedIdentityFor(identity.Leg)
+	legacy := reviewedLegacySDPhysicalEndPartitions()
+	if !ok || identity.Leg != LegMalakSD || len(selected.Partitions) != len(fixed.partitions) ||
+		len(lineage.Partitions) != len(legacy) {
+		return errors.New("physical-end GPT lineage is not the exact reviewed development SD layout")
 	}
-	if _, collision := seen[lineage.DiskGUID]; collision {
+	selectedIdentifiers := map[string]struct{}{selected.DiskGUID: {}}
+	for _, partition := range selected.Partitions {
+		selectedIdentifiers[partition.UniqueGUID] = struct{}{}
+	}
+	if _, collision := selectedIdentifiers[lineage.DiskGUID]; collision {
 		return errors.New("physical-end GPT disk GUID collides with a selected-lineage identifier")
 	}
-	seen[lineage.DiskGUID] = struct{}{}
+	physicalIdentifiers := map[string]struct{}{lineage.DiskGUID: {}}
 	var previousEntry uint32
 	byStart := append([]InitialGPTPartition(nil), lineage.Partitions...)
 	for index, partition := range lineage.Partitions {
 		selectedPartition := selected.Partitions[index]
+		expectedSelectedPartition := fixed.partitions[index]
+		expectedLegacyPartition := legacy[index]
 		if partition.EntryNumber == 0 || partition.EntryNumber > initialGPTEntryCount || (index > 0 && partition.EntryNumber <= previousEntry) {
 			return errors.New("physical-end GPT partitions must retain unique increasing entry numbers")
 		}
@@ -355,20 +415,39 @@ func (lineage InitialGPTPhysicalEndBackupLineage) validate(identity DeviceIdenti
 		if err := validateInitialGPTGUID("physical-end partition unique GUID", partition.UniqueGUID); err != nil {
 			return err
 		}
-		if _, collision := seen[partition.UniqueGUID]; collision {
-			return errors.New("physical-end GPT lineage reuses a disk or partition identifier")
+		if _, collision := physicalIdentifiers[partition.UniqueGUID]; collision {
+			return errors.New("physical-end GPT lineage repeats a disk or partition identifier")
 		}
-		seen[partition.UniqueGUID] = struct{}{}
+		physicalIdentifiers[partition.UniqueGUID] = struct{}{}
 		if partition.FirstLBA > partition.LastLBA || partition.FirstLBA < lineage.FirstUsableLBA || partition.LastLBA > lineage.LastUsableLBA {
 			return errors.New("physical-end GPT partition is outside its usable range")
 		}
 		if err := validateInitialGPTPrintableName(partition.Name); err != nil {
 			return fmt.Errorf("physical-end GPT partition name: %w", err)
 		}
-		if partition.EntryNumber != selectedPartition.EntryNumber || partition.TypeGUID != selectedPartition.TypeGUID ||
-			partition.FirstLBA != selectedPartition.FirstLBA || partition.LastLBA != selectedPartition.LastLBA ||
-			partition.Attributes != selectedPartition.Attributes || partition.Name != selectedPartition.Name {
-			return fmt.Errorf("physical-end GPT partition %d differs from the selected lineage's non-identifier layout", index+1)
+		if !initialGPTPartitionMatchesFixed(selectedPartition, expectedSelectedPartition) {
+			return fmt.Errorf("selected GPT partition %d differs from the fixed current development SD layout", index+1)
+		}
+		if !initialGPTPartitionMatchesFixed(partition, expectedLegacyPartition) {
+			return fmt.Errorf("physical-end GPT partition %d differs from the fixed reviewed legacy SD layout", index+1)
+		}
+		if !fixedPlannedCaptureCovers(partition, fixed.partitions) {
+			return fmt.Errorf("physical-end GPT partition %d is not completely covered by the fixed planned capture ranges", index+1)
+		}
+		switch expectedSelectedPartition.role {
+		case PartitionBootFilesystem:
+			if partition.UniqueGUID == selectedPartition.UniqueGUID {
+				return errors.New("physical-end GPT boot partition GUID must differ from the selected lineage")
+			}
+			if _, collision := selectedIdentifiers[partition.UniqueGUID]; collision {
+				return errors.New("physical-end GPT boot partition GUID collides with a selected-lineage identifier")
+			}
+		case PartitionRootData, PartitionRootHash:
+			if partition.UniqueGUID != selectedPartition.UniqueGUID {
+				return fmt.Errorf("physical-end GPT %s partition GUID must equal the selected lineage", expectedSelectedPartition.role)
+			}
+		default:
+			return errors.New("physical-end GPT lineage contains an unsupported reviewed partition role")
 		}
 	}
 	sort.Slice(byStart, func(i, j int) bool { return byStart[i].FirstLBA < byStart[j].FirstLBA })

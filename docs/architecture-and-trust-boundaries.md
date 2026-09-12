@@ -111,8 +111,9 @@ The stable-verifier campaign GPT inspector is a separate evidence-only
 boundary. Its default v1alpha1 path retains the original rejection of an
 image-sized GPT accompanied by a GPT signature at the physical end. An
 explicit v1alpha2 path can instead record the selected reciprocal lineage and
-a strictly valid, same-layout but identifier-distinct physical-end backup
-lineage. Both paths open only the fixed inactive selector read-only, perform
+a strictly valid physical-end backup with the exact older reviewed root
+extents, distinct disk and boot-partition GUIDs, and shared root-data/root-hash
+GUIDs. Both paths open only the fixed inactive selector read-only, perform
 sequential re-read verification, and emit canonical hashes on standard output.
 Neither path repairs a GPT, writes recovery bytes, authenticates the physical
 attachment, proves quiescence, or authorizes destructive staging.

@@ -519,8 +519,13 @@ The development SD now has two distinguishable GPT histories. The primary at
 LBA 1 and its declared image-sized backup form one reciprocal selected
 lineage. The physical-end header and entry array form a CRC-valid canonical
 backup copy from an older full-device lineage: its partition entry numbers,
-types, ranges, attributes, and names match the selected lineage, while its
-disk and partition GUIDs are distinct. Because LBA 1 belongs to the selected
+types, attributes, and names match the selected lineage exactly, but its root
+extents retain the older reviewed layout. Selected p2 spans LBAs
+264192--4986879 and p3 spans 4986880--5025791; the physical-end lineage's p2
+instead spans 264192--4874239 and p3 spans 4874240--4911103. Its disk and
+boot-partition GUIDs are distinct, while its root-data and root-hash partition
+GUIDs equal the selected lineage. Every legacy partition byte is inside the
+fixed planned payload capture ranges. Because LBA 1 belongs to the selected
 lineage, the older physical-end object is recorded precisely as a valid
 standalone backup copy, not as a currently reciprocal primary/backup pair.
 
@@ -528,18 +533,18 @@ The legacy v1alpha1 inspector continues to reject every GPT signature at the
 physical end. The read-only v1alpha2 path must be selected explicitly with
 `--envelope-version v1alpha2`. It accepts that state only after strictly
 checking the physical-end header and entry-array CRCs, canonical 128-by-128
-geometry and LBAs, complete partition semantics, and the exact
-same-layout/distinct-identifier relationship. It hashes the physical-end
-header and entry array from the same read pass used for parsing, binds them to
-separate recovery-range purposes and a domain-separated lineage digest, and
-repeats the complete read before output. `--disk-guid` still asserts only the
-selected LBA-1 lineage and is not device authentication. v1alpha2 performs no
-GPT repair, chooses no migration, stores no recovery bytes, and keeps
-`destructive_staging_ready=false`; tools such as `sgdisk -e` or automatic
-partition-table repair remain outside this campaign path. The existing
-v1alpha1 recovery-requirements contract does not consume this new envelope;
-adding a v1alpha2 downstream recovery contract is a separate reviewed slice,
-so physical execution still pauses after read-only capture.
+geometry and LBAs, complete partition semantics, and the exact reviewed
+legacy-layout and mixed-GUID relationship described above. It hashes the
+physical-end header and entry array from the same read pass used for parsing,
+binds them to separate recovery-range purposes and a domain-separated lineage
+digest, and repeats the complete read before output. `--disk-guid` still
+asserts only the selected LBA-1 lineage and is not device authentication.
+v1alpha2 performs no GPT repair, chooses no migration, stores no recovery
+bytes, and keeps `destructive_staging_ready=false`; tools such as `sgdisk -e`
+or automatic partition-table repair remain outside this campaign path. The
+existing v1alpha1 recovery-requirements contract does not consume this new
+envelope; adding a v1alpha2 downstream recovery contract is a separate
+reviewed slice, so physical execution still pauses after read-only capture.
 
 The earlier signed-verifier attempt replaced only its 128 MiB SD boot
 partition. The running development image still has the release tree on the NVMe
