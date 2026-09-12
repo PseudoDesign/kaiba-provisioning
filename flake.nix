@@ -207,6 +207,16 @@
           { system, ... }@args:
           packagesBySystem.${system}.mkRpi5StableVerifierTestSD (builtins.removeAttrs args [ "system" ]);
 
+        mkRpi5StableVerifierCampaignMedia =
+          { system, ... }@args:
+          packagesBySystem.${system}.mkRpi5StableVerifierCampaignMedia (
+            builtins.removeAttrs args [ "system" ]
+          );
+
+        mkRpi5StableVerifierCampaignRun =
+          { system, ... }@args:
+          packagesBySystem.${system}.mkRpi5StableVerifierCampaignRun (builtins.removeAttrs args [ "system" ]);
+
         mkRpi5DelegatedReleaseSpike =
           { system, ... }@args:
           packagesBySystem.${system}.mkRpi5DelegatedReleaseSpike (builtins.removeAttrs args [ "system" ]);
@@ -230,6 +240,22 @@
             stableVerifierModule = modules.stable-verifier-spike;
             stableVerifierPackage = packagesBySystem.aarch64-linux.stableVerifierTool;
           } args;
+
+        mkRpi5StableVerifierFileLiveFDTHardwareSystem =
+          args:
+          let
+            requestedKexecMode = args.kexecMode or "experimental-file-live-fdt";
+          in
+          if args ? extraModules then
+            throw "mkRpi5StableVerifierFileLiveFDTHardwareSystem does not accept extraModules"
+          else if requestedKexecMode != "experimental-file-live-fdt" then
+            throw "mkRpi5StableVerifierFileLiveFDTHardwareSystem only accepts experimental-file-live-fdt"
+          else
+            import ./nix/stable-verifier-hardware.nix {
+              nixosRaspberryPi = nixos-raspberrypi;
+              stableVerifierModule = modules.stable-verifier-spike;
+              stableVerifierPackage = packagesBySystem.aarch64-linux.stableVerifierTool;
+            } (args // { kexecMode = "experimental-file-live-fdt"; });
 
         mkRpi5PhysicalLaneGuard =
           { system, ... }@args:
@@ -353,6 +379,8 @@
           kaiba-provision-unfused-runtime-record = built.unfusedRuntimeRecordTool;
           kaiba-rpi5-kexec-input-validate = built.rpi5KexecInputValidator;
           kaiba-rpi5-one-boot-prove = built.oneBootProveTool;
+          kaiba-rpi5-stable-campaign-gpt-inspect = built.stableCampaignGPTInspector;
+          kaiba-rpi5-stable-campaign-plan = built.stableCampaignPlanTool;
           kaiba-rpi5-stable-verifier = built.stableVerifierTool;
           kaiba-rpi5-verifier-test-authority = built.verifierTestAuthority;
           provisioning-suite = built.suite;
@@ -393,6 +421,13 @@
             inherit pkgs built;
             signedFixture = stableVerifierVMFixture;
           };
+          stableVerifierCampaignMediaCheck = import ./tests/stable-verifier-campaign-media.nix {
+            inherit lib pkgs;
+          };
+          stableVerifierCampaignRunCheck = import ./tests/stable-verifier-campaign-run.nix {
+            inherit lib pkgs;
+            baselineMedia = stableVerifierCampaignMediaCheck.fixtureBaselineMedia;
+          };
           aarch64GuestPkgs =
             if system == "aarch64-linux" then pkgs else import nixpkgs { system = "aarch64-linux"; };
           aarch64GuestBuilt =
@@ -414,26 +449,43 @@
             requireInPlacePatch = ./nix/patches/arm64-kexec-file-require-in-place.patch;
             source = repositorySource;
           };
-          stableVerifierHardwareSystem =
-            import ./nix/stable-verifier-hardware.nix
-              {
-                nixosRaspberryPi = nixos-raspberrypi;
-                stableVerifierModule = modules.stable-verifier-spike;
-                stableVerifierPackage = packagesBySystem.aarch64-linux.stableVerifierTool;
-              }
-              {
-                policy = builtins.toFile "kaiba-stable-verifier-hardware-check-policy.json" "{}";
-                rootPublicKey = ./tests/fixtures/development-boot-public.pem;
-                authorityCACertificate = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
-                verifierVersion = 1;
-                cohortID = "development";
-                slotID = "a";
-                minimumSecurityEpoch = 1;
-                authorityURL = "https://192.0.2.1:8443";
-                authorityKeyID = "development-authority";
-                audience = "stable-verifier";
-                logicalIdentity = "development-pi";
-              };
+          stableVerifierHardwareConstructor = import ./nix/stable-verifier-hardware.nix {
+            nixosRaspberryPi = nixos-raspberrypi;
+            stableVerifierModule = modules.stable-verifier-spike;
+            stableVerifierPackage = packagesBySystem.aarch64-linux.stableVerifierTool;
+          };
+          stableVerifierHardwareArguments = {
+            policy = builtins.toFile "kaiba-stable-verifier-hardware-check-policy.json" "{}";
+            rootPublicKey = ./tests/fixtures/development-boot-public.pem;
+            authorityCACertificate = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
+            verifierVersion = 1;
+            cohortID = "development";
+            slotID = "a";
+            minimumSecurityEpoch = 1;
+            authorityURL = "https://192.0.2.1:8443";
+            authorityKeyID = "development-authority";
+            audience = "stable-verifier";
+            logicalIdentity = "development-pi";
+          };
+          # No kexecMode is supplied here: this fixture protects the generic
+          # constructor's compatibility default.
+          stableVerifierHardwareSystem = stableVerifierHardwareConstructor stableVerifierHardwareArguments;
+          # Exercise the exported closed constructor rather than rebuilding its
+          # implementation locally in the check.
+          stableVerifierFileLiveFDTHardwareSystem = self.lib.mkRpi5StableVerifierFileLiveFDTHardwareSystem stableVerifierHardwareArguments;
+          hardwareKexecModeRejected =
+            kexecMode:
+            !(builtins.tryEval (
+              (stableVerifierHardwareConstructor (stableVerifierHardwareArguments // { inherit kexecMode; }))
+              .kexecMode
+            )).success;
+          fileLiveFDTHardwareArgumentsRejected =
+            extraArguments:
+            !(builtins.tryEval (
+              (self.lib.mkRpi5StableVerifierFileLiveFDTHardwareSystem (
+                stableVerifierHardwareArguments // extraArguments
+              )).kexecMode
+            )).success;
         in
         {
           asset-api = import ./tests/assets.nix { inherit assets pkgs; };
@@ -454,6 +506,8 @@
           stable-verifier-spike = built.mkRpi5StableVerifierSpikeContractCheck {
             verifierPackage = built.stableVerifierTool;
           };
+          stable-verifier-campaign-media = stableVerifierCampaignMediaCheck;
+          stable-verifier-campaign-run = stableVerifierCampaignRunCheck;
           stable-verifier-rpi5-hardware-eval =
             pkgs.runCommand "kaiba-stable-verifier-rpi5-hardware-eval"
               (
@@ -474,12 +528,39 @@
                   sha256-KT/OleUMpSKsWgi0eTuqS/0GD4ucPQcvLgmvlw8ZuCM=
                 test ${lib.escapeShellArg stableVerifierHardwareSystem.kernelVersion} = \
                   6.18.34-unstable_20260604
+                test ${lib.escapeShellArg stableVerifierHardwareSystem.firmwarePackage.version} = \
+                  1.20260521
+                test ${lib.escapeShellArg stableVerifierHardwareSystem.firmwareRevision} = \
+                  09267f5354d40519d82fbd2193b9e211ec304055
+                test ${lib.escapeShellArg stableVerifierHardwareSystem.kexecMode} = \
+                  legacy-explicit-dtb
+                test ${lib.escapeShellArg stableVerifierHardwareSystem.nixosSystem.config.kaiba.stableVerifierSpike.kexecMode} = legacy-explicit-dtb
+                test ${
+                  if
+                    builtins.all (
+                      assertion: assertion.assertion
+                    ) stableVerifierHardwareSystem.nixosSystem.config.assertions
+                  then
+                    "true"
+                  else
+                    "false"
+                } = true
                 test ${lib.escapeShellArg stableVerifierHardwareSystem.nixosSystem.config.boot.loader.raspberry-pi.bootloader} = \
                   kernelboot-legacy-unsupported
                 test ${lib.escapeShellArg stableVerifierHardwareSystem.nixosSystem.config.kaiba.stableVerifierSpike.releaseDevice} = \
                   /dev/disk/by-partlabel/KAIBA_RELEASE
                 test ${lib.escapeShellArg stableVerifierHardwareSystem.nixosSystem.config.kaiba.stableVerifierSpike.networkInterface} = \
                   end0
+                test ${
+                  if
+                    (stableVerifierHardwareSystem.nixosSystem.config.hardware.raspberry-pi.config.all.dt-overlays.dwc2.enable
+                      or false
+                    )
+                  then
+                    "true"
+                  else
+                    "false"
+                } = false
                 test ${
                   toString (
                     lib.count (
@@ -523,6 +604,17 @@
                   else
                     "false"
                 } = true
+                test ${lib.escapeShellArg (builtins.toJSON stableVerifierHardwareSystem.nixosSystem.config.boot.initrd.systemd.services.kaiba-stable-verifier.serviceConfig.CapabilityBoundingSet)} = '["CAP_SYS_ADMIN","CAP_SYS_BOOT"]'
+                test ${
+                  if
+                    lib.hasInfix ''"--kexec-mode" "legacy-explicit-dtb"'' stableVerifierHardwareSystem.nixosSystem.config.boot.initrd.systemd.services.kaiba-stable-verifier.serviceConfig.ExecStart
+                  then
+                    "true"
+                  else
+                    "false"
+                } = true
+                test ${if hardwareKexecModeRejected null then "true" else "false"} = true
+                test ${if hardwareKexecModeRejected "file-live-fdt" then "true" else "false"} = true
                 ${lib.optionalString (system == "aarch64-linux") ''
                   grep -Fx 'CONFIG_SUSPEND=y' \
                     ${stableVerifierHardwareSystem.kernel.configfile} > /dev/null
@@ -557,10 +649,212 @@
                     | grep -E '^cma=' \
                     | grep -Fvx 'cma=128M' > /dev/null
                   ! grep -Eq '(^|[[:space:]])init=' "$firmwareTree/cmdline.txt"
-                  ! grep -Eq '^dtoverlay=(vc4-kms-v3d|dwc2)$' "$firmwareTree/config.txt"
+                  ! grep -Eq '^dtoverlay=vc4-kms-v3d(,.*)?$' "$firmwareTree/config.txt"
+                  ! grep -Eq '^dtoverlay=dwc2(,.*)?$' "$firmwareTree/config.txt"
                 ''}
                 mkdir -p "$out"
                 printf '%s\n' 'stable-verifier Raspberry Pi 5 hardware evaluation: pass' > "$out/result.txt"
+              '';
+          stable-verifier-rpi5-file-live-fdt-hardware-eval =
+            pkgs.runCommand "kaiba-stable-verifier-rpi5-file-live-fdt-hardware-eval"
+              (
+                {
+                  nativeBuildInputs = [
+                    pkgs.findutils
+                    pkgs.gnugrep
+                  ];
+                }
+                // lib.optionalAttrs (system == "aarch64-linux") {
+                  firmwareTree = stableVerifierFileLiveFDTHardwareSystem.firmwareTree;
+                }
+              )
+              ''
+                test ${lib.escapeShellArg stableVerifierFileLiveFDTHardwareSystem.platformRevision} = \
+                  7e39508bcf9c1da82cf11c1e22f74f9d9fd0fe10
+                test ${lib.escapeShellArg stableVerifierFileLiveFDTHardwareSystem.platformNarHash} = \
+                  sha256-KT/OleUMpSKsWgi0eTuqS/0GD4ucPQcvLgmvlw8ZuCM=
+                test ${lib.escapeShellArg stableVerifierFileLiveFDTHardwareSystem.kernelVersion} = \
+                  6.18.34-unstable_20260604
+                test ${lib.escapeShellArg stableVerifierFileLiveFDTHardwareSystem.firmwarePackage.version} = \
+                  1.20260521
+                test ${lib.escapeShellArg stableVerifierFileLiveFDTHardwareSystem.firmwareRevision} = \
+                  09267f5354d40519d82fbd2193b9e211ec304055
+                test ${lib.escapeShellArg stableVerifierFileLiveFDTHardwareSystem.kexecMode} = \
+                  experimental-file-live-fdt
+                test ${lib.escapeShellArg stableVerifierFileLiveFDTHardwareSystem.nixosSystem.config.kaiba.stableVerifierSpike.kexecMode} = experimental-file-live-fdt
+                test ${lib.escapeShellArg stableVerifierFileLiveFDTHardwareSystem.nixosSystem.config.kaiba.stableVerifierSpike.networkInterface} = end0
+                test ${
+                  if fileLiveFDTHardwareArgumentsRejected { extraModules = [ ]; } then "true" else "false"
+                } = true
+                test ${
+                  if
+                    fileLiveFDTHardwareArgumentsRejected {
+                      kexecMode = "legacy-explicit-dtb";
+                    }
+                  then
+                    "true"
+                  else
+                    "false"
+                } = true
+                test ${
+                  if
+                    builtins.all (
+                      assertion: assertion.assertion
+                    ) stableVerifierFileLiveFDTHardwareSystem.nixosSystem.config.assertions
+                  then
+                    "true"
+                  else
+                    "false"
+                } = true
+                test ${
+                  if
+                    lib.any (
+                      assertion:
+                      assertion.assertion
+                      && lib.hasInfix "experimental-file-live-fdt mode requires exactly one reviewed" assertion.message
+                    ) stableVerifierFileLiveFDTHardwareSystem.nixosSystem.config.assertions
+                  then
+                    "true"
+                  else
+                    "false"
+                } = true
+                test ${lib.escapeShellArg stableVerifierFileLiveFDTHardwareSystem.nixosSystem.config.boot.loader.raspberry-pi.bootloader} = kernelboot-legacy-unsupported
+                test ${
+                  if
+                    stableVerifierFileLiveFDTHardwareSystem.nixosSystem.config.hardware.raspberry-pi.config.all.dt-overlays.dwc2.enable
+                    && stableVerifierFileLiveFDTHardwareSystem.nixosSystem.config.hardware.raspberry-pi.config.all.dt-overlays.dwc2.params.dr_mode.enable
+                    &&
+                      stableVerifierFileLiveFDTHardwareSystem.nixosSystem.config.hardware.raspberry-pi.config.all.dt-overlays.dwc2.params.dr_mode.value
+                      == "peripheral"
+                  then
+                    "true"
+                  else
+                    "false"
+                } = true
+                test ${
+                  toString (
+                    lib.count (
+                      parameter: parameter == "cma=128M"
+                    ) stableVerifierFileLiveFDTHardwareSystem.nixosSystem.config.boot.kernelParams
+                  )
+                } = 1
+                test ${
+                  if
+                    lib.any (
+                      parameter: parameter != "cma=128M" && lib.hasPrefix "cma=" parameter
+                    ) stableVerifierFileLiveFDTHardwareSystem.nixosSystem.config.boot.kernelParams
+                  then
+                    "false"
+                  else
+                    "true"
+                } = true
+                test ${
+                  toString (
+                    lib.count (
+                      patch:
+                      patch.name == "kaiba-rpi5-stable-verifier-kexec-file-require-in-place"
+                      && patch.patch != null
+                      && toString patch.patch == toString ./nix/patches/arm64-kexec-file-require-in-place.patch
+                      && (patch.structuredExtraConfig.ARM64_KEXEC_FILE_REQUIRE_IN_PLACE or null) == lib.kernel.yes
+                    ) stableVerifierFileLiveFDTHardwareSystem.nixosSystem.config.boot.kernelPatches
+                  )
+                } = 1
+                test ${
+                  if
+                    lib.any (
+                      patch: patch.name == "kaiba-rpi5-stable-verifier-kexec-load"
+                    ) stableVerifierFileLiveFDTHardwareSystem.nixosSystem.config.boot.kernelPatches
+                  then
+                    "false"
+                  else
+                    "true"
+                } = true
+                test ${lib.escapeShellArg (builtins.toJSON stableVerifierFileLiveFDTHardwareSystem.nixosSystem.config.boot.initrd.systemd.services.kaiba-stable-verifier.serviceConfig.CapabilityBoundingSet)} = '["CAP_SYS_BOOT"]'
+                test ${lib.escapeShellArg (builtins.toJSON stableVerifierFileLiveFDTHardwareSystem.nixosSystem.config.boot.initrd.systemd.services.kaiba-stable-verifier.serviceConfig.AmbientCapabilities)} = '["CAP_SYS_BOOT"]'
+                test ${
+                  if
+                    lib.hasInfix ''"--kexec-mode" "experimental-file-live-fdt"'' stableVerifierFileLiveFDTHardwareSystem.nixosSystem.config.boot.initrd.systemd.services.kaiba-stable-verifier.serviceConfig.ExecStart
+                  then
+                    "true"
+                  else
+                    "false"
+                } = true
+                test ${
+                  if
+                    lib.hasInfix "--dtb" stableVerifierFileLiveFDTHardwareSystem.nixosSystem.config.boot.initrd.systemd.services.kaiba-stable-verifier.serviceConfig.ExecStart
+                    || lib.hasInfix "--device-tree" stableVerifierFileLiveFDTHardwareSystem.nixosSystem.config.boot.initrd.systemd.services.kaiba-stable-verifier.serviceConfig.ExecStart
+                  then
+                    "false"
+                  else
+                    "true"
+                } = true
+                test ${lib.escapeShellArg stableVerifierFileLiveFDTHardwareSystem.firmwareTree.kaibaRpi5StableVerifierPlatform.kexecMode} = experimental-file-live-fdt
+                test ${
+                  if
+                    stableVerifierFileLiveFDTHardwareSystem.firmwareTree.kaibaRpi5StableVerifierPlatform.liveFirmwareDeviceTreeHandoff
+                  then
+                    "true"
+                  else
+                    "false"
+                } = true
+                test ${
+                  if
+                    stableVerifierFileLiveFDTHardwareSystem.firmwareTree.kaibaRpi5StableVerifierPlatform.userspaceDeviceTreeHandoff
+                  then
+                    "true"
+                  else
+                    "false"
+                } = false
+                ${lib.optionalString (system == "aarch64-linux") ''
+                  grep -Fx 'CONFIG_KEXEC_FILE=y' \
+                    ${stableVerifierFileLiveFDTHardwareSystem.kernel.configfile} > /dev/null
+                  ! grep -Fx 'CONFIG_KEXEC=y' \
+                    ${stableVerifierFileLiveFDTHardwareSystem.kernel.configfile} > /dev/null
+                  grep -Fx '# CONFIG_KEXEC_SIG is not set' \
+                    ${stableVerifierFileLiveFDTHardwareSystem.kernel.configfile} > /dev/null
+                  grep -Fx 'CONFIG_CMA=y' \
+                    ${stableVerifierFileLiveFDTHardwareSystem.kernel.configfile} > /dev/null
+                  grep -Fx 'CONFIG_ARM64_KEXEC_FILE_REQUIRE_IN_PLACE=y' \
+                    ${stableVerifierFileLiveFDTHardwareSystem.kernel.configfile} > /dev/null
+                  find "$firmwareTree" -type f -printf '%P\n' | sort > "$TMPDIR/actual-files"
+                  printf '%s\n' \
+                    bcm2712-rpi-5-b.dtb \
+                    cmdline.txt \
+                    config.txt \
+                    initrd \
+                    kernel.img \
+                    overlays/README \
+                    overlays/bcm2712d0.dtbo \
+                    overlays/dwc2.dtbo \
+                    overlays/overlay_map.dtb \
+                    > "$TMPDIR/expected-files"
+                  cmp "$TMPDIR/expected-files" "$TMPDIR/actual-files"
+                  test -z "$(find "$firmwareTree" -type l -print -quit)"
+                  test -z "$(find "$firmwareTree" ! -type d ! -type f -print -quit)"
+                  test -s "$firmwareTree/initrd"
+                  test -s "$firmwareTree/kernel.img"
+                  test "$(tr ' ' '\n' < "$firmwareTree/cmdline.txt" | grep -Fxc 'cma=128M')" = 1
+                  ! tr ' ' '\n' < "$firmwareTree/cmdline.txt" \
+                    | grep -E '^cma=' \
+                    | grep -Fvx 'cma=128M' > /dev/null
+                  ! grep -Eq '(^|[[:space:]])init=' "$firmwareTree/cmdline.txt"
+                  ! grep -Eq '^dtoverlay=vc4-kms-v3d(,.*)?$' "$firmwareTree/config.txt"
+                  test "$(grep -Ec '^dtoverlay=dwc2(,.*)?$' "$firmwareTree/config.txt")" = 1
+                  test "$(grep -Fxc 'dtparam=dr_mode=peripheral' "$firmwareTree/config.txt")" = 1
+                  test "$(grep -Fxc 'dtoverlay=' "$firmwareTree/config.txt")" = 1
+                  printf '%s\n' \
+                    'dtoverlay=dwc2' \
+                    'dtparam=dr_mode=peripheral' \
+                    'dtoverlay=' \
+                    > "$TMPDIR/expected-dwc2-block"
+                  grep -Fx -A 2 'dtoverlay=dwc2' "$firmwareTree/config.txt" \
+                    > "$TMPDIR/actual-dwc2-block"
+                  cmp "$TMPDIR/expected-dwc2-block" "$TMPDIR/actual-dwc2-block"
+                ''}
+                mkdir -p "$out"
+                printf '%s\n' \
+                  'stable-verifier Raspberry Pi 5 file/live-FDT hardware evaluation: pass' \
+                  > "$out/result.txt"
               '';
           media-staging-fixture = provisioning.mediaStagingFixtureContract;
           production-media-staging = provisioning.productionMediaStagingContract;

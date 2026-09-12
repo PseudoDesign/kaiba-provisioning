@@ -4,9 +4,6 @@
 package verifierevents
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -103,12 +100,13 @@ func (emitter *Emitter) Emit(event string, details Details) (Record, bundle.Dige
 	if err := record.Validate(); err != nil {
 		return Record{}, "", err
 	}
-	encoded, err := json.Marshal(record)
+	encoded, err := record.canonicalJSON()
 	if err != nil {
-		return Record{}, "", fmt.Errorf("encode verifier event: %w", err)
+		return Record{}, "", err
 	}
-	if len(encoded) > MaxRecordBytes {
-		return Record{}, "", fmt.Errorf("verifier event exceeds %d bytes", MaxRecordBytes)
+	digest, err := record.Digest()
+	if err != nil {
+		return Record{}, "", err
 	}
 	line := append(encoded, '\n')
 	written, err := emitter.output.Write(line)
@@ -119,11 +117,6 @@ func (emitter *Emitter) Emit(event string, details Details) (Record, bundle.Dige
 		return Record{}, "", fmt.Errorf("write verifier event: %w", io.ErrShortWrite)
 	}
 	emitter.sequence = record.Sequence
-	hash := sha256.New()
-	_, _ = hash.Write([]byte(eventDomain))
-	_, _ = hash.Write([]byte{0})
-	_, _ = hash.Write(encoded)
-	digest := bundle.Digest("sha256:" + hex.EncodeToString(hash.Sum(nil)))
 	return record, digest, nil
 }
 

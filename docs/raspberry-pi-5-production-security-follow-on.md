@@ -9,7 +9,8 @@ This document proposes the path from the sacrificial Raspberry Pi 5 development 
 > behavior. The checked-in evidence under [`tests/evidence/`](../tests/evidence/)
 > records a read-only qualification of one sacrificial board. It does not show
 > that an irreversible customer-key ceremony ran, that an owned board booted a
-> signed release, or that the seven-operation mutation campaign completed.
+> signed release, or that the fixed 33-run/37-planned-claim verifier campaign
+> completed.
 >
 > The machine-readable
 > [development posture](../policies/raspberry-pi-5-development-posture-v1alpha1.json)
@@ -387,6 +388,12 @@ mutation primitive.
 
 ### Workstream 2: stable verifier
 
+The 2026-09-11 development-key-fused sacrificial Pi completed the narrow
+file-mode self-kexec SMP differential with `SMP_PASS`. That result establishes
+the tested handoff mechanics under its development inputs; it does not exercise
+the complete verifier, delegated-release, authorization, mutation, or replay
+campaign and does not complete any checklist item below.
+
 - [ ] Build and test the initramfs verifier on the sacrificial Pi.
 - [ ] Make the initramfs verifier the exclusive gate and remove every
       alternative boot path.
@@ -451,6 +458,16 @@ mutation primitive.
 The sacrificial unit must pass the complete design before any production root
 is used:
 
+The first-cut campaign code derives an explicit outstanding-witness list for
+each planned claim. That list separates shared prerequisites (independently
+resolved run artifacts, exact media readback, a provenanced cold-power
+observation, and an authenticated complete verifier trace) from
+claim-specific evidence such as the released-OS command line, live-FDT
+continuity, exact one-boot-proof replay rejection, bootstrap-reuse rejection,
+and exact stale-authorization replay. It is a requirements matrix only: it has
+no observed, satisfied, pass, outcome, or claim-closure field, and the current
+claim-closure API remains unconditionally fail-closed.
+
 - approved delegated release boots through the stable verifier;
 - altered, unsigned, wrong-key, and revoked release bundles fail;
 - every enabled boot source enforces the same verification policy;
@@ -481,10 +498,13 @@ expand the cohort until the canary evidence has passed independent review.
 
 ### Milestone 1: stable-verifier development spike
 
-An unfused sacrificial candidate boots only an authorized delegated release,
-rejects mutated inputs, enforces fresh server policy before handoff, and binds
-a one-boot key using an explicitly non-production bootstrap identity. It makes
-no firmware-backed identity or hardware-lock claim.
+A sacrificial candidate in the development customer-key cohort boots only an
+authorized delegated release, rejects mutated inputs, enforces fresh server
+policy before handoff, and binds a one-boot key using an explicitly
+non-production bootstrap identity. The completed file-mode handoff diagnostic
+on the development-key-fused Pi does not by itself satisfy this milestone. This
+milestone makes no production-readiness, production-root, firmware-backed
+identity, or hardware-lock claim.
 
 ### Milestone 2: encrypted and updateable development appliance
 
