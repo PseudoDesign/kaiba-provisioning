@@ -585,6 +585,11 @@
           };
           stable-verifier-campaign-media = stableVerifierCampaignMediaCheck;
           stable-verifier-campaign-run = stableVerifierCampaignRunCheck;
+        }
+        // lib.optionalAttrs (system == "x86_64-linux") {
+          # This evaluates the provisioner's deliberately fixed x86_64 build
+          # graph. Do not export it to the native ARM64 check set: its store
+          # references include x86_64 build-time helpers by contract.
           stable-campaign-provisioner-rpi5-hardware-eval =
             pkgs.runCommand "kaiba-stable-campaign-provisioner-rpi5-hardware-eval" { }
               ''
@@ -730,6 +735,8 @@
                 } = true
                 mkdir "$out"
               '';
+        }
+        // {
           stable-verifier-rpi5-hardware-eval =
             pkgs.runCommand "kaiba-stable-verifier-rpi5-hardware-eval"
               (
