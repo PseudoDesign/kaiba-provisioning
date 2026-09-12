@@ -40,6 +40,9 @@ pkgs.runCommand "kaiba-provisioning-asset-api-contract"
       ${assets.schemas.stableVerifierEventV1Alpha1} \
       ${assets.schemas.stableVerifierPolicyV1Alpha1} \
       ${assets.schemas.stableVerifierSpikeEvidenceV1Alpha1} \
+      ${assets.schemas.stableCampaignProvisionerArtifactSetV1Alpha1} \
+      ${assets.schemas.stableCampaignProvisionerBootIntegrityV1Alpha1} \
+      ${assets.schemas.stableCampaignProvisionerSignedBootFilesystemV1Alpha1} \
       ${assets.schemas.unsignedArtifactSetV1Alpha1}
     do
       test -f "$schema"

@@ -15,7 +15,7 @@ exported package.
 
 ## JSON schema groups
 
-There are 54 versioned files under [`schemas/`](../schemas/). Several groups
+There are 57 versioned files under [`schemas/`](../schemas/). Several groups
 retain older alpha revisions so checked inputs can be verified; revision
 coexistence does not imply automatic migration.
 
@@ -53,6 +53,8 @@ and version constants for these interfaces live with their strict decoders:
 | Release binding | `internal/provisioning/releasebinding` | Exact equality over signed release, lane package, compiled artifacts, customer key, EEPROM, and boot image digests |
 | Stable release verification and handoff | `internal/provisioning/stableverifier` and `stablehandoff` | Inline root/delegated signatures, exact release roles, retained descriptors, fixed credential archive, and kexec boundary |
 | Non-production authorization and evidence | `internal/provisioning/releaseauthorization`, `verifierevents`, and `stableevidence` | TLS 1.3 with explicit roots, one-use challenge binding, structured UART events, and allowlisted spike evidence |
+| Stable-verifier campaign media evidence | `internal/provisioning/campaignmedia` | v1alpha1 preserves its fail-closed physical-end-GPT rejection; explicitly selected v1alpha2 strictly parses and hashes a distinct valid physical-end backup lineage while remaining read-only and ineligible for staging |
+| Stable-campaign provisioner artifacts | `nix/rpi5-stable-campaign-provisioner-artifacts.nix`, `nix/rpi5-stable-campaign-provisioner-signed-boot-filesystem.nix`, and `schemas/rpi5-stable-campaign-provisioner-*` | Development-only inner signing input, dm-verity artifacts, and separately materialized signed 128 MiB FAT boot-partition image fixed to Pi SD partitions 1-3; the attached NVMe is read-only input and ordinary release/capsule consumers must reject these schemas |
 
 Persisted runtime formats are versioned independently. In particular, a
 nonempty lane journal is not a migration input: incompatible state must be
@@ -62,8 +64,9 @@ silently rewritten.
 ## Exported Nix library
 
 The root flake exports these constructor families on supported Linux systems.
-Every constructor takes `system`; additional arguments are specific immutable
-inputs rather than general runtime selectors.
+System-parametric constructors take `system`; the stable-campaign post-sign
+constructor fixes its x86 build and AArch64 target platforms. Other arguments
+are specific immutable inputs rather than general runtime selectors.
 
 | Family | Exported attributes |
 | --- | --- |
@@ -73,6 +76,7 @@ inputs rather than general runtime selectors.
 | Bundle and release verification | `mkRpi5VerifiedRPIBootBundles`, `mkRpi5VerifiedSignedRelease`, `mkRpi5VerifiedUnfusedCapsule`, `mkRpi5UnfusedVerifier` |
 | Media | `mkRpi5MediaStagingFixture`, `mkRpi5ProductionMedia` |
 | Stable-verifier spike | `mkRpi5StableVerifierUnsignedBoot`, `mkRpi5StableVerifierTestSD`, `mkRpi5DelegatedReleaseSpike`, `mkRpi5StableVerifierSpikeRig` |
+| Stable-campaign provisioner | `mkRpi5StableCampaignProvisionerSignedBootFilesystem` (post-sign verification/materialization only; the revision-bearing unsigned package is a clean-Git flake package, not a public constructor) |
 | Physical development lane | `mkRpi5PhysicalLaneGuard`, `mkRpi5DevelopmentSecureBootRunner`, `mkRpi5DevelopmentSecureBootOperationalPayload` |
 | Deployment and ceremony | `mkDevelopmentSigningCeremony`, `mkUbuntuProvisioningAuthorityDeployment`, `mkUbuntuSigningGateDeployment` |
 
@@ -80,6 +84,13 @@ The constructors are the supported way to obtain configured hardware-facing or
 signing programs. For example, the block-device media stager and independent
 device verifier are outputs of `mkRpi5ProductionMedia`; they are not generic
 root packages accepting an arbitrary device.
+
+`mkRpi5SecureBootArtifacts` is fixed to the ordinary GPT-PARTUUID profile. Its
+public API cannot select the dedicated stable-campaign SD binding; that binding
+is reachable only through the clean-revision provisioner package. The
+post-sign provisioner constructor also dumps and checks the dm-verity
+superblock's format, algorithm, block sizes, data-block count, UUID, and salt
+before accepting the signed SD artifacts.
 
 ## Exported NixOS modules
 
@@ -112,6 +123,7 @@ The following package groups are exported for both `x86_64-linux` and
 | Public signing and release tools | `kaiba-provision-signing-approval`, `kaiba-provision-signing-receipts`, `kaiba-provision-sign-boot`, `kaiba-provision-sign-eeprom`, `kaiba-provision-rpiboot-bundles`, `kaiba-provision-finalize-release` |
 | Media and unfused tools | `kaiba-provision-media-contract`, `kaiba-provision-unfused-compat`, `kaiba-provision-unfused-evidence`, `kaiba-provision-unfused-runtime-record` |
 | Stable-verifier spike | `kaiba-rpi5-stable-verifier`, `kaiba-rpi5-verifier-test-authority`, `kaiba-rpi5-one-boot-prove` (development-only, static executables) |
+| Stable-campaign provisioner | `kaiba-rpi5-stable-campaign-provisioner-unsigned` (`x86_64-linux` only; exported only from a clean, revisioned Git flake) |
 | Fail-closed foundations | `kaiba-provision-signer-foundation`, `kaiba-provision-signing-client-foundation`, `kaiba-provision-signing-gate-foundation`, `kaiba-provision-yubikey-wrapper-foundation` |
 | Suites and immutable inputs | `provisioning-suite`, `provisioning-services`, `provisioning-test-result`, `rpi5-physical-lane-guard-fixture`, `rpi5-probe-bundle`, `rpi5-eeprom-release` |
 | Deployment bundles | `ubuntu-provisioning-authority-deployment`, `ubuntu-signing-gate-deployment` |

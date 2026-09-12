@@ -134,6 +134,27 @@ let
         sourceRevision = canonicalSourceRevision40;
       }).drvPath
     )).success;
+  rootDeviceBindingAccepted =
+    rootDeviceBinding:
+    (builtins.tryEval (
+      (secureBootArtifactBuilder {
+        name = "kaiba-secure-boot-artifacts-root-device-binding-evaluation";
+        expectedCustomerKeyHash = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        firmwareAllowlist = [
+          "bcm2712-rpi-5-b.dtb"
+          "cmdline.txt"
+          "initramfs_2712"
+          "kernel_2712.img"
+          "overlays/README"
+        ];
+        firmwareTree = secureBootFixtureFirmware;
+        rootImage = secureBootFixtureRootA;
+        rootDataPartitionGUID = secureBootRootDataPartitionGUID;
+        rootHashPartitionGUID = secureBootRootHashPartitionGUID;
+        inherit rootDeviceBinding;
+        sourceRevision = canonicalSourceRevision40;
+      }).drvPath
+    )).success;
   signingGrantFixture = pkgs.writeText "kaiba-signing-grant-registry-fixture.json" (
     builtins.toJSON {
       schema_version = "kaiba.provisioning.signing-grant-registry/v1alpha2";
@@ -3820,6 +3841,13 @@ let
       (partitionGUIDsAccepted "00000000-0000-0000-0000-000000000000" secureBootRootHashPartitionGUID)
       (partitionGUIDsAccepted secureBootRootDataPartitionGUID secureBootRootDataPartitionGUID)
     ]) "the secure-boot artifact builder accepted an unsafe GPT partition GUID binding";
+    assert lib.assertMsg (rootDeviceBindingAccepted "gpt-partuuid")
+      "the secure-boot artifact builder rejected its compatibility PARTUUID binding";
+    assert lib.assertMsg (lib.all (value: !value) [
+      (rootDeviceBindingAccepted "rpi5-sd-card")
+      (rootDeviceBindingAccepted "raw-device")
+      (rootDeviceBindingAccepted "/dev/mmcblk0")
+    ]) "the generic secure-boot fixture escaped its reviewed device-binding profile";
     assert lib.assertMsg (
       secureBootFixtureA.kaibaUnsignedArtifacts.schemaVersion
       == "provisioning.kaiba.network/unsigned-artifact-set/v1alpha1"
@@ -5569,6 +5597,10 @@ let
         test ! -s "$TMPDIR/stable-campaign-gpt-inspect-help.stdout"
         grep -F -- '--disk-guid OPERATOR_ASSERTED_LOWERCASE_GUID' \
           "$TMPDIR/stable-campaign-gpt-inspect-help.stderr" > /dev/null
+        grep -F -- '[--envelope-version v1alpha1|v1alpha2]' \
+          "$TMPDIR/stable-campaign-gpt-inspect-help.stderr" > /dev/null
+        grep -F -- 'v1alpha2 must be selected explicitly' \
+          "$TMPDIR/stable-campaign-gpt-inspect-help.stderr" > /dev/null
         ! grep -F -- '--output' "$TMPDIR/stable-campaign-gpt-inspect-help.stderr" > /dev/null
         ! grep -F -- '--capture-id' "$TMPDIR/stable-campaign-gpt-inspect-help.stderr" > /dev/null
         test -x ${built.stableCampaignPlanTool}/bin/kaiba-rpi5-stable-campaign-plan
@@ -5597,21 +5629,25 @@ let
         test '${toString built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.publicInputCount}' = 27
         test '${builtins.toJSON built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.signingAuthorized}' = 'false'
         test '${built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.blockDeviceAccess}' = 'fixed-selector-pinned-inactive-read-only'
+        test '${built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.defaultEnvelopeVersion}' = 'v1alpha1'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.destructiveStagingReady}' = 'false'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.deviceAttachmentAuthenticated}' = 'false'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.directHardwareAccess}' = 'true'
         test '${built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.diskGUIDAuthority}' = 'operator-asserted-not-authenticated'
+        test '${built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.diskGUIDScope}' = 'selected-lba1-lineage-only'
         test '${built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.evidenceAssurance}' = 'unauthenticated-range-read-consistency-only'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.filesystemOutputPathAuthority}' = 'false'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.hardwareObserved}' = 'true'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.opaqueWholePartitionByteReadsPossible}' = 'true'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.physicalQuiescenceProven}' = 'false'
+        test '${built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.physicalEndGPTV1Alpha2}' = 'explicit-strict-parse-and-hash-valid-distinct-backup-lineage'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.privateKeyOperations}' = 'false'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.privateKeySemanticUse}' = 'false'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.privateMaterialAbsenceProven}' = 'false'
         test '${builtins.toJSON (builtins.hasAttr "privateKeyAccess" built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect)}' = 'false'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.productionReady}' = 'false'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.rangeScopedSequentialReread}' = 'true'
+        test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.repairCapable}' = 'false'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.fixedHostnameStringRequired}' = 'true'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.signingAuthorized}' = 'false'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.stdoutCanonicalEnvelope}' = 'true'

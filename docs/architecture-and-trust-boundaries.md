@@ -107,6 +107,27 @@ exercise regular-file and synthetic device contracts; they do not constitute a
 live-media, cold-power, or boot-enforcement qualification. See
 [target-media staging](target-media-staging-prototype.md).
 
+The stable-verifier campaign GPT inspector is a separate evidence-only
+boundary. Its default v1alpha1 path retains the original rejection of an
+image-sized GPT accompanied by a GPT signature at the physical end. An
+explicit v1alpha2 path can instead record the selected reciprocal lineage and
+a strictly valid, same-layout but identifier-distinct physical-end backup
+lineage. Both paths open only the fixed inactive selector read-only, perform
+sequential re-read verification, and emit canonical hashes on standard output.
+Neither path repairs a GPT, writes recovery bytes, authenticates the physical
+attachment, proves quiescence, or authorizes destructive staging.
+
+The one-off stable-campaign provisioner is also separate from the production
+media artifact contract. Its signed command line binds dm-verity to fixed Pi 5
+SD paths `/dev/mmcblk0p2` and `/dev/mmcblk0p3`; its dedicated manifest and boot
+integrity schemas are intentionally ineligible for the ordinary target-NVMe
+release and capsule flows. The campaign NVMe is not part of the provisioner's
+mount or swap graph. The unsigned 96 MiB `boot.img` is explicitly a signing
+input, never an SD partition image. Only the separate post-sign constructor can
+verify its `boot.sig` and materialize the 128 MiB outer FAT image for SD p1.
+Physical placement still requires a separate identity-bound write and full
+partition readback procedure.
+
 Relay power is the production-shaped lane mode: the NixOS module fixes the GPIO
 device and line and enforces an inactive action before startup and after exit.
 The physical relay still requires separate normally-off electrical

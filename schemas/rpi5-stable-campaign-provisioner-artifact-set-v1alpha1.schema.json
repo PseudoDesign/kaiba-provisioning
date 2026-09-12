@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provisioning.kaiba.network/schemas/rpi5-stable-campaign-provisioner-artifact-set-v1alpha1.schema.json",
+  "title": "Kaiba Raspberry Pi 5 stable-campaign provisioner artifact set",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "source_revision",
+    "expected_customer_key_hash",
+    "boot_order_policy",
+    "boot_command_line_path",
+    "firmware_allowlist",
+    "boot_image_size_bytes",
+    "persistent_mutable_state",
+    "rollback_policy",
+    "debug_policy",
+    "eeprom_write_protection_policy",
+    "toolchain",
+    "artifacts",
+    "verity",
+    "device_binding",
+    "root_integrity_digest",
+    "bundle_digest",
+    "signing_status",
+    "hardware_observed",
+    "physical_staging_ready",
+    "production_ready"
+  ],
+  "properties": {
+    "schema": {
+      "const": "provisioning.kaiba.network/rpi5-stable-campaign-provisioner-artifact-set/v1alpha1"
+    },
+    "source_revision": {
+      "type": "string",
+      "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"
+    },
+    "expected_customer_key_hash": {
+      "const": "sha256:b8818acea4e71173903ee003e33ed37e969def7d2ea67bec15c0b73cb36c3895"
+    },
+    "boot_order_policy": { "const": "nvme-sd-tftp-restart-development" },
+    "boot_command_line_path": { "const": "nixos/default/cmdline.txt" },
+    "firmware_allowlist": {
+      "const": [
+        "config.txt",
+        "kaiba-root-integrity.json",
+        "nixos/default/bcm2712-rpi-5-b.dtb",
+        "nixos/default/cmdline.txt",
+        "nixos/default/initrd",
+        "nixos/default/kernel.img",
+        "nixos/default/overlays/README",
+        "nixos/default/overlays/bcm2712d0.dtbo",
+        "nixos/default/overlays/dwc2.dtbo",
+        "nixos/default/overlays/overlay_map.dtb"
+      ]
+    },
+    "boot_image_size_bytes": { "const": 100663296 },
+    "persistent_mutable_state": { "const": "tmpfs-only" },
+    "rollback_policy": { "const": "unimplemented-block-enrollment-ready" },
+    "debug_policy": { "const": "videocore-jtag-unlocked-development" },
+    "eeprom_write_protection_policy": { "const": "unlocked-development" },
+    "toolchain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cryptsetup", "dosfstools", "mtools"],
+      "properties": {
+        "cryptsetup": { "$ref": "#/$defs/version" },
+        "dosfstools": { "$ref": "#/$defs/version" },
+        "mtools": { "$ref": "#/$defs/version" }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["boot_image", "root_data", "root_hash_tree"],
+      "properties": {
+        "boot_image": { "$ref": "#/$defs/boot_artifact" },
+        "root_data": { "$ref": "#/$defs/root_data_artifact" },
+        "root_hash_tree": { "$ref": "#/$defs/root_hash_artifact" }
+      }
+    },
+    "verity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "data_block_size",
+        "hash_block_size",
+        "uuid",
+        "data_device",
+        "hash_device",
+        "mapper"
+      ],
+      "properties": {
+        "algorithm": { "const": "sha256" },
+        "data_block_size": { "const": 4096 },
+        "hash_block_size": { "const": 4096 },
+        "uuid": { "$ref": "#/$defs/uuid" },
+        "data_device": { "const": "/dev/mmcblk0p2" },
+        "hash_device": { "const": "/dev/mmcblk0p3" },
+        "mapper": { "const": "/dev/mapper/root" }
+      }
+    },
+    "device_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "boot_media",
+        "disk_guid",
+        "boot_partition",
+        "boot_partition_guid",
+        "boot_partition_size_bytes",
+        "data_partition",
+        "data_partition_guid",
+        "data_partition_size_bytes",
+        "hash_partition",
+        "hash_partition_guid",
+        "hash_partition_size_bytes"
+      ],
+      "properties": {
+        "profile": { "const": "rpi5-sd-mmcblk0-fixed-partitions" },
+        "boot_media": { "const": "/dev/mmcblk0" },
+        "disk_guid": { "const": "5625eee2-0c8a-402f-8c2f-5a1347652bb2" },
+        "boot_partition": { "const": 1 },
+        "boot_partition_guid": { "const": "59d06b61-bf85-4d77-89c3-9e5395934ff8" },
+        "boot_partition_size_bytes": { "const": 134217728 },
+        "data_partition": { "const": 2 },
+        "data_partition_guid": { "const": "bdd5be20-f7ea-56e7-ae90-4465ae950596" },
+        "data_partition_size_bytes": { "const": 2418016256 },
+        "hash_partition": { "const": 3 },
+        "hash_partition_guid": { "const": "62616022-71fb-5036-8cc4-b7949cc6e52c" },
+        "hash_partition_size_bytes": { "const": 19922944 }
+      }
+    },
+    "root_integrity_digest": { "$ref": "#/$defs/digest" },
+    "bundle_digest": { "$ref": "#/$defs/digest" },
+    "signing_status": { "const": "unsigned" },
+    "hardware_observed": { "const": false },
+    "physical_staging_ready": { "const": false },
+    "production_ready": { "const": false }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[ -~]+$"
+    },
+    "artifact_base": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "digest"],
+      "properties": {
+        "path": { "type": "string" },
+        "digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "boot_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "digest", "artifact_role", "storage_format"],
+      "properties": {
+        "path": { "const": "unsigned/boot.img" },
+        "digest": { "$ref": "#/$defs/digest" },
+        "artifact_role": { "const": "signing-input" },
+        "storage_format": { "const": "fat-boot-ramdisk-not-partition" }
+      }
+    },
+    "root_data_artifact": {
+      "allOf": [
+        { "$ref": "#/$defs/artifact_base" },
+        { "properties": { "path": { "const": "sd/root-data.img" } } }
+      ]
+    },
+    "root_hash_artifact": {
+      "allOf": [
+        { "$ref": "#/$defs/artifact_base" },
+        { "properties": { "path": { "const": "sd/root-hash.img" } } }
+      ]
+    }
+  }
+}

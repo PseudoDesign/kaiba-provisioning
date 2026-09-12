@@ -102,6 +102,112 @@ func TestRunPinsAndRevalidatesOneReaderAndEmitsOnlyCanonicalJSON(t *testing.T) {
 	}
 }
 
+func TestRunSelectsV1Alpha2OnlyWhenExplicitlyRequested(t *testing.T) {
+	device := &inertDevice{}
+	inspections, verifications, encodes, revalidations := 0, 0, 0, 0
+	deps := dependencies{
+		hostname: func() (string, error) { return campaignmedia.MalakSDHostname, nil },
+		random:   deterministicRandom(),
+		open: func(_ context.Context, identity campaignmedia.DeviceIdentity) (openedAttachment, error) {
+			return openedAttachment{reader: device, revalidate: func(context.Context) error {
+				revalidations++
+				return nil
+			}}, nil
+		},
+		inspect: func(io.ReaderAt, campaignmedia.DeviceIdentity, string, []campaignmedia.PlannedPayloadRange) (campaignmedia.InitialGPTRecoveryEnvelope, error) {
+			t.Fatal("legacy v1alpha1 inspector called for explicit v1alpha2 selection")
+			return campaignmedia.InitialGPTRecoveryEnvelope{}, nil
+		},
+		verify: func(campaignmedia.InitialGPTRecoveryEnvelope, io.ReaderAt) error {
+			t.Fatal("legacy v1alpha1 verifier called for explicit v1alpha2 selection")
+			return nil
+		},
+		encode: func(campaignmedia.InitialGPTRecoveryEnvelope) ([]byte, error) {
+			t.Fatal("legacy v1alpha1 encoder called for explicit v1alpha2 selection")
+			return nil, nil
+		},
+		inspectV1Alpha2: func(reader io.ReaderAt, identity campaignmedia.DeviceIdentity, captureID string, ranges []campaignmedia.PlannedPayloadRange) (campaignmedia.InitialGPTRecoveryEnvelopeV1Alpha2, error) {
+			inspections++
+			if reader != device || identity.DiskGUID != testDiskGUID || captureID != expectedCaptureID() || len(ranges) != 3 {
+				t.Fatal("v1alpha2 inspector did not retain the fixed reader, identity, capture, and ranges")
+			}
+			return campaignmedia.InitialGPTRecoveryEnvelopeV1Alpha2{CaptureID: captureID}, nil
+		},
+		verifyV1Alpha2: func(envelope campaignmedia.InitialGPTRecoveryEnvelopeV1Alpha2, reader io.ReaderAt) error {
+			verifications++
+			if reader != device || envelope.CaptureID != expectedCaptureID() {
+				t.Fatal("v1alpha2 verifier received detached input")
+			}
+			return nil
+		},
+		encodeV1Alpha2: func(campaignmedia.InitialGPTRecoveryEnvelopeV1Alpha2) ([]byte, error) {
+			encodes++
+			return []byte(`{"schema_version":"v1alpha2","destructive_staging_ready":false}`), nil
+		},
+	}
+	arguments := append(validArguments(), "--envelope-version", envelopeVersionV1Alpha2)
+	var stdout, stderr bytes.Buffer
+	if exit := run(context.Background(), arguments, &stdout, &stderr, deps); exit != exitOK {
+		t.Fatalf("exit = %d, stderr = %s", exit, stderr.String())
+	}
+	if inspections != 1 || verifications != 1 || encodes != 1 || revalidations != 3 || device.closes != 1 ||
+		stdout.String() != "{\"schema_version\":\"v1alpha2\",\"destructive_staging_ready\":false}\n" || stderr.Len() != 0 {
+		t.Fatalf("inspect/verify/encode/revalidate/close/stdout/stderr = %d/%d/%d/%d/%d/%q/%q", inspections, verifications, encodes, revalidations, device.closes, stdout.String(), stderr.String())
+	}
+}
+
+func TestRunV1Alpha2FailsClosedForUnsupportedVersionAndRejectedLineage(t *testing.T) {
+	t.Run("unsupported version before open", func(t *testing.T) {
+		opened := false
+		deps := dependencies{
+			hostname: func() (string, error) { return campaignmedia.MalakSDHostname, nil },
+			open: func(context.Context, campaignmedia.DeviceIdentity) (openedAttachment, error) {
+				opened = true
+				return openedAttachment{}, nil
+			},
+		}
+		var stdout, stderr bytes.Buffer
+		arguments := append(validArguments(), "--envelope-version", "v1alpha3")
+		if exit := run(context.Background(), arguments, &stdout, &stderr, deps); exit != exitUsage {
+			t.Fatalf("exit = %d, stderr = %s", exit, stderr.String())
+		}
+		if opened || stdout.Len() != 0 || !strings.Contains(stderr.String(), "--envelope-version must be") {
+			t.Fatalf("opened=%v stdout=%q stderr=%q", opened, stdout.String(), stderr.String())
+		}
+	})
+
+	t.Run("invalid physical-end lineage", func(t *testing.T) {
+		device := &inertDevice{}
+		verified, encoded := false, false
+		deps := dependencies{
+			hostname: func() (string, error) { return campaignmedia.MalakSDHostname, nil },
+			random:   deterministicRandom(),
+			open: func(context.Context, campaignmedia.DeviceIdentity) (openedAttachment, error) {
+				return openedAttachment{reader: device, revalidate: func(context.Context) error { return nil }}, nil
+			},
+			inspectV1Alpha2: func(io.ReaderAt, campaignmedia.DeviceIdentity, string, []campaignmedia.PlannedPayloadRange) (campaignmedia.InitialGPTRecoveryEnvelopeV1Alpha2, error) {
+				return campaignmedia.InitialGPTRecoveryEnvelopeV1Alpha2{}, errors.New("physical-end GPT backup header CRC is invalid")
+			},
+			verifyV1Alpha2: func(campaignmedia.InitialGPTRecoveryEnvelopeV1Alpha2, io.ReaderAt) error {
+				verified = true
+				return nil
+			},
+			encodeV1Alpha2: func(campaignmedia.InitialGPTRecoveryEnvelopeV1Alpha2) ([]byte, error) {
+				encoded = true
+				return nil, nil
+			},
+		}
+		var stdout, stderr bytes.Buffer
+		arguments := append(validArguments(), "--envelope-version", envelopeVersionV1Alpha2)
+		if exit := run(context.Background(), arguments, &stdout, &stderr, deps); exit != exitInvalid {
+			t.Fatalf("exit = %d, stderr = %s", exit, stderr.String())
+		}
+		if verified || encoded || stdout.Len() != 0 || device.closes != 1 || !strings.Contains(stderr.String(), "physical-end GPT") {
+			t.Fatalf("verified=%v encoded=%v stdout=%q closes=%d stderr=%q", verified, encoded, stdout.String(), device.closes, stderr.String())
+		}
+	})
+}
+
 func TestRunFailsBeforeOpeningForWrongHostOrAmbiguousArguments(t *testing.T) {
 	opened := false
 	deps := dependencies{

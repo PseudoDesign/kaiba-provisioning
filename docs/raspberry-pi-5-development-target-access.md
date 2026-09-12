@@ -53,12 +53,62 @@ makes the admitted key root-equivalent.
 ## Compose a development image
 
 The repository exports `nixosModules.secure-boot-target`, but it does **not**
-export a preconfigured target image or a ready-to-run
+export a general-purpose preconfigured target image or a ready-to-run
 `nixosConfigurations.<name>` output. A reviewed consumer flake must combine the
 module with the Raspberry Pi board support, dm-verity root, signed boot
 artifacts, exact source revision, cohort key hash, and an explicit image output.
 Do not invent a root-flake image name or reuse a historical monorepo build
 command.
+
+One deliberately narrow exception is the stable-campaign development
+provisioner. An internal, revision-bound build graph constructs the fixed
+`kaiba-rpi5-provisioner` system and its deterministic unsigned boot, root-data,
+and root-hash artifacts. It installs only the AArch64 read-only GPT inspector,
+keeps `/` on dm-verity, disables swap and GPT auto-discovery, and carries the
+NVMe driver without configuring the inspected NVMe as storage. The headless
+profile excludes the unrelated Wi-Fi, audio, GPU, and general Linux firmware
+bundle; USB gadget Ethernet, UART, SD, and NVMe operation do not require those
+host-loaded blobs. It closes over
+the exact development customer key, SSH public key, boot size, firmware set,
+SD layout, and storage binding in this repository; its only argument is the
+canonical source revision. The revision-parameterized constructors are not
+exported: callers cannot use a dirty/path flake to mint an artifact that claims
+an arbitrary clean revision.
+
+On a clean Git revision, the same closed development artifact set is exposed
+as
+`packages.x86_64-linux.kaiba-rpi5-stable-campaign-provisioner-unsigned`.
+Malak builds the AArch64 Pi payload through the fixed x86_64-to-AArch64 build
+configuration. The package is intentionally absent for dirty source trees so
+an unsigned bundle cannot claim an ambiguous source revision. It remains
+unsigned and development-only: build completion does not authorize signing,
+media writes, or a hardware campaign.
+
+This exception deliberately does not claim the general unsigned-artifact-set
+contract. Its dedicated provisioner manifest marks the 96 MiB `boot.img` as a
+signed-boot input with storage format `fat-boot-ramdisk-not-partition` and keeps
+`physical_staging_ready=false`; writing that file directly to SD p1 would omit
+`boot.sig` and is forbidden. The manifest binds the reviewed SD disk and p1-p3
+partition GUIDs and capacities, binds the verified root to
+`/dev/mmcblk0p2` and its hash tree to `/dev/mmcblk0p3`, pads their artifacts to
+the development SD's exact 2,418,016,256-byte and 19,922,944-byte partition
+capacities, and names them under `sd/`. That topology binding prevents an
+attached campaign NVMe with colliding GPT identifiers from becoming the
+provisioner's root. The normal signed-release, unfused-capsule, and target-NVMe
+staging paths must reject this dedicated schema; do not route the provisioner
+bundle through them. After the exact inner image is approved and signed, use
+only `lib.mkRpi5StableCampaignProvisionerSignedBootFilesystem` to verify the
+canonical signature under the reviewed development public key and construct
+the distinct 128 MiB outer FAT p1 image containing exactly `boot.img`,
+`boot.sig`, and `config.txt`.
+
+No media writer is included in this cut. A physical staging handoff must bind
+the exact removable reader identity, whole-device size, selected SD disk and
+partition GUIDs, exact partition capacities, the post-sign outer-boot manifest
+and digest, and both root artifact digests before one operator confirmation. It
+must write only SD partitions 1 through 3 and independently hash every complete
+partition on readback. The attached campaign NVMe is the read-only inspection
+subject, never a staging target.
 
 The access-specific portion of that consumer configuration is:
 
@@ -128,6 +178,16 @@ absent by the lane plan. USB access does not replace the power, target,
 transaction, or fence checks in the [live lane](raspberry-pi-5-live-provisioning.md).
 
 ## Bind SSH to the current boot
+
+The boot-evidence decoder is pinned to the representation observed with the
+development Pi's EEPROM BOOTLOADER release `086b83e3` dated 2026-05-26. Its
+`/proc/device-tree/chosen/bootloader/boot_img_sha256` property is exactly 64
+bytes: the raw 32-byte SHA-256 digest followed by 32 NUL bytes reserved by the
+firmware. The decoder deliberately rejects the formerly assumed 32-byte raw,
+64-byte ASCII-hex, and 65-byte ASCII-hex-plus-NUL forms, as well as any nonzero
+reserved suffix. An EEPROM change that alters this representation therefore
+emits `malformed-boot-image-hash` and blocks SSH until the new firmware behavior
+is observed and reviewed; it is not silently treated as a signature failure.
 
 The host key is intentionally generated under `/run`, so ordinary persistent
 `known_hosts` continuity does not apply. Before opening SSH, require the earlier
