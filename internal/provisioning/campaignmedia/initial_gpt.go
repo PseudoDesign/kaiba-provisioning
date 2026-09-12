@@ -285,6 +285,15 @@ func parseInitialGPT(reader io.ReaderAt, capacityBytes uint64) (InitialGPTSnapsh
 }
 
 func captureInitialGPT(reader io.ReaderAt, capacityBytes uint64) (InitialGPTSnapshot, capturedInitialGPTMetadata, error) {
+	return captureInitialGPTWithPhysicalEndPolicy(reader, capacityBytes, true)
+}
+
+// captureInitialGPTWithPhysicalEndPolicy shares the strict selected-lineage
+// parser with the v1alpha2 inspector. v1alpha1 always passes true and retains
+// its original fail-closed rejection of every GPT signature at the physical
+// end. The v1alpha2 caller passes false, then independently parses that sector
+// and its declared entry array before accepting it as evidence.
+func captureInitialGPTWithPhysicalEndPolicy(reader io.ReaderAt, capacityBytes uint64, rejectPhysicalEndGPT bool) (InitialGPTSnapshot, capturedInitialGPTMetadata, error) {
 	if capacityBytes%LogicalSectorSizeBytes != 0 {
 		return InitialGPTSnapshot{}, nil, errors.New("physical capacity is not a whole number of 512-byte sectors")
 	}
@@ -362,14 +371,14 @@ func captureInitialGPT(reader io.ReaderAt, capacityBytes uint64) (InitialGPTSnap
 		placement = InitialGPTPlacementImageSized
 		// A second GPT header at the physical end makes the device ambiguous to
 		// readers that probe there rather than follow the primary header's
-		// declared alternate LBA. Capture this sector once, reject the ambiguous
-		// signature, and reuse the same bytes for its recovery-range digest.
+		// declared alternate LBA. Capture this sector once. v1alpha1 rejects its
+		// signature here; v1alpha2 parses it separately before accepting evidence.
 		physicalEndOffset := capacityBytes - LogicalSectorSizeBytes
 		physicalEndSector = make([]byte, LogicalSectorSizeBytes)
 		if err := readInitialGPTExact(reader, physicalEndOffset, physicalEndSector); err != nil {
 			return InitialGPTSnapshot{}, nil, fmt.Errorf("read physical-end GPT preimage: %w", err)
 		}
-		if bytes.Equal(physicalEndSector[:8], []byte("EFI PART")) {
+		if rejectPhysicalEndGPT && bytes.Equal(physicalEndSector[:8], []byte("EFI PART")) {
 			return InitialGPTSnapshot{}, nil, errors.New("image-sized GPT conflicts with a GPT header signature at the physical end")
 		}
 	}

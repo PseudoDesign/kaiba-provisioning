@@ -2,7 +2,9 @@
 
 // kaiba-rpi5-stable-campaign-gpt-inspect performs a range-bound, read-only
 // inspection of the initial GPT and planned recovery ranges on one fixed
-// development campaign selector. It has no output-path, filesystem-staging,
+// development campaign selector. v1alpha1 remains the default; v1alpha2 must
+// be selected explicitly to parse a distinct valid physical-end backup
+// lineage. It has no output-path, filesystem-staging, repair,
 // writable-target-descriptor, signing, or authorization capability.
 package main
 
@@ -24,6 +26,9 @@ const (
 	exitOK      = 0
 	exitInvalid = 1
 	exitUsage   = 2
+
+	envelopeVersionV1Alpha1 = "v1alpha1"
+	envelopeVersionV1Alpha2 = "v1alpha2"
 )
 
 type singleValue struct {
@@ -57,12 +62,15 @@ type openedAttachment struct {
 }
 
 type dependencies struct {
-	hostname func() (string, error)
-	random   io.Reader
-	open     func(context.Context, campaignmedia.DeviceIdentity) (openedAttachment, error)
-	inspect  func(io.ReaderAt, campaignmedia.DeviceIdentity, string, []campaignmedia.PlannedPayloadRange) (campaignmedia.InitialGPTRecoveryEnvelope, error)
-	verify   func(campaignmedia.InitialGPTRecoveryEnvelope, io.ReaderAt) error
-	encode   func(campaignmedia.InitialGPTRecoveryEnvelope) ([]byte, error)
+	hostname        func() (string, error)
+	random          io.Reader
+	open            func(context.Context, campaignmedia.DeviceIdentity) (openedAttachment, error)
+	inspect         func(io.ReaderAt, campaignmedia.DeviceIdentity, string, []campaignmedia.PlannedPayloadRange) (campaignmedia.InitialGPTRecoveryEnvelope, error)
+	verify          func(campaignmedia.InitialGPTRecoveryEnvelope, io.ReaderAt) error
+	encode          func(campaignmedia.InitialGPTRecoveryEnvelope) ([]byte, error)
+	inspectV1Alpha2 func(io.ReaderAt, campaignmedia.DeviceIdentity, string, []campaignmedia.PlannedPayloadRange) (campaignmedia.InitialGPTRecoveryEnvelopeV1Alpha2, error)
+	verifyV1Alpha2  func(campaignmedia.InitialGPTRecoveryEnvelopeV1Alpha2, io.ReaderAt) error
+	encodeV1Alpha2  func(campaignmedia.InitialGPTRecoveryEnvelopeV1Alpha2) ([]byte, error)
 }
 
 func productionDependencies() dependencies {
@@ -75,6 +83,13 @@ func productionDependencies() dependencies {
 			return envelope.VerifyAgainst(reader)
 		},
 		encode: func(envelope campaignmedia.InitialGPTRecoveryEnvelope) ([]byte, error) {
+			return envelope.CanonicalJSON()
+		},
+		inspectV1Alpha2: campaignmedia.InspectInitialGPTRecoveryV1Alpha2,
+		verifyV1Alpha2: func(envelope campaignmedia.InitialGPTRecoveryEnvelopeV1Alpha2, reader io.ReaderAt) error {
+			return envelope.VerifyAgainst(reader)
+		},
+		encodeV1Alpha2: func(envelope campaignmedia.InitialGPTRecoveryEnvelopeV1Alpha2) ([]byte, error) {
 			return envelope.CanonicalJSON()
 		},
 	}
@@ -90,8 +105,10 @@ func run(ctx context.Context, arguments []string, stdout, stderr io.Writer, deps
 	flags.Usage = func() { printUsage(stderr) }
 	leg := &singleValue{name: "--leg"}
 	diskGUID := &singleValue{name: "--disk-guid"}
+	envelopeVersion := &singleValue{name: "--envelope-version"}
 	flags.Var(leg, "leg", "fixed device leg: malak-sd or pi-local-nvme")
-	flags.Var(diskGUID, "disk-guid", "operator-asserted lowercase GPT disk GUID; not authenticated")
+	flags.Var(diskGUID, "disk-guid", "operator-asserted lowercase selected LBA-1 GPT disk GUID; not authenticated")
+	flags.Var(envelopeVersion, "envelope-version", "explicit envelope parser: v1alpha1 or v1alpha2; default v1alpha1")
 	if err := flags.Parse(arguments); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return exitOK
@@ -107,6 +124,14 @@ func run(ctx context.Context, arguments []string, stdout, stderr io.Writer, deps
 			fmt.Fprintf(stderr, "initial GPT inspection: %s is required exactly once\n", required.name)
 			return exitUsage
 		}
+	}
+	selectedEnvelopeVersion := envelopeVersionV1Alpha1
+	if envelopeVersion.set {
+		selectedEnvelopeVersion = envelopeVersion.value
+	}
+	if selectedEnvelopeVersion != envelopeVersionV1Alpha1 && selectedEnvelopeVersion != envelopeVersionV1Alpha2 {
+		fmt.Fprintf(stderr, "initial GPT inspection: --envelope-version must be %q or %q\n", envelopeVersionV1Alpha1, envelopeVersionV1Alpha2)
+		return exitUsage
 	}
 
 	identity, planned, err := fixedInspectionInputs(campaignmedia.Leg(leg.value), diskGUID.value)
@@ -151,7 +176,22 @@ func run(ctx context.Context, arguments []string, stdout, stderr io.Writer, deps
 		fmt.Fprintf(stderr, "initial GPT inspection: validate hostname before first range read: %v\n", err)
 		return exitInvalid
 	}
-	envelope, err := deps.inspect(attachment.reader, identity, captureID, planned)
+	var envelopeV1Alpha1 campaignmedia.InitialGPTRecoveryEnvelope
+	var envelopeV1Alpha2 campaignmedia.InitialGPTRecoveryEnvelopeV1Alpha2
+	switch selectedEnvelopeVersion {
+	case envelopeVersionV1Alpha1:
+		if deps.inspect == nil || deps.verify == nil || deps.encode == nil {
+			fmt.Fprintln(stderr, "initial GPT inspection: v1alpha1 inspection boundary is incomplete")
+			return exitInvalid
+		}
+		envelopeV1Alpha1, err = deps.inspect(attachment.reader, identity, captureID, planned)
+	case envelopeVersionV1Alpha2:
+		if deps.inspectV1Alpha2 == nil || deps.verifyV1Alpha2 == nil || deps.encodeV1Alpha2 == nil {
+			fmt.Fprintln(stderr, "initial GPT inspection: v1alpha2 inspection boundary is incomplete")
+			return exitInvalid
+		}
+		envelopeV1Alpha2, err = deps.inspectV1Alpha2(attachment.reader, identity, captureID, planned)
+	}
 	if err != nil {
 		fmt.Fprintf(stderr, "initial GPT inspection: inspect first range read: %v\n", err)
 		return exitInvalid
@@ -167,7 +207,13 @@ func run(ctx context.Context, arguments []string, stdout, stderr io.Writer, deps
 		fmt.Fprintf(stderr, "initial GPT inspection: validate hostname between range reads: %v\n", err)
 		return exitInvalid
 	}
-	if err := deps.verify(envelope, attachment.reader); err != nil {
+	switch selectedEnvelopeVersion {
+	case envelopeVersionV1Alpha1:
+		err = deps.verify(envelopeV1Alpha1, attachment.reader)
+	case envelopeVersionV1Alpha2:
+		err = deps.verifyV1Alpha2(envelopeV1Alpha2, attachment.reader)
+	}
+	if err != nil {
 		fmt.Fprintf(stderr, "initial GPT inspection: repeated range read verification: %v\n", err)
 		return exitInvalid
 	}
@@ -179,7 +225,13 @@ func run(ctx context.Context, arguments []string, stdout, stderr io.Writer, deps
 		fmt.Fprintf(stderr, "initial GPT inspection: validate hostname after second range read: %v\n", err)
 		return exitInvalid
 	}
-	encoded, err := deps.encode(envelope)
+	var encoded []byte
+	switch selectedEnvelopeVersion {
+	case envelopeVersionV1Alpha1:
+		encoded, err = deps.encode(envelopeV1Alpha1)
+	case envelopeVersionV1Alpha2:
+		encoded, err = deps.encodeV1Alpha2(envelopeV1Alpha2)
+	}
 	if err != nil {
 		fmt.Fprintf(stderr, "initial GPT inspection: encode canonical envelope: %v\n", err)
 		return exitInvalid
@@ -302,7 +354,8 @@ func writeAll(output io.Writer, data []byte) error {
 
 func printUsage(output io.Writer) {
 	fmt.Fprintln(output, "usage: kaiba-rpi5-stable-campaign-gpt-inspect \\")
-	fmt.Fprintln(output, "         --leg malak-sd|pi-local-nvme --disk-guid OPERATOR_ASSERTED_LOWERCASE_GUID")
+	fmt.Fprintln(output, "         --leg malak-sd|pi-local-nvme --disk-guid OPERATOR_ASSERTED_LOWERCASE_GUID [--envelope-version v1alpha1|v1alpha2]")
 	fmt.Fprintln(output, "pins only the leg's fixed inactive whole-device selector read-only and emits one canonical JSON envelope on stdout")
+	fmt.Fprintln(output, "v1alpha2 must be selected explicitly to parse and hash a distinct valid physical-end backup lineage; it performs no repair")
 	fmt.Fprintln(output, "the internally generated capture ID is not authenticated; the two range-scoped reads are sequential, not atomic")
 }

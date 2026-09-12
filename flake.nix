@@ -59,6 +59,11 @@
           stableVerifierEventV1Alpha1 = ./schemas/rpi5-stable-verifier-event-v1alpha1.schema.json;
           stableVerifierPolicyV1Alpha1 = ./schemas/rpi5-stable-verifier-policy-v1alpha1.schema.json;
           stableVerifierSpikeEvidenceV1Alpha1 = ./schemas/rpi5-stable-verifier-spike-evidence-v1alpha1.schema.json;
+          stableCampaignProvisionerArtifactSetV1Alpha1 = ./schemas/rpi5-stable-campaign-provisioner-artifact-set-v1alpha1.schema.json;
+          stableCampaignProvisionerBootIntegrityV1Alpha1 = ./schemas/rpi5-stable-campaign-provisioner-boot-integrity-v1alpha1.schema.json;
+          stableCampaignProvisionerSigningApprovalV1Alpha1 = ./schemas/rpi5-stable-campaign-provisioner-signing-approval-v1alpha1.schema.json;
+          stableCampaignProvisionerSigningIntentV1Alpha1 = ./schemas/rpi5-stable-campaign-provisioner-signing-intent-v1alpha1.schema.json;
+          stableCampaignProvisionerSignedBootFilesystemV1Alpha1 = ./schemas/rpi5-stable-campaign-provisioner-signed-boot-filesystem-v1alpha1.schema.json;
           unsignedArtifactSetV1Alpha1 = ./schemas/unsigned-artifact-set-v1alpha1.schema.json;
         };
 
@@ -102,7 +107,11 @@
           };
         };
       };
-
+      stableCampaignSourceRevision =
+        if self ? rev then self.rev else "0000000000000000000000000000000000000000";
+      stableCampaignExpectedCustomerKeyHash = lib.removePrefix "sha256:" (
+        assets.signers.developmentPrototype.independentReview.public_bindings.customer_key_hash
+      );
       packagesFor =
         system:
         let
@@ -176,6 +185,60 @@
         import ./nix/ubuntu-signing-gate-deployment.nix {
           pkgs = import nixpkgs { inherit system; };
         };
+
+      mkRpi5StableCampaignProvisionerSystem =
+        {
+          sourceRevision,
+          buildPlatformSystem ? "x86_64-linux",
+        }:
+        assert lib.assertMsg (builtins.elem buildPlatformSystem systems)
+          "the stable-campaign provisioner build platform must be one of the flake's supported systems";
+        let
+          targetPkgs =
+            if buildPlatformSystem == "aarch64-linux" then
+              import nixpkgs { system = "aarch64-linux"; }
+            else
+              import nixpkgs {
+                localSystem = buildPlatformSystem;
+                crossSystem = "aarch64-linux";
+              };
+        in
+        import ./nix/rpi5-stable-campaign-provisioner-system.nix
+          {
+            inherit buildPlatformSystem;
+            nixosRaspberryPi = nixos-raspberrypi;
+            secureBootTargetModule = modules.secure-boot-target;
+            stableCampaignGPTInspector =
+              (import ./nix/packages.nix {
+                inherit lib;
+                pkgs = targetPkgs;
+              }).stableCampaignGPTInspector;
+          }
+          {
+            expectedCustomerKeyHash = stableCampaignExpectedCustomerKeyHash;
+            inherit sourceRevision;
+          };
+
+      mkRpi5StableCampaignProvisioner =
+        {
+          sourceRevision,
+          buildPlatformSystem ? "x86_64-linux",
+        }:
+        let
+          provisionerSystem = mkRpi5StableCampaignProvisionerSystem {
+            inherit buildPlatformSystem sourceRevision;
+          };
+        in
+        import ./nix/rpi5-stable-campaign-provisioner-artifacts.nix {
+          inherit lib provisionerSystem;
+          buildPkgs = import nixpkgs { system = buildPlatformSystem; };
+        };
+
+      mkRpi5StableCampaignProvisionerSignedBootFilesystem =
+        (import ./nix/rpi5-stable-campaign-provisioner-signed-boot-filesystem.nix {
+          inherit lib;
+          pkgs = import nixpkgs { system = "x86_64-linux"; };
+        }).mkRpi5StableCampaignProvisionerSignedBootFilesystem;
     in
     {
       nixosModules = modules;
@@ -185,17 +248,20 @@
           assets
           hardwareConfigurations
           mkDevelopmentSigningCeremony
+          mkRpi5StableCampaignProvisionerSignedBootFilesystem
           mkUbuntuProvisioningAuthorityDeployment
           mkUbuntuSigningGateDeployment
           ;
 
         mkRpi5SecureBootArtifacts =
           { system, ... }@args:
+          assert lib.assertMsg (!(args ? rootDeviceBinding))
+            "rootDeviceBinding is internal; the public secure-boot artifact constructor cannot select the stable-campaign SD profile";
           let
             pkgs = import nixpkgs { inherit system; };
             builder = import ./nix/secure-boot-artifacts.nix { inherit pkgs lib; };
           in
-          builder (builtins.removeAttrs args [ "system" ]);
+          builder (builtins.removeAttrs args [ "system" ] // { rootDeviceBinding = "gpt-partuuid"; });
 
         mkRpi5StableVerifierUnsignedBoot =
           { system, ... }@args:
@@ -277,6 +343,12 @@
           { system, ... }@args:
           packagesBySystem.${system}.mkRpi5BootSigningPlan (builtins.removeAttrs args [ "system" ]);
 
+        mkRpi5StableCampaignProvisionerSigningPlan =
+          { system, ... }@args:
+          packagesBySystem.${system}.mkRpi5StableCampaignProvisionerSigningPlan (
+            builtins.removeAttrs args [ "system" ]
+          );
+
         mkRpi5EEPROMRelease =
           { system, ... }@args:
           packagesBySystem.${system}.mkRpi5EEPROMRelease (builtins.removeAttrs args [ "system" ]);
@@ -302,6 +374,12 @@
         mkRpi5VerifiedSigningReceipts =
           { system, ... }@args:
           packagesBySystem.${system}.mkRpi5VerifiedSigningReceipts (builtins.removeAttrs args [ "system" ]);
+
+        mkRpi5VerifiedStableCampaignProvisionerSigning =
+          { system, ... }@args:
+          packagesBySystem.${system}.mkRpi5VerifiedStableCampaignProvisionerSigning (
+            builtins.removeAttrs args [ "system" ]
+          );
 
         mkRpi5VerifiedSignedRelease =
           { system, ... }@args:
@@ -381,6 +459,7 @@
           kaiba-rpi5-one-boot-prove = built.oneBootProveTool;
           kaiba-rpi5-stable-campaign-gpt-inspect = built.stableCampaignGPTInspector;
           kaiba-rpi5-stable-campaign-plan = built.stableCampaignPlanTool;
+          kaiba-rpi5-stable-campaign-signing = built.stableCampaignSigningTool;
           kaiba-rpi5-stable-verifier = built.stableVerifierTool;
           kaiba-rpi5-verifier-test-authority = built.verifierTestAuthority;
           provisioning-suite = built.suite;
@@ -405,6 +484,35 @@
         // lib.optionalAttrs (system == "aarch64-linux") {
           kaiba-rpi5-self-kexec-diagnostic = built.rpi5SelfKexecDiagnostic;
         }
+        // lib.optionalAttrs (self ? rev && system == "x86_64-linux") {
+          kaiba-rpi5-stable-campaign-development-signing = built.mkDevelopmentYubiKeySigning {
+            name = "kaiba-rpi5-stable-campaign-development-signing";
+            cohortID = "cohort:prototype";
+            expectedCustomerKeyHash = stableCampaignExpectedCustomerKeyHash;
+            publicKeyFingerprint =
+              assets.signers.developmentPrototype.independentReview.public_bindings.public_key_fingerprint;
+            publicKeyPEM = assets.signers.developmentPrototype.reviewedBootPublicKey;
+            signerID = "signer:prototype";
+            signerPolicyDigest =
+              assets.signers.developmentPrototype.independentReview.public_bindings.signer_policy_digest;
+            stableCampaignOnly = true;
+            tokenSerial = assets.signers.developmentPrototype.independentReview.token.serial;
+          };
+          kaiba-rpi5-stable-campaign-provisioner-unsigned =
+            (mkRpi5StableCampaignProvisioner {
+              sourceRevision = stableCampaignSourceRevision;
+            }).unsignedArtifacts;
+          kaiba-rpi5-stable-campaign-provisioner-signing-plan =
+            built.mkRpi5StableCampaignProvisionerSigningPlan
+              {
+                sourceDateEpoch = self.lastModified;
+                sourceRevision = stableCampaignSourceRevision;
+                unsignedArtifacts =
+                  (mkRpi5StableCampaignProvisioner {
+                    sourceRevision = stableCampaignSourceRevision;
+                  }).unsignedArtifacts;
+              };
+        }
       );
 
       checks = forAllSystems (
@@ -427,6 +535,28 @@
           stableVerifierCampaignRunCheck = import ./tests/stable-verifier-campaign-run.nix {
             inherit lib pkgs;
             baselineMedia = stableVerifierCampaignMediaCheck.fixtureBaselineMedia;
+          };
+          bootImageHashDecoderCheck = import ./tests/boot-image-hash-decoder.nix { inherit pkgs; };
+          stableCampaignProvisioner = mkRpi5StableCampaignProvisioner {
+            buildPlatformSystem = system;
+            sourceRevision = stableCampaignSourceRevision;
+          };
+          stableCampaignProvisionerArtifactCheck =
+            import ./tests/rpi5-stable-campaign-provisioner-artifacts.nix
+              {
+                artifacts = stableCampaignProvisioner.unsignedArtifacts;
+                artifactSchema = assets.schemas.stableCampaignProvisionerArtifactSetV1Alpha1;
+                bootIntegritySchema = assets.schemas.stableCampaignProvisionerBootIntegrityV1Alpha1;
+                inherit lib pkgs;
+                sourceRevision = stableCampaignSourceRevision;
+              };
+          stableCampaignProvisionerSignedBootFilesystemCheck =
+            import ./tests/rpi5-stable-campaign-provisioner-signed-boot-filesystem.nix
+              {
+                inherit lib pkgs;
+              };
+          stableCampaignSigningCheck = import ./tests/rpi5-stable-campaign-signing.nix {
+            inherit built lib pkgs;
           };
           aarch64GuestPkgs =
             if system == "aarch64-linux" then pkgs else import nixpkgs { system = "aarch64-linux"; };
@@ -489,6 +619,7 @@
         in
         {
           asset-api = import ./tests/assets.nix { inherit assets pkgs; };
+          boot-image-hash-decoder = bootImageHashDecoderCheck;
           unit = built.suite;
           development-yubikey-signing = provisioning.developmentYubiKeySigningContract;
           device-profile-schema = provisioning.deviceProfileSchema;
@@ -508,6 +639,158 @@
           };
           stable-verifier-campaign-media = stableVerifierCampaignMediaCheck;
           stable-verifier-campaign-run = stableVerifierCampaignRunCheck;
+        }
+        // lib.optionalAttrs (system == "x86_64-linux") {
+          # This evaluates the provisioner's deliberately fixed x86_64 build
+          # graph. Do not export it to the native ARM64 check set: its store
+          # references include x86_64 build-time helpers by contract.
+          stable-campaign-provisioner-rpi5-hardware-eval =
+            pkgs.runCommand "kaiba-stable-campaign-provisioner-rpi5-hardware-eval" { }
+              ''
+                test ${lib.escapeShellArg stableCampaignProvisioner.hostname} = kaiba-rpi5-provisioner
+                test ${lib.escapeShellArg stableCampaignProvisioner.nixosSystem.config.networking.hostName} = kaiba-rpi5-provisioner
+                test ${
+                  lib.escapeShellArg stableCampaignProvisioner.nixosSystem.config.fileSystems."/".device
+                } = /dev/mapper/root
+                test ${
+                  if !(stableCampaignProvisioner.nixosSystem.config.fileSystems ? "/boot/firmware") then
+                    "true"
+                  else
+                    "false"
+                } = true
+                test ${lib.escapeShellArg stableCampaignProvisioner.rootDataPartitionGUID} = bdd5be20-f7ea-56e7-ae90-4465ae950596
+                test ${lib.escapeShellArg stableCampaignProvisioner.rootHashPartitionGUID} = 62616022-71fb-5036-8cc4-b7949cc6e52c
+                test ${lib.escapeShellArg stableCampaignProvisioner.expectedCustomerKeyHash} = \
+                  ${lib.escapeShellArg stableCampaignExpectedCustomerKeyHash}
+                test ${lib.escapeShellArg stableCampaignProvisioner.unsignedArtifacts.kaibaUnsignedArtifacts.rootDeviceBinding} = \
+                  rpi5-sd-card
+                test ${lib.escapeShellArg stableCampaignProvisioner.unsignedArtifacts.kaibaUnsignedArtifacts.dataDevice} = \
+                  /dev/mmcblk0p2
+                test ${lib.escapeShellArg stableCampaignProvisioner.unsignedArtifacts.kaibaUnsignedArtifacts.hashDevice} = \
+                  /dev/mmcblk0p3
+                test ${lib.escapeShellArg stableCampaignProvisioner.unsignedArtifacts.kaibaUnsignedArtifacts.diskGUID} = \
+                  5625eee2-0c8a-402f-8c2f-5a1347652bb2
+                test ${lib.escapeShellArg stableCampaignProvisioner.unsignedArtifacts.kaibaUnsignedArtifacts.bootPartitionGUID} = \
+                  59d06b61-bf85-4d77-89c3-9e5395934ff8
+                test ${toString stableCampaignProvisioner.unsignedArtifacts.kaibaUnsignedArtifacts.bootPartitionSizeBytes} = \
+                  134217728
+                test ${lib.escapeShellArg stableCampaignProvisioner.nixosSystem.pkgs.stdenv.buildPlatform.system} = x86_64-linux
+                test ${lib.escapeShellArg stableCampaignProvisioner.nixosSystem.pkgs.stdenv.hostPlatform.system} = aarch64-linux
+                test ${lib.escapeShellArg stableCampaignProvisioner.inspectorPackage.stdenv.buildPlatform.system} = x86_64-linux
+                test ${lib.escapeShellArg stableCampaignProvisioner.inspectorPackage.stdenv.hostPlatform.system} = aarch64-linux
+                test ${lib.escapeShellArg stableCampaignProvisioner.rootImage.system} = x86_64-linux
+                test ${lib.escapeShellArg stableCampaignProvisioner.firmwareTree.system} = x86_64-linux
+                test ${lib.escapeShellArg stableCampaignProvisioner.unsignedArtifacts.system} = x86_64-linux
+                test ${
+                  if
+                    builtins.elem stableCampaignProvisioner.inspectorPackage stableCampaignProvisioner.nixosSystem.config.environment.systemPackages
+                  then
+                    "true"
+                  else
+                    "false"
+                } = true
+                test ${
+                  if
+                    builtins.all (
+                      assertion: assertion.assertion
+                    ) stableCampaignProvisioner.nixosSystem.config.assertions
+                  then
+                    "true"
+                  else
+                    "false"
+                } = true
+                test ${
+                  if stableCampaignProvisioner.nixosSystem.config.swapDevices == [ ] then "true" else "false"
+                } = true
+                test ${
+                  if stableCampaignProvisioner.nixosSystem.config.zramSwap.enable then "false" else "true"
+                } = true
+                test ${
+                  if
+                    !stableCampaignProvisioner.nixosSystem.config.hardware.enableAllFirmware
+                    && !stableCampaignProvisioner.nixosSystem.config.hardware.enableRedistributableFirmware
+                    && !stableCampaignProvisioner.nixosSystem.config.hardware.wirelessRegulatoryDatabase
+                  then
+                    "true"
+                  else
+                    "false"
+                } = true
+                test ${
+                  if
+                    builtins.elem "systemd.gpt_auto=no" stableCampaignProvisioner.nixosSystem.config.boot.kernelParams
+                  then
+                    "true"
+                  else
+                    "false"
+                } = true
+                test ${
+                  if
+                    lib.removeSuffix "\n" (builtins.readFile stableCampaignProvisioner.developmentSSHAuthorizedKeyPath)
+                    == assets.development.sshAuthorizedKey
+                  then
+                    "true"
+                  else
+                    "false"
+                } = true
+                test ${lib.escapeShellArg stableCampaignProvisioner.unsignedArtifacts.kaibaUnsignedArtifacts.signingStatus} = unsigned
+                test ${builtins.toJSON stableCampaignProvisioner.unsignedArtifacts.kaibaUnsignedArtifacts.mutationCapable} = false
+                grep -aF '/bin/kaiba-rpi5-boot-image-hash-decode' \
+                  ${lib.escapeShellArg stableCampaignProvisioner.nixosSystem.config.systemd.services.kaiba-secure-boot-evidence.serviceConfig.ExecStart} \
+                  > /dev/null
+                test ${
+                  if
+                    builtins.elem "kaiba-secure-boot-evidence.service" stableCampaignProvisioner.nixosSystem.config.systemd.services.sshd.requires
+                  then
+                    "true"
+                  else
+                    "false"
+                } = true
+                test ${
+                  if
+                    builtins.elem "kaiba-secure-boot-evidence.service" stableCampaignProvisioner.nixosSystem.config.systemd.services.sshd.after
+                  then
+                    "true"
+                  else
+                    "false"
+                } = true
+                test ${
+                  if
+                    !(self.lib ? mkRpi5StableCampaignProvisioner) && !(self.lib ? mkRpi5StableCampaignProvisionerSystem)
+                  then
+                    "true"
+                  else
+                    "false"
+                } = true
+                test ${
+                  if
+                    !(builtins.tryEval (
+                      (self.lib.mkRpi5SecureBootArtifacts {
+                        system = "x86_64-linux";
+                        rootDeviceBinding = "rpi5-sd-card";
+                      }).drvPath
+                    )).success
+                  then
+                    "true"
+                  else
+                    "false"
+                } = true
+                test ${
+                  if
+                    self ? rev
+                    &&
+                      stableCampaignProvisioner.unsignedArtifacts.drvPath
+                      == self.packages.x86_64-linux.kaiba-rpi5-stable-campaign-provisioner-unsigned.drvPath
+                  then
+                    "true"
+                  else if !(self ? rev) then
+                    "true"
+                  else
+                    "false"
+                } = true
+                mkdir "$out"
+              '';
+        }
+        // {
           stable-verifier-rpi5-hardware-eval =
             pkgs.runCommand "kaiba-stable-verifier-rpi5-hardware-eval"
               (
@@ -903,6 +1186,9 @@
               '';
         }
         // lib.optionalAttrs (system == "x86_64-linux") {
+          stable-campaign-provisioner-signed-boot-filesystem =
+            stableCampaignProvisionerSignedBootFilesystemCheck;
+          stable-campaign-signing = stableCampaignSigningCheck;
           stable-verifier-initramfs-vm = pkgs.linkFarm "kaiba-stable-verifier-initramfs-vm" [
             {
               name = "fail-closed";
@@ -923,6 +1209,10 @@
           };
         }
         // lib.optionalAttrs (system == "aarch64-linux") {
+          # Build the full provisioner artifact contract natively. The
+          # production package remains an x86_64 cross-build, while CI avoids
+          # rebuilding the AArch64 userspace through the cross toolchain.
+          stable-campaign-provisioner-unsigned-artifacts = stableCampaignProvisionerArtifactCheck;
           # This check builds and boots a native AArch64 NixOS closure. Keep it
           # on the native ARM64 CI runner; exporting it under x86_64-linux makes
           # the x86 job require an otherwise unconfigured ARM builder.

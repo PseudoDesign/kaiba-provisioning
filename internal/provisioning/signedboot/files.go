@@ -28,10 +28,29 @@ var signedFileLimits = map[string]int64{
 	"signing-result.json": maxResultBytes,
 }
 
+// IntentValidator parses and validates one release-intent.json against the
+// already validated signing plan. It returns the canonical JSON bytes without
+// a trailing newline. The plan-directory loader independently requires the
+// on-disk file to equal those canonical bytes followed by one newline.
+type IntentValidator func(encoded []byte, plan Plan) ([]byte, error)
+
+// PlanLoader loads and validates an immutable signing-plan snapshot.
+type PlanLoader func(path string) (LoadedPlan, error)
+
 // LoadPlanDirectory opens an absolute, non-symlink directory containing
 // exactly plan.json, release-intent.json, boot.img, and public.pem and
 // validates every binding.
 func LoadPlanDirectory(path string) (LoadedPlan, error) {
+	return LoadPlanDirectoryWithIntentValidator(path, validateReleaseIntentForPlan)
+}
+
+// LoadPlanDirectoryWithIntentValidator performs the same fixed directory,
+// plan, artifact, key, and size validation as LoadPlanDirectory while allowing
+// a caller to supply the release-intent schema and plan-binding rules.
+func LoadPlanDirectoryWithIntentValidator(path string, validate IntentValidator) (LoadedPlan, error) {
+	if validate == nil {
+		return LoadedPlan{}, errors.New("release-intent validator is required")
+	}
 	files, err := readExactDirectory(path, planFileLimits)
 	if err != nil {
 		return LoadedPlan{}, fmt.Errorf("load signing plan directory: %w", err)
@@ -51,24 +70,17 @@ func LoadPlanDirectory(path string) (LoadedPlan, error) {
 	if err != nil {
 		return LoadedPlan{}, err
 	}
-	intent, err := releaseintent.Parse(files["release-intent.json"])
-	if err != nil {
-		return LoadedPlan{}, fmt.Errorf("parse release-intent.json: %w", err)
-	}
-	canonicalIntent, err := intent.CanonicalJSON()
+	canonicalIntent, err := validate(append([]byte(nil), files["release-intent.json"]...), plan)
 	if err != nil {
 		return LoadedPlan{}, err
+	}
+	if len(canonicalIntent) == 0 || len(canonicalIntent) > releaseintent.MaxBytes {
+		return LoadedPlan{}, fmt.Errorf("canonical release intent size must be between 1 and %d bytes", releaseintent.MaxBytes)
 	}
 	if !bytes.Equal(files["release-intent.json"], jsonFile(canonicalIntent)) {
 		return LoadedPlan{}, errors.New("release-intent.json is not canonical JSON")
 	}
-	intentDigest, err := intent.Digest()
-	if err != nil {
-		return LoadedPlan{}, err
-	}
-	if plan.ReleaseIntentDigest != intentDigest {
-		return LoadedPlan{}, errors.New("release-intent.json digest does not match the signing plan")
-	}
+	canonicalIntent = append([]byte(nil), canonicalIntent...)
 	publicKey, fingerprint, err := parsePublicKey(files["public.pem"])
 	if err != nil {
 		return LoadedPlan{}, err
@@ -82,24 +94,46 @@ func LoadPlanDirectory(path string) (LoadedPlan, error) {
 	if digest := bundle.Sum(files["boot.img"]); digest != plan.BootImageDigest {
 		return LoadedPlan{}, errors.New("boot.img digest does not match the signing plan")
 	}
-	bootInput, ok := intent.SigningInput(bundle.RoleBootImage)
-	if !ok || bootInput.Digest != plan.BootImageDigest || bootInput.SizeBytes != plan.BootImageSizeBytes {
-		return LoadedPlan{}, errors.New("release intent boot-image input does not match the signing plan")
-	}
-	if intent.PublicKeyFingerprint != plan.PublicKeyFingerprint {
-		return LoadedPlan{}, errors.New("release intent public key does not match the signing plan")
-	}
-	if intent.SigningPolicyDigest != plan.SignerPolicyDigest {
-		return LoadedPlan{}, errors.New("release intent signer policy does not match the signing plan")
-	}
-	if intent.SourceDateEpoch != plan.SourceDateEpoch {
-		return LoadedPlan{}, errors.New("release intent timestamp does not match the signing plan")
-	}
 	return LoadedPlan{
 		Plan: plan, PlanJSON: canonicalPlan, BootImage: files["boot.img"],
 		ReleaseIntentJSON: canonicalIntent, PublicPEM: files["public.pem"],
 		PublicKey: publicKey, PlanDigest: planDigest,
 	}, nil
+}
+
+func validateReleaseIntentForPlan(encoded []byte, plan Plan) ([]byte, error) {
+	intent, err := releaseintent.Parse(encoded)
+	if err != nil {
+		return nil, fmt.Errorf("parse release-intent.json: %w", err)
+	}
+	canonicalIntent, err := intent.CanonicalJSON()
+	if err != nil {
+		return nil, err
+	}
+	if !bytes.Equal(encoded, jsonFile(canonicalIntent)) {
+		return nil, errors.New("release-intent.json is not canonical JSON")
+	}
+	intentDigest, err := intent.Digest()
+	if err != nil {
+		return nil, err
+	}
+	if plan.ReleaseIntentDigest != intentDigest {
+		return nil, errors.New("release-intent.json digest does not match the signing plan")
+	}
+	bootInput, ok := intent.SigningInput(bundle.RoleBootImage)
+	if !ok || bootInput.Digest != plan.BootImageDigest || bootInput.SizeBytes != plan.BootImageSizeBytes {
+		return nil, errors.New("release intent boot-image input does not match the signing plan")
+	}
+	if intent.PublicKeyFingerprint != plan.PublicKeyFingerprint {
+		return nil, errors.New("release intent public key does not match the signing plan")
+	}
+	if intent.SigningPolicyDigest != plan.SignerPolicyDigest {
+		return nil, errors.New("release intent signer policy does not match the signing plan")
+	}
+	if intent.SourceDateEpoch != plan.SourceDateEpoch {
+		return nil, errors.New("release intent timestamp does not match the signing plan")
+	}
+	return canonicalIntent, nil
 }
 
 // LoadResultDirectory opens an absolute, non-symlink directory containing

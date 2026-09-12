@@ -134,6 +134,27 @@ let
         sourceRevision = canonicalSourceRevision40;
       }).drvPath
     )).success;
+  rootDeviceBindingAccepted =
+    rootDeviceBinding:
+    (builtins.tryEval (
+      (secureBootArtifactBuilder {
+        name = "kaiba-secure-boot-artifacts-root-device-binding-evaluation";
+        expectedCustomerKeyHash = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        firmwareAllowlist = [
+          "bcm2712-rpi-5-b.dtb"
+          "cmdline.txt"
+          "initramfs_2712"
+          "kernel_2712.img"
+          "overlays/README"
+        ];
+        firmwareTree = secureBootFixtureFirmware;
+        rootImage = secureBootFixtureRootA;
+        rootDataPartitionGUID = secureBootRootDataPartitionGUID;
+        rootHashPartitionGUID = secureBootRootHashPartitionGUID;
+        inherit rootDeviceBinding;
+        sourceRevision = canonicalSourceRevision40;
+      }).drvPath
+    )).success;
   signingGrantFixture = pkgs.writeText "kaiba-signing-grant-registry-fixture.json" (
     builtins.toJSON {
       schema_version = "kaiba.provisioning.signing-grant-registry/v1alpha2";
@@ -286,8 +307,23 @@ let
     expectedCustomerKeyHash = developmentYubiKeyCustomerKeyHash;
     grantRegistryPath = "/etc/kaiba-provisioning/signing-grants.json";
   };
+  stableCampaignDevelopmentYubiKeySigning = built.mkDevelopmentYubiKeySigning {
+    name = "kaiba-stable-campaign-development-yubikey-signing-fixture";
+    signerID = "signer:development-fixture";
+    cohortID = "cohort:development-fixture";
+    tokenSerial = "12345678";
+    publicKeyPEM = developmentYubiKeyPublicKeyPEM;
+    publicKeyFingerprint = developmentYubiKeyPublicKeyFingerprint;
+    signerPolicyDigest = developmentYubiKeySignerPolicyDigest;
+    expectedCustomerKeyHash = developmentYubiKeyCustomerKeyHash;
+    grantRegistryPath = "/etc/kaiba-provisioning/signing-grants.json";
+    stableCampaignOnly = true;
+  };
   developmentYubiKeySigningClosure = pkgs.closureInfo {
     rootPaths = [ developmentYubiKeySigning ];
+  };
+  stableCampaignDevelopmentYubiKeySigningClosure = pkgs.closureInfo {
+    rootPaths = [ stableCampaignDevelopmentYubiKeySigning ];
   };
   unfusedVerifierFixture = built.mkRpi5UnfusedVerifier {
     name = "kaiba-rpi5-unfused-verifier-fixture";
@@ -3820,6 +3856,13 @@ let
       (partitionGUIDsAccepted "00000000-0000-0000-0000-000000000000" secureBootRootHashPartitionGUID)
       (partitionGUIDsAccepted secureBootRootDataPartitionGUID secureBootRootDataPartitionGUID)
     ]) "the secure-boot artifact builder accepted an unsafe GPT partition GUID binding";
+    assert lib.assertMsg (rootDeviceBindingAccepted "gpt-partuuid")
+      "the secure-boot artifact builder rejected its compatibility PARTUUID binding";
+    assert lib.assertMsg (lib.all (value: !value) [
+      (rootDeviceBindingAccepted "rpi5-sd-card")
+      (rootDeviceBindingAccepted "raw-device")
+      (rootDeviceBindingAccepted "/dev/mmcblk0")
+    ]) "the generic secure-boot fixture escaped its reviewed device-binding profile";
     assert lib.assertMsg (
       secureBootFixtureA.kaibaUnsignedArtifacts.schemaVersion
       == "provisioning.kaiba.network/unsigned-artifact-set/v1alpha1"
@@ -5388,7 +5431,8 @@ let
           kaiba-provision-signing-client \
           kaiba-provision-signing-gate \
           kaiba-provision-signing-receipts \
-          kaiba-provision-yubikey-wrapper)"
+          kaiba-provision-yubikey-wrapper \
+          kaiba-rpi5-stable-campaign-signing)"
         actual_binaries="$(
           find -L ${developmentYubiKeySigning}/bin \
             -mindepth 1 -maxdepth 1 -type f -printf '%f\n' \
@@ -5399,12 +5443,46 @@ let
           test -x ${developmentYubiKeySigning}/bin/"$binary"
         done
 
+        expected_stable_binaries="$(${pkgs.coreutils}/bin/printf '%s\n' \
+          kaiba-provision-signing-gate \
+          kaiba-provision-signing-receipts \
+          kaiba-provision-yubikey-wrapper \
+          kaiba-rpi5-stable-campaign-signing)"
+        actual_stable_binaries="$(
+          find -L ${stableCampaignDevelopmentYubiKeySigning}/bin \
+            -mindepth 1 -maxdepth 1 -type f -printf '%f\n' \
+            | sort
+        )"
+        test "$actual_stable_binaries" = "$expected_stable_binaries"
+        for binary in $expected_stable_binaries; do
+          test -x ${stableCampaignDevelopmentYubiKeySigning}/bin/"$binary"
+        done
+        test '${builtins.toJSON stableCampaignDevelopmentYubiKeySigning.kaibaSigning.stableCampaignOnly}' = \
+          true
+        test '${builtins.toJSON (stableCampaignDevelopmentYubiKeySigning.kaibaSigning ? signingClient)}' = \
+          false
+        test '${builtins.toJSON (stableCampaignDevelopmentYubiKeySigning.kaibaSigning ? signedBoot)}' = \
+          false
+        test '${
+          builtins.toJSON (stableCampaignDevelopmentYubiKeySigning.kaibaSigning ? eepromSigningTool)
+        }' = \
+          false
+        if grep -E \
+          '(kaiba-stable-campaign-development-yubikey-signing-fixture-(client|rpi-wrapper|sign-boot)|kaiba-provision-sign-eeprom)' \
+          ${stableCampaignDevelopmentYubiKeySigningClosure}/store-paths
+        then
+          echo 'stable-campaign signing closure contains a generic configured client' >&2
+          exit 1
+        fi
+
         test '${developmentYubiKeySigning.kaibaSigning.signerID}' = \
           'signer:development-fixture'
         test '${developmentYubiKeySigning.kaibaSigning.cohortID}' = \
           'cohort:development-fixture'
         test '${developmentYubiKeySigning.kaibaSigning.grantRegistryPath}' = \
           '/etc/kaiba-provisioning/signing-grants.json'
+        test '${builtins.toJSON developmentYubiKeySigning.kaibaSigning.stableCampaignOnly}' = \
+          false
         test '${developmentYubiKeySigning.kaibaSigning.pkcs11URI}' = \
           'pkcs11:serial=12345678;id=%02;type=private'
         test '${developmentYubiKeySigning.kaibaSigning.publicKeyFingerprint}' = \
@@ -5428,6 +5506,8 @@ let
           ${developmentYubiKeySigning.kaibaSigning.eepromSigningTool}/bin/kaiba-provision-sign-eeprom
         test -x \
           ${developmentYubiKeySigning.kaibaSigning.signingReceiptsTool}/bin/kaiba-provision-signing-receipts
+        test -x \
+          ${developmentYubiKeySigning.kaibaSigning.stableCampaignSigning}/bin/kaiba-rpi5-stable-campaign-signing
         test '${developmentYubiKeySigning.kaibaSigning.signedBootConfiguration.gateSocketPath}' = \
           '/run/kaiba-provision-signing/signing.sock'
         test '${developmentYubiKeySigning.kaibaSigning.signedBootConfiguration.signerID}' = \
@@ -5448,6 +5528,20 @@ let
           '${developmentYubiKeySigning.kaibaSigning.customerKeyContract}' \
           '${developmentYubiKeySigningClosure}/store-paths'
         test '${builtins.toJSON developmentYubiKeySigning.kaibaSigning.signedBootConfiguration.runtimeAuthoritySelectors}' = \
+          'false'
+        test '${developmentYubiKeySigning.kaibaSigning.stableCampaignSigningConfiguration.gateSocketPath}' = \
+          '/run/kaiba-provision-signing/signing.sock'
+        test '${developmentYubiKeySigning.kaibaSigning.stableCampaignSigningConfiguration.signerID}' = \
+          'signer:development-fixture'
+        test '${developmentYubiKeySigning.kaibaSigning.stableCampaignSigningConfiguration.cohortID}' = \
+          'cohort:development-fixture'
+        test '${developmentYubiKeySigning.kaibaSigning.stableCampaignSigningConfiguration.pkcs11URI}' = \
+          'pkcs11:serial=12345678;id=%02;type=private'
+        test '${developmentYubiKeySigning.kaibaSigning.stableCampaignSigningConfiguration.publicKeyFingerprint}' = \
+          '${developmentYubiKeyPublicKeyFingerprint}'
+        test '${developmentYubiKeySigning.kaibaSigning.stableCampaignSigningConfiguration.expectedPublicKeyPath}' = \
+          '${developmentYubiKeySigning.kaibaSigning.reviewedPublicKeyPEM}'
+        test '${builtins.toJSON developmentYubiKeySigning.kaibaSigning.stableCampaignSigningConfiguration.runtimeAuthoritySelectors}' = \
           'false'
         test "$(cat ${developmentYubiKeySigning.kaibaSigning.customerKeyHashFile})" = \
           '${developmentYubiKeyCustomerKeyHash}'
@@ -5530,6 +5624,21 @@ let
           '       kaiba-provision-sign-boot finalize --plan ABSOLUTE_PLAN_DIR --signed ABSOLUTE_SIGNED_DIR --output ABSOLUTE_OUTPUT_DIR' \
           "$TMPDIR/sign-boot.stderr"
 
+        set +e
+        ${developmentYubiKeySigning}/bin/kaiba-rpi5-stable-campaign-signing \
+          sign \
+          --plan /tmp/kaiba-plan \
+          --output /tmp/kaiba-signed \
+          --socket /tmp/attacker.sock \
+          > "$TMPDIR/stable-sign.stdout" \
+          2> "$TMPDIR/stable-sign.stderr"
+        stable_sign_status="$?"
+        set -e
+        test "$stable_sign_status" -eq 2
+        test ! -s "$TMPDIR/stable-sign.stdout"
+        grep -F 'usage: kaiba-rpi5-stable-campaign-signing' \
+          "$TMPDIR/stable-sign.stderr" > /dev/null
+
         mkdir -p "$out"
         touch "$out/passed"
       '';
@@ -5569,6 +5678,10 @@ let
         test ! -s "$TMPDIR/stable-campaign-gpt-inspect-help.stdout"
         grep -F -- '--disk-guid OPERATOR_ASSERTED_LOWERCASE_GUID' \
           "$TMPDIR/stable-campaign-gpt-inspect-help.stderr" > /dev/null
+        grep -F -- '[--envelope-version v1alpha1|v1alpha2]' \
+          "$TMPDIR/stable-campaign-gpt-inspect-help.stderr" > /dev/null
+        grep -F -- 'v1alpha2 must be selected explicitly' \
+          "$TMPDIR/stable-campaign-gpt-inspect-help.stderr" > /dev/null
         ! grep -F -- '--output' "$TMPDIR/stable-campaign-gpt-inspect-help.stderr" > /dev/null
         ! grep -F -- '--capture-id' "$TMPDIR/stable-campaign-gpt-inspect-help.stderr" > /dev/null
         test -x ${built.stableCampaignPlanTool}/bin/kaiba-rpi5-stable-campaign-plan
@@ -5597,21 +5710,25 @@ let
         test '${toString built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.publicInputCount}' = 27
         test '${builtins.toJSON built.stableCampaignPlanTool.kaibaRpi5StableCampaignPlan.signingAuthorized}' = 'false'
         test '${built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.blockDeviceAccess}' = 'fixed-selector-pinned-inactive-read-only'
+        test '${built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.defaultEnvelopeVersion}' = 'v1alpha1'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.destructiveStagingReady}' = 'false'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.deviceAttachmentAuthenticated}' = 'false'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.directHardwareAccess}' = 'true'
         test '${built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.diskGUIDAuthority}' = 'operator-asserted-not-authenticated'
+        test '${built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.diskGUIDScope}' = 'selected-lba1-lineage-only'
         test '${built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.evidenceAssurance}' = 'unauthenticated-range-read-consistency-only'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.filesystemOutputPathAuthority}' = 'false'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.hardwareObserved}' = 'true'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.opaqueWholePartitionByteReadsPossible}' = 'true'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.physicalQuiescenceProven}' = 'false'
+        test '${built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.physicalEndGPTV1Alpha2}' = 'explicit-strict-parse-and-hash-valid-distinct-backup-lineage'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.privateKeyOperations}' = 'false'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.privateKeySemanticUse}' = 'false'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.privateMaterialAbsenceProven}' = 'false'
         test '${builtins.toJSON (builtins.hasAttr "privateKeyAccess" built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect)}' = 'false'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.productionReady}' = 'false'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.rangeScopedSequentialReread}' = 'true'
+        test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.repairCapable}' = 'false'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.fixedHostnameStringRequired}' = 'true'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.signingAuthorized}' = 'false'
         test '${builtins.toJSON built.stableCampaignGPTInspector.kaibaRpi5StableCampaignGPTInspect.stdoutCanonicalEnvelope}' = 'true'

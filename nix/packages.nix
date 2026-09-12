@@ -271,20 +271,24 @@ let
     doCheck = false;
     passthru.kaibaRpi5StableCampaignGPTInspect = {
       blockDeviceAccess = "fixed-selector-pinned-inactive-read-only";
+      defaultEnvelopeVersion = "v1alpha1";
       destructiveStagingReady = false;
       deviceAttachmentAuthenticated = false;
       directHardwareAccess = true;
       diskGUIDAuthority = "operator-asserted-not-authenticated";
+      diskGUIDScope = "selected-lba1-lineage-only";
       evidenceAssurance = "unauthenticated-range-read-consistency-only";
       filesystemOutputPathAuthority = false;
       hardwareObserved = true;
       opaqueWholePartitionByteReadsPossible = true;
       physicalQuiescenceProven = false;
+      physicalEndGPTV1Alpha2 = "explicit-strict-parse-and-hash-valid-distinct-backup-lineage";
       privateKeyOperations = false;
       privateKeySemanticUse = false;
       privateMaterialAbsenceProven = false;
       productionReady = false;
       rangeScopedSequentialReread = true;
+      repairCapable = false;
       fixedHostnameStringRequired = true;
       signingAuthorized = false;
       stdoutCanonicalEnvelope = true;
@@ -658,6 +662,37 @@ let
     meta = {
       mainProgram = "kaiba-provision-sign-boot";
       description = "Public signing-plan and signed-boot bundle verifier";
+      platforms = lib.platforms.linux;
+    };
+  };
+
+  # Stable-campaign boot authorization and finalization use a dedicated
+  # one-artifact contract.  This public build can author and validate that
+  # contract and finalize public results, but it has no configured signing
+  # authority.  The development YubiKey closure below provides the separately
+  # linker-fixed live-signing build.
+  stableCampaignSigningTool = pkgs.buildGoModule {
+    pname = "kaiba-rpi5-stable-campaign-signing";
+    inherit version;
+    src = goSource;
+    subPackages = [ "cmd/kaiba-rpi5-stable-campaign-signing" ];
+    vendorHash = null;
+    doCheck = false;
+    passthru.kaibaStableCampaignSigningTool = {
+      approvalSchemaVersion = "kaiba.provisioning.rpi5-stable-campaign-provisioner-signing-approval/v1alpha1";
+      intentSchemaVersion = "kaiba.provisioning.rpi5-stable-campaign-provisioner-signing-intent/v1alpha1";
+      blockDeviceWriteCapable = false;
+      directHardwareAccess = false;
+      eepromProgrammingCapable = false;
+      mutationCapable = false;
+      oneTimeSettingCapable = false;
+      otpCapable = false;
+      privateKeyAccess = false;
+      signingAuthorityConfigured = false;
+    };
+    meta = {
+      mainProgram = "kaiba-rpi5-stable-campaign-signing";
+      description = "Public one-artifact stable-campaign signing contract and finalizer";
       platforms = lib.platforms.linux;
     };
   };
@@ -1253,6 +1288,19 @@ let
   };
   inherit (signedBootFactories) mkRpi5BootSigningPlan mkRpi5VerifiedSignedBoot;
 
+  stableCampaignSigningFactories = import ./rpi5-stable-campaign-signing.nix {
+    inherit
+      lib
+      pkgs
+      signingReceiptsTool
+      stableCampaignSigningTool
+      ;
+  };
+  inherit (stableCampaignSigningFactories)
+    mkRpi5StableCampaignProvisionerSigningPlan
+    mkRpi5VerifiedStableCampaignProvisionerSigning
+    ;
+
   unfusedCapsuleFactories = import ./unfused-capsule.nix {
     inherit lib pkgs mkRpi5UnfusedVerifier;
     unsignedArtifactSchema = goSource + "/schemas/unsigned-artifact-set-v1alpha1.schema.json";
@@ -1756,9 +1804,11 @@ let
       };
     };
 
-  # Builds the complete external-wrapper -> approval gate -> immutable
-  # OpenSSL-provider -> YKCS11 chain.  Only public metadata enters the Nix
-  # store; the PIN is read at runtime from the fixed systemd credential path.
+  # Builds the external-wrapper -> approval gate -> immutable OpenSSL-provider
+  # -> YKCS11 chain.  The stable-campaign-only profile exposes just its closed
+  # command, receipt verifier, gate, and backend; the default preserves the
+  # broader historical development interface.  Only public metadata enters
+  # the Nix store; the PIN is read from the fixed systemd credential path.
   mkDevelopmentYubiKeySigning =
     {
       cohortID,
@@ -1770,6 +1820,7 @@ let
       signerPolicyDigest,
       tokenSerial,
       name ? "kaiba-development-yubikey-signing",
+      stableCampaignOnly ? false,
     }:
     assert lib.assertMsg (canonicalIdentifier cohortID) "cohortID must be a canonical identifier";
     assert lib.assertMsg (canonicalIdentifier signerID) "signerID must be a canonical identifier";
@@ -1782,6 +1833,7 @@ let
       "signerPolicyDigest must use canonical sha256:<64 lowercase hex> form";
     assert lib.assertMsg (canonicalRawDigest expectedCustomerKeyHash)
       "expectedCustomerKeyHash must contain 64 lowercase hexadecimal characters";
+    assert lib.assertMsg (builtins.isBool stableCampaignOnly) "stableCampaignOnly must be a boolean";
     assert lib.assertMsg (storeBacked publicKeyPEM) "publicKeyPEM must be a fixed Nix-store path";
     assert lib.assertMsg (
       cleanAbsolute grantRegistryPath && !lib.hasPrefix "${builtins.storeDir}/" grantRegistryPath
@@ -1961,24 +2013,38 @@ let
           "-X=main.expectedPublicKeyFingerprint=${publicKeyFingerprint}"
         ];
       };
+      stableCampaignSigning = buildCommand {
+        pname = "${name}-stable-campaign-signing";
+        subPackage = "cmd/kaiba-rpi5-stable-campaign-signing";
+        ldflags = [
+          "-X=main.signingGateSocketPath=${socketPath}"
+          "-X=main.signerID=${signerID}"
+          "-X=main.cohortID=${cohortID}"
+          "-X=main.signingPKCS11URI=${pkcs11URI}"
+          "-X=main.expectedPublicKeyPath=${reviewedPublicKeyPEM}"
+          "-X=main.expectedPublicKeyFingerprint=${publicKeyFingerprint}"
+        ];
+      };
     in
     pkgs.symlinkJoin {
       inherit name;
       paths = [
         customerKeyContract
+        signingGate
+        signingReceiptsTool
+        stableCampaignSigning
+        yubiKeyWrapper
+      ]
+      ++ lib.optionals (!stableCampaignOnly) [
         eepromSigningTool
         signedBoot
         signer
         signingClient
-        signingGate
-        signingReceiptsTool
-        yubiKeyWrapper
       ];
       passthru.kaibaSigning = {
         inherit
           cohortID
           customerKeyContract
-          eepromSigningTool
           expectedCustomerKeyHash
           grantRegistryPath
           opensslConfiguration
@@ -1987,18 +2053,18 @@ let
           pkcs11URI
           publicKeyFingerprint
           reviewedPublicKeyPEM
-          signedBoot
           signerID
           signerPolicyDigest
-          signingClient
           signingGate
           signingReceiptsTool
+          stableCampaignSigning
+          stableCampaignOnly
           socketPath
           stateDirectoryPath
           ykcs11Module
           yubiKeyWrapper
           ;
-        signedBootConfiguration = {
+        stableCampaignSigningConfiguration = {
           gateSocketPath = socketPath;
           inherit
             cohortID
@@ -2019,10 +2085,33 @@ let
         operationCountSemantics = "minimum_successful_path";
         incompleteGrantRetryPolicy = "deny_same_grant_require_new_approval";
         privateKeyOperationUpperBoundDeclared = false;
+      }
+      // lib.optionalAttrs (!stableCampaignOnly) {
+        inherit
+          eepromSigningTool
+          signedBoot
+          signingClient
+          ;
+        signedBootConfiguration = {
+          gateSocketPath = socketPath;
+          inherit
+            cohortID
+            pkcs11URI
+            publicKeyFingerprint
+            signerID
+            ;
+          expectedPublicKeyPath = reviewedPublicKeyPEM;
+          runtimeAuthoritySelectors = false;
+        };
       };
       meta = {
-        mainProgram = "kaiba-provision-signer";
-        description = "Approval-gated development YubiKey Raspberry Pi signing chain";
+        mainProgram =
+          if stableCampaignOnly then "kaiba-rpi5-stable-campaign-signing" else "kaiba-provision-signer";
+        description =
+          if stableCampaignOnly then
+            "Narrow approval-gated development YubiKey signer for one stable-campaign boot artifact"
+          else
+            "Approval-gated development YubiKey Raspberry Pi signing chain";
         platforms = lib.platforms.linux;
       };
     };
@@ -2172,6 +2261,7 @@ in
     mkRpi5EEPROMSigningPlan
     mkRpi5StableVerifierCampaignMedia
     mkRpi5StableVerifierCampaignRun
+    mkRpi5StableCampaignProvisionerSigningPlan
     mkRpi5PhysicalLaneGuard
     mkRpi5DevelopmentSecureBootOperationalPayload
     mkRpi5DevelopmentSecureBootRunner
@@ -2182,6 +2272,7 @@ in
     mkRpi5ReleasePayloadQemuVirt
     mkRpi5VerifiedRPIBootBundles
     mkRpi5VerifiedSigningReceipts
+    mkRpi5VerifiedStableCampaignProvisionerSigning
     mkRpi5VerifiedSignedRelease
     mkRpi5ReleaseIntent
     mkRpi5UnfusedVerifier
@@ -2217,6 +2308,7 @@ in
     signedReleaseTool
     stableCampaignGPTInspector
     stableCampaignPlanTool
+    stableCampaignSigningTool
     stableVerifierTool
     suite
     verifierTestAuthority

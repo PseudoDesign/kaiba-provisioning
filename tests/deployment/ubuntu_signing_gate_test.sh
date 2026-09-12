@@ -45,11 +45,9 @@ package_on_disk="$stage$package_path"
 mkdir -p "$package_on_disk/bin" "$package_on_disk/share/kaiba"
 
 for executable in \
-  kaiba-provision-sign-boot \
-  kaiba-provision-sign-eeprom \
-  kaiba-provision-signing-client \
   kaiba-provision-signing-gate \
   kaiba-provision-signing-receipts \
+  kaiba-rpi5-stable-campaign-signing \
   kaiba-provision-yubikey-wrapper; do
   printf '#!/bin/sh\nexit 99\n' >"$package_on_disk/bin/$executable"
   chmod 0555 "$package_on_disk/bin/$executable"

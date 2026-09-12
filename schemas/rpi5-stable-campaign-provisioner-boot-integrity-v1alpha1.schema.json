@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provisioning.kaiba.network/schemas/rpi5-stable-campaign-provisioner-boot-integrity-v1alpha1.schema.json",
+  "title": "Kaiba Raspberry Pi 5 stable-campaign provisioner boot integrity",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "algorithm",
+    "data_block_size",
+    "hash_block_size",
+    "no_superblock",
+    "root_hash",
+    "data_device",
+    "hash_device"
+  ],
+  "properties": {
+    "schema": {
+      "const": "provisioning.kaiba.network/rpi5-stable-campaign-provisioner-boot-integrity/v1alpha1"
+    },
+    "algorithm": { "const": "sha256" },
+    "data_block_size": { "const": 4096 },
+    "hash_block_size": { "const": 4096 },
+    "no_superblock": { "const": false },
+    "root_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "data_device": { "const": "/dev/mmcblk0p2" },
+    "hash_device": { "const": "/dev/mmcblk0p3" }
+  }
+}
