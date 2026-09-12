@@ -5416,7 +5416,8 @@ let
           kaiba-provision-signing-client \
           kaiba-provision-signing-gate \
           kaiba-provision-signing-receipts \
-          kaiba-provision-yubikey-wrapper)"
+          kaiba-provision-yubikey-wrapper \
+          kaiba-rpi5-stable-campaign-signing)"
         actual_binaries="$(
           find -L ${developmentYubiKeySigning}/bin \
             -mindepth 1 -maxdepth 1 -type f -printf '%f\n' \
@@ -5456,6 +5457,8 @@ let
           ${developmentYubiKeySigning.kaibaSigning.eepromSigningTool}/bin/kaiba-provision-sign-eeprom
         test -x \
           ${developmentYubiKeySigning.kaibaSigning.signingReceiptsTool}/bin/kaiba-provision-signing-receipts
+        test -x \
+          ${developmentYubiKeySigning.kaibaSigning.stableCampaignSigning}/bin/kaiba-rpi5-stable-campaign-signing
         test '${developmentYubiKeySigning.kaibaSigning.signedBootConfiguration.gateSocketPath}' = \
           '/run/kaiba-provision-signing/signing.sock'
         test '${developmentYubiKeySigning.kaibaSigning.signedBootConfiguration.signerID}' = \
@@ -5476,6 +5479,20 @@ let
           '${developmentYubiKeySigning.kaibaSigning.customerKeyContract}' \
           '${developmentYubiKeySigningClosure}/store-paths'
         test '${builtins.toJSON developmentYubiKeySigning.kaibaSigning.signedBootConfiguration.runtimeAuthoritySelectors}' = \
+          'false'
+        test '${developmentYubiKeySigning.kaibaSigning.stableCampaignSigningConfiguration.gateSocketPath}' = \
+          '/run/kaiba-provision-signing/signing.sock'
+        test '${developmentYubiKeySigning.kaibaSigning.stableCampaignSigningConfiguration.signerID}' = \
+          'signer:development-fixture'
+        test '${developmentYubiKeySigning.kaibaSigning.stableCampaignSigningConfiguration.cohortID}' = \
+          'cohort:development-fixture'
+        test '${developmentYubiKeySigning.kaibaSigning.stableCampaignSigningConfiguration.pkcs11URI}' = \
+          'pkcs11:serial=12345678;id=%02;type=private'
+        test '${developmentYubiKeySigning.kaibaSigning.stableCampaignSigningConfiguration.publicKeyFingerprint}' = \
+          '${developmentYubiKeyPublicKeyFingerprint}'
+        test '${developmentYubiKeySigning.kaibaSigning.stableCampaignSigningConfiguration.expectedPublicKeyPath}' = \
+          '${developmentYubiKeySigning.kaibaSigning.reviewedPublicKeyPEM}'
+        test '${builtins.toJSON developmentYubiKeySigning.kaibaSigning.stableCampaignSigningConfiguration.runtimeAuthoritySelectors}' = \
           'false'
         test "$(cat ${developmentYubiKeySigning.kaibaSigning.customerKeyHashFile})" = \
           '${developmentYubiKeyCustomerKeyHash}'
@@ -5557,6 +5574,21 @@ let
         grep -Fx \
           '       kaiba-provision-sign-boot finalize --plan ABSOLUTE_PLAN_DIR --signed ABSOLUTE_SIGNED_DIR --output ABSOLUTE_OUTPUT_DIR' \
           "$TMPDIR/sign-boot.stderr"
+
+        set +e
+        ${developmentYubiKeySigning}/bin/kaiba-rpi5-stable-campaign-signing \
+          sign \
+          --plan /tmp/kaiba-plan \
+          --output /tmp/kaiba-signed \
+          --socket /tmp/attacker.sock \
+          > "$TMPDIR/stable-sign.stdout" \
+          2> "$TMPDIR/stable-sign.stderr"
+        stable_sign_status="$?"
+        set -e
+        test "$stable_sign_status" -eq 2
+        test ! -s "$TMPDIR/stable-sign.stdout"
+        grep -F 'usage: kaiba-rpi5-stable-campaign-signing' \
+          "$TMPDIR/stable-sign.stderr" > /dev/null
 
         mkdir -p "$out"
         touch "$out/passed"

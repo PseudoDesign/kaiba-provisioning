@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provisioning.kaiba.network/schemas/rpi5-stable-campaign-provisioner-signing-approval-v1alpha1.schema.json",
+  "title": "Kaiba Raspberry Pi 5 stable-campaign provisioner signing approval v1alpha1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "approval_id",
+    "approval_digest",
+    "decision",
+    "reviewer_id",
+    "approved_at",
+    "expires_at",
+    "source_revision",
+    "signing_intent_digest",
+    "signing_input"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "kaiba.provisioning.rpi5-stable-campaign-provisioner-signing-approval/v1alpha1"
+    },
+    "approval_id": {
+      "type": "string",
+      "pattern": "^approval:[0-9a-f]{64}$"
+    },
+    "approval_digest": { "$ref": "#/$defs/digest" },
+    "decision": { "const": "approved" },
+    "reviewer_id": { "$ref": "#/$defs/identifier" },
+    "approved_at": { "$ref": "#/$defs/time" },
+    "expires_at": { "$ref": "#/$defs/time" },
+    "source_revision": {
+      "type": "string",
+      "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+    },
+    "signing_intent_digest": { "$ref": "#/$defs/digest" },
+    "signing_input": { "$ref": "#/$defs/boot_image" }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._:-]{0,127}$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "time": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "boot_image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "digest", "size_bytes"],
+      "properties": {
+        "role": { "const": "rpi5.boot_image" },
+        "digest": { "$ref": "#/$defs/digest" },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100663296
+        }
+      }
+    }
+  },
+  "$comment": "Go validation additionally checks the domain-separated approval digest and derived ID, time ordering and maximum 24-hour lifetime, exact stable-intent equality, and exact deterministic one-grant v1alpha2 registry equality."
+}

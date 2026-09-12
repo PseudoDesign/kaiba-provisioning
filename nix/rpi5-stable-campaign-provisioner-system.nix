@@ -1,4 +1,5 @@
 {
+  buildPlatformSystem,
   nixosRaspberryPi,
   secureBootTargetModule,
   stableCampaignGPTInspector,
@@ -72,14 +73,14 @@ let
               message = "the stable-campaign provisioner must remain an AArch64 Raspberry Pi system";
             }
             {
-              assertion = config.nixpkgs.buildPlatform.system == "x86_64-linux";
-              message = "the stable-campaign provisioner must use malak's x86_64 build platform";
+              assertion = config.nixpkgs.buildPlatform.system == buildPlatformSystem;
+              message = "the stable-campaign provisioner must use its selected build platform";
             }
             {
               assertion =
-                stableCampaignGPTInspector.stdenv.buildPlatform.system == "x86_64-linux"
+                stableCampaignGPTInspector.stdenv.buildPlatform.system == buildPlatformSystem
                 && stableCampaignGPTInspector.stdenv.hostPlatform.system == "aarch64-linux";
-              message = "the cross-built stable-campaign GPT inspector must target AArch64";
+              message = "the stable-campaign GPT inspector must target AArch64 from the selected build platform";
             }
             {
               assertion = builtins.elem stableCampaignGPTInspector config.environment.systemPackages;
@@ -168,7 +169,7 @@ let
           };
 
           documentation.enable = false;
-          nixpkgs.buildPlatform = "x86_64-linux";
+          nixpkgs.buildPlatform = buildPlatformSystem;
           environment = {
             etc."machine-id" = {
               mode = "0444";

@@ -666,6 +666,37 @@ let
     };
   };
 
+  # Stable-campaign boot authorization and finalization use a dedicated
+  # one-artifact contract.  This public build can author and validate that
+  # contract and finalize public results, but it has no configured signing
+  # authority.  The development YubiKey closure below provides the separately
+  # linker-fixed live-signing build.
+  stableCampaignSigningTool = pkgs.buildGoModule {
+    pname = "kaiba-rpi5-stable-campaign-signing";
+    inherit version;
+    src = goSource;
+    subPackages = [ "cmd/kaiba-rpi5-stable-campaign-signing" ];
+    vendorHash = null;
+    doCheck = false;
+    passthru.kaibaStableCampaignSigningTool = {
+      approvalSchemaVersion = "kaiba.provisioning.rpi5-stable-campaign-provisioner-signing-approval/v1alpha1";
+      intentSchemaVersion = "kaiba.provisioning.rpi5-stable-campaign-provisioner-signing-intent/v1alpha1";
+      blockDeviceWriteCapable = false;
+      directHardwareAccess = false;
+      eepromProgrammingCapable = false;
+      mutationCapable = false;
+      oneTimeSettingCapable = false;
+      otpCapable = false;
+      privateKeyAccess = false;
+      signingAuthorityConfigured = false;
+    };
+    meta = {
+      mainProgram = "kaiba-rpi5-stable-campaign-signing";
+      description = "Public one-artifact stable-campaign signing contract and finalizer";
+      platforms = lib.platforms.linux;
+    };
+  };
+
   # Keep the software-only rehearsal in its own derivation.  In particular,
   # do not symlink it from serviceSuite: that output also contains the lane
   # guard and would make the closure boundary impossible to audit.
@@ -1256,6 +1287,19 @@ let
     inherit lib pkgs signedBootTool;
   };
   inherit (signedBootFactories) mkRpi5BootSigningPlan mkRpi5VerifiedSignedBoot;
+
+  stableCampaignSigningFactories = import ./rpi5-stable-campaign-signing.nix {
+    inherit
+      lib
+      pkgs
+      signingReceiptsTool
+      stableCampaignSigningTool
+      ;
+  };
+  inherit (stableCampaignSigningFactories)
+    mkRpi5StableCampaignProvisionerSigningPlan
+    mkRpi5VerifiedStableCampaignProvisionerSigning
+    ;
 
   unfusedCapsuleFactories = import ./unfused-capsule.nix {
     inherit lib pkgs mkRpi5UnfusedVerifier;
@@ -1965,6 +2009,18 @@ let
           "-X=main.expectedPublicKeyFingerprint=${publicKeyFingerprint}"
         ];
       };
+      stableCampaignSigning = buildCommand {
+        pname = "${name}-stable-campaign-signing";
+        subPackage = "cmd/kaiba-rpi5-stable-campaign-signing";
+        ldflags = [
+          "-X=main.signingGateSocketPath=${socketPath}"
+          "-X=main.signerID=${signerID}"
+          "-X=main.cohortID=${cohortID}"
+          "-X=main.signingPKCS11URI=${pkcs11URI}"
+          "-X=main.expectedPublicKeyPath=${reviewedPublicKeyPEM}"
+          "-X=main.expectedPublicKeyFingerprint=${publicKeyFingerprint}"
+        ];
+      };
     in
     pkgs.symlinkJoin {
       inherit name;
@@ -1976,6 +2032,7 @@ let
         signingClient
         signingGate
         signingReceiptsTool
+        stableCampaignSigning
         yubiKeyWrapper
       ];
       passthru.kaibaSigning = {
@@ -1997,12 +2054,24 @@ let
           signingClient
           signingGate
           signingReceiptsTool
+          stableCampaignSigning
           socketPath
           stateDirectoryPath
           ykcs11Module
           yubiKeyWrapper
           ;
         signedBootConfiguration = {
+          gateSocketPath = socketPath;
+          inherit
+            cohortID
+            pkcs11URI
+            publicKeyFingerprint
+            signerID
+            ;
+          expectedPublicKeyPath = reviewedPublicKeyPEM;
+          runtimeAuthoritySelectors = false;
+        };
+        stableCampaignSigningConfiguration = {
           gateSocketPath = socketPath;
           inherit
             cohortID
@@ -2176,6 +2245,7 @@ in
     mkRpi5EEPROMSigningPlan
     mkRpi5StableVerifierCampaignMedia
     mkRpi5StableVerifierCampaignRun
+    mkRpi5StableCampaignProvisionerSigningPlan
     mkRpi5PhysicalLaneGuard
     mkRpi5DevelopmentSecureBootOperationalPayload
     mkRpi5DevelopmentSecureBootRunner
@@ -2186,6 +2256,7 @@ in
     mkRpi5ReleasePayloadQemuVirt
     mkRpi5VerifiedRPIBootBundles
     mkRpi5VerifiedSigningReceipts
+    mkRpi5VerifiedStableCampaignProvisionerSigning
     mkRpi5VerifiedSignedRelease
     mkRpi5ReleaseIntent
     mkRpi5UnfusedVerifier
@@ -2221,6 +2292,7 @@ in
     signedReleaseTool
     stableCampaignGPTInspector
     stableCampaignPlanTool
+    stableCampaignSigningTool
     stableVerifierTool
     suite
     verifierTestAuthority

@@ -20,6 +20,17 @@ const signedBootDeviceClass = "raspberry-pi-5"
 // signinggate.RequestSignature and a linker-fixed socket path.
 type SignatureRequester func(context.Context, string, []byte) (signinggate.Result, error)
 
+// FinalizationEvidenceValidator authenticates public evidence that is kept
+// outside the generic signed-boot bundle. Byte slices are defensive copies of
+// the exact plan snapshot; implementations cannot mutate the data that will be
+// published by FinalizeWithLoaderAndEvidenceValidator.
+type FinalizationEvidenceValidator func(
+	plan Plan,
+	result Result,
+	releaseIntentJSON []byte,
+	publicPEM []byte,
+) error
+
 // SignConfig contains public, immutable production configuration. It contains
 // no PIN, private-key path, module path, or runtime-selectable provider.
 type SignConfig struct {
@@ -36,8 +47,17 @@ type SignConfig struct {
 // signature, emits canonical Raspberry Pi boot.sig text, and atomically
 // publishes the public signing result directory.
 func Sign(ctx context.Context, planDirectory, outputDirectory string, config SignConfig) error {
+	return SignWithLoader(ctx, planDirectory, outputDirectory, config, LoadPlanDirectory)
+}
+
+// SignWithLoader performs the Sign workflow with a caller-supplied plan
+// loader. The same loader is used before and after the signing-gate wait.
+func SignWithLoader(ctx context.Context, planDirectory, outputDirectory string, config SignConfig, load PlanLoader) error {
 	if ctx == nil {
 		return errors.New("signing context is required")
+	}
+	if load == nil {
+		return errors.New("signing plan loader is required")
 	}
 	if pathsOverlap(planDirectory, outputDirectory) {
 		return errors.New("signing output must not overlap the plan directory")
@@ -62,7 +82,7 @@ func Sign(ctx context.Context, planDirectory, outputDirectory string, config Sig
 		return fmt.Errorf("digest configured signer policy: %w", err)
 	}
 
-	loaded, err := LoadPlanDirectory(planDirectory)
+	loaded, err := load(planDirectory)
 	if err != nil {
 		return err
 	}
@@ -112,7 +132,7 @@ func Sign(ctx context.Context, planDirectory, outputDirectory string, config Sig
 
 	// The signing gate may wait for operator touch. Re-open every public input
 	// after that wait so an artifact or key substitution cannot be published.
-	revalidated, err := LoadPlanDirectory(planDirectory)
+	revalidated, err := load(planDirectory)
 	if err != nil {
 		return fmt.Errorf("revalidate signing plan: %w", err)
 	}
@@ -155,13 +175,37 @@ func Sign(ctx context.Context, planDirectory, outputDirectory string, config Sig
 // Finalize validates a plan and signing result without contacting any signer,
 // then atomically publishes a self-contained, public signed-boot bundle.
 func Finalize(planDirectory, signedDirectory, outputDirectory string) error {
+	return FinalizeWithLoader(planDirectory, signedDirectory, outputDirectory, LoadPlanDirectory)
+}
+
+// FinalizeWithLoader performs the Finalize workflow with a caller-supplied
+// plan loader. The same loader is used for both plan snapshots.
+func FinalizeWithLoader(planDirectory, signedDirectory, outputDirectory string, load PlanLoader) error {
+	return FinalizeWithLoaderAndEvidenceValidator(
+		planDirectory, signedDirectory, outputDirectory, load, nil,
+	)
+}
+
+// FinalizeWithLoaderAndEvidenceValidator performs the Finalize workflow and
+// requires external public evidence to validate against both immutable input
+// snapshots before anything is published. Generic callers may pass nil; a
+// higher-level release boundary that claims authenticated receipts must supply
+// a validator.
+func FinalizeWithLoaderAndEvidenceValidator(
+	planDirectory, signedDirectory, outputDirectory string,
+	load PlanLoader,
+	validateEvidence FinalizationEvidenceValidator,
+) error {
+	if load == nil {
+		return errors.New("signing plan loader is required")
+	}
 	if pathsOverlap(planDirectory, signedDirectory) || pathsOverlap(planDirectory, outputDirectory) || pathsOverlap(signedDirectory, outputDirectory) {
 		return errors.New("plan, signing result, and final output paths must not overlap")
 	}
 	if err := validateNewOutputPath(outputDirectory); err != nil {
 		return fmt.Errorf("validate final output: %w", err)
 	}
-	loadedPlan, err := LoadPlanDirectory(planDirectory)
+	loadedPlan, err := load(planDirectory)
 	if err != nil {
 		return err
 	}
@@ -172,9 +216,12 @@ func Finalize(planDirectory, signedDirectory, outputDirectory string) error {
 	if err := verifyBindings(loadedPlan, loadedResult); err != nil {
 		return err
 	}
+	if err := validateFinalizationEvidence(validateEvidence, loadedPlan, loadedResult); err != nil {
+		return fmt.Errorf("validate finalization evidence: %w", err)
+	}
 
 	// Re-open both public boundaries before publishing their snapshots.
-	revalidatedPlan, err := LoadPlanDirectory(planDirectory)
+	revalidatedPlan, err := load(planDirectory)
 	if err != nil {
 		return fmt.Errorf("revalidate signing plan: %w", err)
 	}
@@ -187,6 +234,9 @@ func Finalize(planDirectory, signedDirectory, outputDirectory string) error {
 	}
 	if err := verifyBindings(revalidatedPlan, revalidatedResult); err != nil {
 		return fmt.Errorf("revalidate signing bindings: %w", err)
+	}
+	if err := validateFinalizationEvidence(validateEvidence, revalidatedPlan, revalidatedResult); err != nil {
+		return fmt.Errorf("revalidate finalization evidence: %w", err)
 	}
 
 	manifest, err := bundle.NewManifest(
@@ -215,6 +265,22 @@ func Finalize(planDirectory, signedDirectory, outputDirectory string) error {
 		return fmt.Errorf("publish signed-boot bundle: %w", err)
 	}
 	return nil
+}
+
+func validateFinalizationEvidence(
+	validate FinalizationEvidenceValidator,
+	plan LoadedPlan,
+	result LoadedResult,
+) error {
+	if validate == nil {
+		return nil
+	}
+	return validate(
+		plan.Plan,
+		result.Result,
+		append([]byte(nil), plan.ReleaseIntentJSON...),
+		append([]byte(nil), plan.PublicPEM...),
+	)
 }
 
 func verifyBindings(plan LoadedPlan, signed LoadedResult) error {

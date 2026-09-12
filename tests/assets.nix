@@ -42,6 +42,8 @@ pkgs.runCommand "kaiba-provisioning-asset-api-contract"
       ${assets.schemas.stableVerifierSpikeEvidenceV1Alpha1} \
       ${assets.schemas.stableCampaignProvisionerArtifactSetV1Alpha1} \
       ${assets.schemas.stableCampaignProvisionerBootIntegrityV1Alpha1} \
+      ${assets.schemas.stableCampaignProvisionerSigningApprovalV1Alpha1} \
+      ${assets.schemas.stableCampaignProvisionerSigningIntentV1Alpha1} \
       ${assets.schemas.stableCampaignProvisionerSignedBootFilesystemV1Alpha1} \
       ${assets.schemas.unsignedArtifactSetV1Alpha1}
     do

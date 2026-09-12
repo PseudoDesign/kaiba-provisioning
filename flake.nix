@@ -61,6 +61,8 @@
           stableVerifierSpikeEvidenceV1Alpha1 = ./schemas/rpi5-stable-verifier-spike-evidence-v1alpha1.schema.json;
           stableCampaignProvisionerArtifactSetV1Alpha1 = ./schemas/rpi5-stable-campaign-provisioner-artifact-set-v1alpha1.schema.json;
           stableCampaignProvisionerBootIntegrityV1Alpha1 = ./schemas/rpi5-stable-campaign-provisioner-boot-integrity-v1alpha1.schema.json;
+          stableCampaignProvisionerSigningApprovalV1Alpha1 = ./schemas/rpi5-stable-campaign-provisioner-signing-approval-v1alpha1.schema.json;
+          stableCampaignProvisionerSigningIntentV1Alpha1 = ./schemas/rpi5-stable-campaign-provisioner-signing-intent-v1alpha1.schema.json;
           stableCampaignProvisionerSignedBootFilesystemV1Alpha1 = ./schemas/rpi5-stable-campaign-provisioner-signed-boot-filesystem-v1alpha1.schema.json;
           unsignedArtifactSetV1Alpha1 = ./schemas/unsigned-artifact-set-v1alpha1.schema.json;
         };
@@ -110,7 +112,6 @@
       stableCampaignExpectedCustomerKeyHash = lib.removePrefix "sha256:" (
         assets.signers.developmentPrototype.independentReview.public_bindings.customer_key_hash
       );
-
       packagesFor =
         system:
         let
@@ -186,21 +187,31 @@
         };
 
       mkRpi5StableCampaignProvisionerSystem =
-        { sourceRevision }:
+        {
+          sourceRevision,
+          buildPlatformSystem ? "x86_64-linux",
+        }:
+        assert lib.assertMsg (builtins.elem buildPlatformSystem systems)
+          "the stable-campaign provisioner build platform must be one of the flake's supported systems";
         let
-          crossPkgs = import nixpkgs {
-            localSystem = "x86_64-linux";
-            crossSystem = "aarch64-linux";
-          };
+          targetPkgs =
+            if buildPlatformSystem == "aarch64-linux" then
+              import nixpkgs { system = "aarch64-linux"; }
+            else
+              import nixpkgs {
+                localSystem = buildPlatformSystem;
+                crossSystem = "aarch64-linux";
+              };
         in
         import ./nix/rpi5-stable-campaign-provisioner-system.nix
           {
+            inherit buildPlatformSystem;
             nixosRaspberryPi = nixos-raspberrypi;
             secureBootTargetModule = modules.secure-boot-target;
             stableCampaignGPTInspector =
               (import ./nix/packages.nix {
                 inherit lib;
-                pkgs = crossPkgs;
+                pkgs = targetPkgs;
               }).stableCampaignGPTInspector;
           }
           {
@@ -209,15 +220,18 @@
           };
 
       mkRpi5StableCampaignProvisioner =
-        { sourceRevision }:
+        {
+          sourceRevision,
+          buildPlatformSystem ? "x86_64-linux",
+        }:
         let
           provisionerSystem = mkRpi5StableCampaignProvisionerSystem {
-            inherit sourceRevision;
+            inherit buildPlatformSystem sourceRevision;
           };
         in
         import ./nix/rpi5-stable-campaign-provisioner-artifacts.nix {
           inherit lib provisionerSystem;
-          buildPkgs = import nixpkgs { system = "x86_64-linux"; };
+          buildPkgs = import nixpkgs { system = buildPlatformSystem; };
         };
 
       mkRpi5StableCampaignProvisionerSignedBootFilesystem =
@@ -329,6 +343,12 @@
           { system, ... }@args:
           packagesBySystem.${system}.mkRpi5BootSigningPlan (builtins.removeAttrs args [ "system" ]);
 
+        mkRpi5StableCampaignProvisionerSigningPlan =
+          { system, ... }@args:
+          packagesBySystem.${system}.mkRpi5StableCampaignProvisionerSigningPlan (
+            builtins.removeAttrs args [ "system" ]
+          );
+
         mkRpi5EEPROMRelease =
           { system, ... }@args:
           packagesBySystem.${system}.mkRpi5EEPROMRelease (builtins.removeAttrs args [ "system" ]);
@@ -354,6 +374,12 @@
         mkRpi5VerifiedSigningReceipts =
           { system, ... }@args:
           packagesBySystem.${system}.mkRpi5VerifiedSigningReceipts (builtins.removeAttrs args [ "system" ]);
+
+        mkRpi5VerifiedStableCampaignProvisionerSigning =
+          { system, ... }@args:
+          packagesBySystem.${system}.mkRpi5VerifiedStableCampaignProvisionerSigning (
+            builtins.removeAttrs args [ "system" ]
+          );
 
         mkRpi5VerifiedSignedRelease =
           { system, ... }@args:
@@ -433,6 +459,7 @@
           kaiba-rpi5-one-boot-prove = built.oneBootProveTool;
           kaiba-rpi5-stable-campaign-gpt-inspect = built.stableCampaignGPTInspector;
           kaiba-rpi5-stable-campaign-plan = built.stableCampaignPlanTool;
+          kaiba-rpi5-stable-campaign-signing = built.stableCampaignSigningTool;
           kaiba-rpi5-stable-verifier = built.stableVerifierTool;
           kaiba-rpi5-verifier-test-authority = built.verifierTestAuthority;
           provisioning-suite = built.suite;
@@ -462,6 +489,16 @@
             (mkRpi5StableCampaignProvisioner {
               sourceRevision = stableCampaignSourceRevision;
             }).unsignedArtifacts;
+          kaiba-rpi5-stable-campaign-provisioner-signing-plan =
+            built.mkRpi5StableCampaignProvisionerSigningPlan
+              {
+                sourceDateEpoch = self.lastModified;
+                sourceRevision = stableCampaignSourceRevision;
+                unsignedArtifacts =
+                  (mkRpi5StableCampaignProvisioner {
+                    sourceRevision = stableCampaignSourceRevision;
+                  }).unsignedArtifacts;
+              };
         }
       );
 
@@ -488,6 +525,7 @@
           };
           bootImageHashDecoderCheck = import ./tests/boot-image-hash-decoder.nix { inherit pkgs; };
           stableCampaignProvisioner = mkRpi5StableCampaignProvisioner {
+            buildPlatformSystem = system;
             sourceRevision = stableCampaignSourceRevision;
           };
           stableCampaignProvisionerArtifactCheck =
@@ -504,6 +542,9 @@
               {
                 inherit lib pkgs;
               };
+          stableCampaignSigningCheck = import ./tests/rpi5-stable-campaign-signing.nix {
+            inherit built lib pkgs;
+          };
           aarch64GuestPkgs =
             if system == "aarch64-linux" then pkgs else import nixpkgs { system = "aarch64-linux"; };
           aarch64GuestBuilt =
@@ -1134,7 +1175,7 @@
         // lib.optionalAttrs (system == "x86_64-linux") {
           stable-campaign-provisioner-signed-boot-filesystem =
             stableCampaignProvisionerSignedBootFilesystemCheck;
-          stable-campaign-provisioner-unsigned-artifacts = stableCampaignProvisionerArtifactCheck;
+          stable-campaign-signing = stableCampaignSigningCheck;
           stable-verifier-initramfs-vm = pkgs.linkFarm "kaiba-stable-verifier-initramfs-vm" [
             {
               name = "fail-closed";
@@ -1155,6 +1196,10 @@
           };
         }
         // lib.optionalAttrs (system == "aarch64-linux") {
+          # Build the full provisioner artifact contract natively. The
+          # production package remains an x86_64 cross-build, while CI avoids
+          # rebuilding the AArch64 userspace through the cross toolchain.
+          stable-campaign-provisioner-unsigned-artifacts = stableCampaignProvisionerArtifactCheck;
           # This check builds and boots a native AArch64 NixOS closure. Keep it
           # on the native ARM64 CI runner; exporting it under x86_64-linux makes
           # the x86 job require an otherwise unconfigured ARM builder.

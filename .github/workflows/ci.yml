@@ -46,7 +46,7 @@ jobs:
   x86_64:
     name: x86_64 Nix checks
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 180
     permissions:
       contents: read
       pages: read
@@ -117,6 +117,15 @@ jobs:
       - name: Build x86_64 checks
         run: nix --accept-flake-config flake check -L
 
+      # This is the operator-facing lineage that may be presented for stable
+      # signing: an x86_64 build host cross-building the AArch64 Pi image. The
+      # native ARM artifact check is useful independent coverage, but it is not
+      # a substitute for building these exact bytes.
+      - name: Build the exact stable signing-plan lineage
+        run: |
+          nix --accept-flake-config build -L --no-link \
+            .#packages.x86_64-linux.kaiba-rpi5-stable-campaign-provisioner-signing-plan
+
       - name: Configure GitHub Pages
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
@@ -185,15 +194,18 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       # The hosted ARM64 runner currently falls back to TCG for NixOS VM
-      # tests. Running both VM checks alongside kernel builds can starve the
-      # guest long enough to hit the test driver's fixed shell-connect limit.
-      # Build them one at a time; the full check below then reuses the outputs.
-      - name: Build ARM64 VM checks without build contention
+      # tests. Running the VM checks alongside kernel or filesystem-image
+      # builds can starve the guest long enough to hit the test driver's fixed
+      # shell-connect limit. Build the large ARM64 checks one at a time; the
+      # full check below then reuses the outputs.
+      - name: Build large ARM64 checks without build contention
         run: |
           nix --accept-flake-config build -L --no-link \
             .#checks.aarch64-linux.stable-verifier-aarch64-kexec-vm
           nix --accept-flake-config build -L --no-link \
             .#checks.aarch64-linux.stable-handoff-aarch64-kexec-file-vm
+          nix --accept-flake-config build -L --no-link \
+            .#checks.aarch64-linux.stable-campaign-provisioner-unsigned-artifacts
 
       - name: Build remaining ARM64 checks and operator-facing packages
         run: nix --accept-flake-config flake check -L
