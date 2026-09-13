@@ -90,6 +90,263 @@ func TestSignAndFinalize(t *testing.T) {
 	}
 }
 
+func TestLoadPlanDirectoryWithIntentValidator(t *testing.T) {
+	t.Run("custom canonical intent", func(t *testing.T) {
+		fixture := newTestFixture(t, "custom-intent", []byte("boot"))
+		canonicalIntent := []byte(`{"schema_version":"custom.intent/v1"}`)
+		intentDigest := installCustomIntent(t, fixture.plan, canonicalIntent)
+		calls := 0
+		loaded, err := LoadPlanDirectoryWithIntentValidator(fixture.plan, func(encoded []byte, plan Plan) ([]byte, error) {
+			calls++
+			if !bytes.Equal(encoded, jsonFile(canonicalIntent)) {
+				t.Fatal("intent validator received unexpected file bytes")
+			}
+			if plan.ReleaseIntentDigest != intentDigest {
+				t.Fatal("intent validator received an unexpected plan")
+			}
+			return append([]byte(nil), canonicalIntent...), nil
+		})
+		if err != nil {
+			t.Fatalf("LoadPlanDirectoryWithIntentValidator() error = %v", err)
+		}
+		if calls != 1 {
+			t.Fatalf("intent validator calls = %d, want 1", calls)
+		}
+		if !bytes.Equal(loaded.ReleaseIntentJSON, canonicalIntent) {
+			t.Fatal("loaded release intent is not the validator's canonical snapshot")
+		}
+	})
+
+	t.Run("validator required", func(t *testing.T) {
+		fixture := newTestFixture(t, "nil-validator", []byte("boot"))
+		if _, err := LoadPlanDirectoryWithIntentValidator(fixture.plan, nil); err == nil || !strings.Contains(err.Error(), "validator is required") {
+			t.Fatalf("LoadPlanDirectoryWithIntentValidator() error = %v, want missing-validator rejection", err)
+		}
+	})
+
+	t.Run("validator error", func(t *testing.T) {
+		fixture := newTestFixture(t, "validator-error", []byte("boot"))
+		want := errors.New("custom intent binding failed")
+		if _, err := LoadPlanDirectoryWithIntentValidator(fixture.plan, func([]byte, Plan) ([]byte, error) {
+			return nil, want
+		}); !errors.Is(err, want) {
+			t.Fatalf("LoadPlanDirectoryWithIntentValidator() error = %v, want %v", err, want)
+		}
+	})
+
+	t.Run("canonical bytes enforced", func(t *testing.T) {
+		fixture := newTestFixture(t, "noncanonical-custom-intent", []byte("boot"))
+		canonicalIntent := []byte(`{"schema_version":"custom.intent/v1"}`)
+		installCustomIntent(t, fixture.plan, canonicalIntent)
+		mustWrite(t, filepath.Join(fixture.plan, "release-intent.json"), []byte(`{ "schema_version":"custom.intent/v1"}`+"\n"))
+		if _, err := LoadPlanDirectoryWithIntentValidator(fixture.plan, func([]byte, Plan) ([]byte, error) {
+			return canonicalIntent, nil
+		}); err == nil || !strings.Contains(err.Error(), "not canonical JSON") {
+			t.Fatalf("LoadPlanDirectoryWithIntentValidator() error = %v, want canonical rejection", err)
+		}
+	})
+
+	t.Run("fixed artifact checks remain mandatory", func(t *testing.T) {
+		fixture := newTestFixture(t, "custom-intent-artifact-check", []byte("boot"))
+		canonicalIntent := []byte(`{"schema_version":"custom.intent/v1"}`)
+		installCustomIntent(t, fixture.plan, canonicalIntent)
+		mustWrite(t, filepath.Join(fixture.plan, "boot.img"), []byte("evil"))
+		if _, err := LoadPlanDirectoryWithIntentValidator(fixture.plan, func([]byte, Plan) ([]byte, error) {
+			return canonicalIntent, nil
+		}); err == nil || !strings.Contains(err.Error(), "digest") {
+			t.Fatalf("LoadPlanDirectoryWithIntentValidator() error = %v, want artifact-digest rejection", err)
+		}
+	})
+}
+
+func TestSignAndFinalizeWithCustomPlanLoader(t *testing.T) {
+	fixture := newTestFixture(t, "custom-loader", []byte("custom loader boot image"))
+	canonicalIntent := []byte(`{"schema_version":"custom.intent/v1"}`)
+	intentDigest := installCustomIntent(t, fixture.plan, canonicalIntent)
+	loadCalls := 0
+	load := func(path string) (LoadedPlan, error) {
+		loadCalls++
+		return LoadPlanDirectoryWithIntentValidator(path, func(encoded []byte, plan Plan) ([]byte, error) {
+			if !bytes.Equal(encoded, jsonFile(canonicalIntent)) || plan.ReleaseIntentDigest != intentDigest {
+				return nil, errors.New("custom intent does not bind the plan")
+			}
+			return append([]byte(nil), canonicalIntent...), nil
+		})
+	}
+
+	signedDirectory := filepath.Join(fixture.root, "custom-signed")
+	requested := 0
+	config := fixture.signConfig(func(_ context.Context, _ string, artifact []byte) (signinggate.Result, error) {
+		requested++
+		return signForTest(t, fixture.privateKey, artifact, intentDigest), nil
+	})
+	if err := SignWithLoader(context.Background(), fixture.plan, signedDirectory, config, load); err != nil {
+		t.Fatalf("SignWithLoader() error = %v", err)
+	}
+	if requested != 1 || loadCalls != 2 {
+		t.Fatalf("signature requests = %d, plan loads = %d, want 1 and 2", requested, loadCalls)
+	}
+
+	finalDirectory := filepath.Join(fixture.root, "custom-final")
+	if err := FinalizeWithLoader(fixture.plan, signedDirectory, finalDirectory, load); err != nil {
+		t.Fatalf("FinalizeWithLoader() error = %v", err)
+	}
+	if loadCalls != 4 {
+		t.Fatalf("plan loads after finalize = %d, want 4", loadCalls)
+	}
+	if got := mustRead(t, filepath.Join(finalDirectory, "release-intent.json")); !bytes.Equal(got, jsonFile(canonicalIntent)) {
+		t.Fatal("final bundle does not contain the canonical custom intent")
+	}
+}
+
+func TestFinalizeWithEvidenceValidatorChecksBothSnapshotsBeforePublish(t *testing.T) {
+	fixture := newTestFixture(t, "authenticated-finalize", []byte("authenticated boot image"))
+	signedDirectory := filepath.Join(fixture.root, "signed")
+	if err := Sign(
+		context.Background(),
+		fixture.plan,
+		signedDirectory,
+		fixture.signConfig(func(_ context.Context, _ string, artifact []byte) (signinggate.Result, error) {
+			return signForTest(t, fixture.privateKey, artifact, fixture.releaseIntentDigest), nil
+		}),
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	validated := 0
+	finalDirectory := filepath.Join(fixture.root, "final")
+	err := FinalizeWithLoaderAndEvidenceValidator(
+		fixture.plan,
+		signedDirectory,
+		finalDirectory,
+		LoadPlanDirectory,
+		func(plan Plan, result Result, releaseIntentJSON, publicPEM []byte) error {
+			validated++
+			if plan.ReleaseIntentDigest != fixture.releaseIntentDigest ||
+				result.GateReceiptDigest != bundle.Sum([]byte("durable gate receipt")) ||
+				!bytes.Equal(publicPEM, fixture.publicPEM) || len(releaseIntentJSON) == 0 {
+				return errors.New("evidence validator received the wrong immutable snapshot")
+			}
+			// The callback receives defensive copies, so even a buggy validator
+			// cannot mutate the exact bytes later published by the finalizer.
+			releaseIntentJSON[0] ^= 1
+			publicPEM[0] ^= 1
+			return nil
+		},
+	)
+	if err != nil {
+		t.Fatalf("FinalizeWithLoaderAndEvidenceValidator() error = %v", err)
+	}
+	if validated != 2 {
+		t.Fatalf("evidence validation calls = %d, want 2", validated)
+	}
+	if !bytes.Equal(mustRead(t, filepath.Join(finalDirectory, "public.pem")), fixture.publicPEM) {
+		t.Fatal("evidence validator mutated published plan bytes")
+	}
+
+	rejectedOutput := filepath.Join(fixture.root, "rejected-final")
+	want := errors.New("receipt export rejected")
+	err = FinalizeWithLoaderAndEvidenceValidator(
+		fixture.plan,
+		signedDirectory,
+		rejectedOutput,
+		LoadPlanDirectory,
+		func(Plan, Result, []byte, []byte) error { return want },
+	)
+	if !errors.Is(err, want) {
+		t.Fatalf("evidence rejection error = %v, want %v", err, want)
+	}
+	requirePathAbsent(t, rejectedOutput)
+}
+
+func TestCustomPlanLoaderFailuresDoNotPublish(t *testing.T) {
+	t.Run("sign loader error", func(t *testing.T) {
+		fixture := newTestFixture(t, "custom-loader-error", []byte("boot"))
+		output := filepath.Join(fixture.root, "signed")
+		requested := false
+		config := fixture.signConfig(func(context.Context, string, []byte) (signinggate.Result, error) {
+			requested = true
+			return signinggate.Result{}, nil
+		})
+		want := errors.New("custom plan rejected")
+		err := SignWithLoader(context.Background(), fixture.plan, output, config, func(string) (LoadedPlan, error) {
+			return LoadedPlan{}, want
+		})
+		if !errors.Is(err, want) {
+			t.Fatalf("SignWithLoader() error = %v, want %v", err, want)
+		}
+		if requested {
+			t.Fatal("signer was called after the custom loader rejected the plan")
+		}
+		requirePathAbsent(t, output)
+	})
+
+	t.Run("sign changed second snapshot", func(t *testing.T) {
+		fixture := newTestFixture(t, "custom-loader-change", []byte("boot"))
+		output := filepath.Join(fixture.root, "signed")
+		loaded, err := LoadPlanDirectory(fixture.plan)
+		if err != nil {
+			t.Fatal(err)
+		}
+		loads := 0
+		load := func(string) (LoadedPlan, error) {
+			loads++
+			snapshot := loaded
+			if loads == 2 {
+				snapshot.ReleaseIntentJSON = append([]byte(nil), loaded.ReleaseIntentJSON...)
+				snapshot.ReleaseIntentJSON[0] ^= 1
+			}
+			return snapshot, nil
+		}
+		config := fixture.signConfig(func(_ context.Context, _ string, artifact []byte) (signinggate.Result, error) {
+			return signForTest(t, fixture.privateKey, artifact, fixture.releaseIntentDigest), nil
+		})
+		if err := SignWithLoader(context.Background(), fixture.plan, output, config, load); err == nil || !strings.Contains(err.Error(), "changed") {
+			t.Fatalf("SignWithLoader() error = %v, want changed-plan rejection", err)
+		}
+		requirePathAbsent(t, output)
+	})
+
+	t.Run("finalize changed second snapshot", func(t *testing.T) {
+		fixture := newTestFixture(t, "custom-finalize-change", []byte("boot"))
+		signed := filepath.Join(fixture.root, "signed")
+		if err := Sign(context.Background(), fixture.plan, signed, fixture.signConfig(func(_ context.Context, _ string, artifact []byte) (signinggate.Result, error) {
+			return signForTest(t, fixture.privateKey, artifact, fixture.releaseIntentDigest), nil
+		})); err != nil {
+			t.Fatal(err)
+		}
+		loaded, err := LoadPlanDirectory(fixture.plan)
+		if err != nil {
+			t.Fatal(err)
+		}
+		loads := 0
+		load := func(string) (LoadedPlan, error) {
+			loads++
+			snapshot := loaded
+			if loads == 2 {
+				snapshot.PlanJSON = append([]byte(nil), loaded.PlanJSON...)
+				snapshot.PlanJSON[0] ^= 1
+			}
+			return snapshot, nil
+		}
+		output := filepath.Join(fixture.root, "final")
+		if err := FinalizeWithLoader(fixture.plan, signed, output, load); err == nil || !strings.Contains(err.Error(), "changed") {
+			t.Fatalf("FinalizeWithLoader() error = %v, want changed-input rejection", err)
+		}
+		requirePathAbsent(t, output)
+	})
+
+	t.Run("nil loaders", func(t *testing.T) {
+		fixture := newTestFixture(t, "nil-loaders", []byte("boot"))
+		if err := SignWithLoader(context.Background(), fixture.plan, filepath.Join(fixture.root, "signed"), fixture.signConfig(nil), nil); err == nil || !strings.Contains(err.Error(), "loader is required") {
+			t.Fatalf("SignWithLoader() error = %v, want missing-loader rejection", err)
+		}
+		if err := FinalizeWithLoader(fixture.plan, filepath.Join(fixture.root, "signed"), filepath.Join(fixture.root, "final"), nil); err == nil || !strings.Contains(err.Error(), "loader is required") {
+			t.Fatalf("FinalizeWithLoader() error = %v, want missing-loader rejection", err)
+		}
+	})
+}
+
 func TestLoadPlanDirectoryRejectsMalformedOrUnsafeInputs(t *testing.T) {
 	t.Run("extra file", func(t *testing.T) {
 		fixture := newTestFixture(t, "extra-file", []byte("boot"))
@@ -447,6 +704,23 @@ func makePlanDirectory(t *testing.T, path string, privateKey *rsa.PrivateKey, pl
 	return path
 }
 
+func installCustomIntent(t *testing.T, planDirectory string, canonicalIntent []byte) bundle.Digest {
+	t.Helper()
+	loaded, err := LoadPlanDirectory(planDirectory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	intentDigest := bundle.Sum(canonicalIntent)
+	loaded.Plan.ReleaseIntentDigest = intentDigest
+	encodedPlan, err := loaded.Plan.CanonicalJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	mustWrite(t, filepath.Join(planDirectory, "plan.json"), jsonFile(encodedPlan))
+	mustWrite(t, filepath.Join(planDirectory, "release-intent.json"), jsonFile(canonicalIntent))
+	return intentDigest
+}
+
 func canonicalPublicKey(t *testing.T, publicKey *rsa.PublicKey) ([]byte, bundle.Digest) {
 	t.Helper()
 	der, err := x509.MarshalPKIXPublicKey(publicKey)
@@ -521,6 +795,13 @@ func mustRead(t *testing.T, path string) []byte {
 		t.Fatal(err)
 	}
 	return contents
+}
+
+func requirePathAbsent(t *testing.T, path string) {
+	t.Helper()
+	if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("path %s exists after rejected operation: %v", path, err)
+	}
 }
 
 func requireDirectoryEntries(t *testing.T, directory string, expected ...string) {

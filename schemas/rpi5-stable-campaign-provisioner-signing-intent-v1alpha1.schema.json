@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provisioning.kaiba.network/schemas/rpi5-stable-campaign-provisioner-signing-intent-v1alpha1.schema.json",
+  "title": "Kaiba Raspberry Pi 5 stable-campaign provisioner signing intent v1alpha1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "authorization_scope",
+    "source_revision",
+    "source_date_epoch",
+    "unsigned_manifest_digest",
+    "unsigned_artifact_set_digest",
+    "expected_customer_key_hash",
+    "public_key_file_digest",
+    "public_key_fingerprint",
+    "signer_policy_digest",
+    "signing_input"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "kaiba.provisioning.rpi5-stable-campaign-provisioner-signing-intent/v1alpha1"
+    },
+    "authorization_scope": {
+      "const": "stable_campaign_provisioner_boot"
+    },
+    "source_revision": {
+      "type": "string",
+      "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+    },
+    "source_date_epoch": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 253402300799
+    },
+    "unsigned_manifest_digest": { "$ref": "#/$defs/digest" },
+    "unsigned_artifact_set_digest": { "$ref": "#/$defs/digest" },
+    "expected_customer_key_hash": { "$ref": "#/$defs/digest" },
+    "public_key_file_digest": { "$ref": "#/$defs/digest" },
+    "public_key_fingerprint": { "$ref": "#/$defs/digest" },
+    "signer_policy_digest": { "$ref": "#/$defs/digest" },
+    "signing_input": { "$ref": "#/$defs/boot_image" }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "boot_image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "digest", "size_bytes"],
+      "properties": {
+        "role": { "const": "rpi5.boot_image" },
+        "digest": { "$ref": "#/$defs/digest" },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100663296
+        }
+      }
+    }
+  },
+  "$comment": "Go validation additionally requires exact canonical JSON bytes and a domain-separated digest before any signing authorization is derived."
+}

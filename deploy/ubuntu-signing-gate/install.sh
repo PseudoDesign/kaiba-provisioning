@@ -304,11 +304,9 @@ if [[ -z "$staging_root" ]]; then
 fi
 
 for relative_path in \
-  bin/kaiba-provision-sign-boot \
-  bin/kaiba-provision-sign-eeprom \
-  bin/kaiba-provision-signing-client \
   bin/kaiba-provision-signing-gate \
   bin/kaiba-provision-signing-receipts \
+  bin/kaiba-rpi5-stable-campaign-signing \
   bin/kaiba-provision-yubikey-wrapper \
   share/kaiba/customer-key-hash \
   share/kaiba/signer-policy-digest \
@@ -317,11 +315,9 @@ for relative_path in \
     die "configured signing package is missing $relative_path"
 done
 for executable in \
-  bin/kaiba-provision-sign-boot \
-  bin/kaiba-provision-sign-eeprom \
-  bin/kaiba-provision-signing-client \
   bin/kaiba-provision-signing-gate \
   bin/kaiba-provision-signing-receipts \
+  bin/kaiba-rpi5-stable-campaign-signing \
   bin/kaiba-provision-yubikey-wrapper; do
   [[ -x "$package_on_disk/$executable" ]] ||
     die "configured signing package executable is not executable: $executable"

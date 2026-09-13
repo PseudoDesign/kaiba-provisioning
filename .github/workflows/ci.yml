@@ -43,10 +43,10 @@ jobs:
       - name: Check that the lock file is unchanged
         run: git diff --exit-code -- flake.lock
 
-  x86_64:
-    name: x86_64 Nix checks
+  x86_64_core:
+    name: x86_64 Nix checks (core)
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 180
     permissions:
       contents: read
       pages: read
@@ -150,6 +150,76 @@ jobs:
         with:
           path: _site
 
+  # Keep the operator-facing stable-signing lineage independent from the
+  # general x86 checks. A cold x86-to-AArch64 build can consume most of a
+  # hosted runner's timeout by itself, so the two mandatory lanes run in
+  # parallel and receive separate timeout budgets.
+  stable_signing_lineage:
+    name: Exact x86_64 stable signing lineage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342 # v31.11.0
+        with:
+          enable_kvm: true
+          github_access_token: ${{ github.token }}
+
+      - name: Configure binary caches (read-only)
+        if: github.event_name != 'push' || github.ref != 'refs/heads/main'
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: ${{ env.CACHIX_CACHE }}
+          extraPullNames: nixos-raspberrypi
+          skipPush: true
+
+      - name: Configure binary cache writes
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: ${{ env.CACHIX_CACHE }}
+          extraPullNames: nixos-raspberrypi
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      # This is the operator-facing lineage that may be presented for stable
+      # signing: an x86_64 build host cross-building the AArch64 Pi image. The
+      # native ARM artifact check is useful independent coverage, but it is not
+      # a substitute for building these exact bytes.
+      - name: Build the exact stable signing lineage and configured gate
+        run: |
+          nix --accept-flake-config build -L --no-link \
+            .#packages.x86_64-linux.kaiba-rpi5-stable-campaign-development-signing \
+            .#packages.x86_64-linux.kaiba-rpi5-stable-campaign-provisioner-signing-plan
+
+  # Preserve the required-check context while failing closed unless both
+  # implementation lanes pass.
+  x86_64:
+    name: x86_64 Nix checks
+    if: always()
+    needs:
+      - x86_64_core
+      - stable_signing_lineage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Require both x86_64 lanes
+        env:
+          CORE_RESULT: ${{ needs.x86_64_core.result }}
+          LINEAGE_RESULT: ${{ needs.stable_signing_lineage.result }}
+        run: |
+          if [ "$CORE_RESULT" != success ] || [ "$LINEAGE_RESULT" != success ]; then
+            echo "::error::core=$CORE_RESULT lineage=$LINEAGE_RESULT"
+            exit 1
+          fi
+
   aarch64:
     name: Native ARM64 checks and operator packages
     runs-on: ubuntu-24.04-arm
@@ -185,15 +255,18 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       # The hosted ARM64 runner currently falls back to TCG for NixOS VM
-      # tests. Running both VM checks alongside kernel builds can starve the
-      # guest long enough to hit the test driver's fixed shell-connect limit.
-      # Build them one at a time; the full check below then reuses the outputs.
-      - name: Build ARM64 VM checks without build contention
+      # tests. Running the VM checks alongside kernel or filesystem-image
+      # builds can starve the guest long enough to hit the test driver's fixed
+      # shell-connect limit. Build the large ARM64 checks one at a time; the
+      # full check below then reuses the outputs.
+      - name: Build large ARM64 checks without build contention
         run: |
           nix --accept-flake-config build -L --no-link \
             .#checks.aarch64-linux.stable-verifier-aarch64-kexec-vm
           nix --accept-flake-config build -L --no-link \
             .#checks.aarch64-linux.stable-handoff-aarch64-kexec-file-vm
+          nix --accept-flake-config build -L --no-link \
+            .#checks.aarch64-linux.stable-campaign-provisioner-unsigned-artifacts
 
       - name: Build remaining ARM64 checks and operator-facing packages
         run: nix --accept-flake-config flake check -L

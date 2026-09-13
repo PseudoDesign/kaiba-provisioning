@@ -1,7 +1,9 @@
 // Package campaignmedia defines path-free, digest-sealed descriptions of the
 // two media devices used by the Raspberry Pi 5 stable-verifier development
 // campaign. The v1alpha1 recovery scope is intentionally incomplete and is not
-// eligible for destructive staging. Its initial-GPT inspector accepts only a
+// eligible for destructive staging. The separate v1alpha2 evidence envelope
+// can strictly describe an additional valid physical-end GPT backup lineage
+// but remains equally ineligible. Both initial-GPT inspectors accept only a
 // caller-owned io.ReaderAt abstraction; the package contains no filesystem,
 // device-opening, writer, command, signing, private-material, or authorization
 // API.

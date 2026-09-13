@@ -261,6 +261,19 @@ func TestUnsignedArtifactSetRequiresDistinctCanonicalPARTUUIDSelectors(t *testin
 	}
 }
 
+func TestUnsignedArtifactSetRejectsStableCampaignProvisionerSchema(t *testing.T) {
+	valid, err := parseUnsignedArtifactSet(validUnsignedArtifactSet(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	valid.Schema = "provisioning.kaiba.network/rpi5-stable-campaign-provisioner-artifact-set/v1alpha1"
+	valid.Verity.DataDevice = "/dev/mmcblk0p2"
+	valid.Verity.HashDevice = "/dev/mmcblk0p3"
+	if err := valid.validate(); err == nil || !strings.Contains(err.Error(), "unsupported unsigned artifact schema") {
+		t.Fatalf("stable-campaign provisioner schema error=%v, want ordinary release rejection", err)
+	}
+}
+
 func TestUnsignedArtifactSetParsesCurrentAndHistoricalBootPolicies(t *testing.T) {
 	for _, policy := range []string{currentBootOrderPolicy, historicalBootOrderPolicy} {
 		if _, err := parseUnsignedArtifactSet(validUnsignedArtifactSetWithBootPolicy(t, policy)); err != nil {

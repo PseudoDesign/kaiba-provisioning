@@ -15,6 +15,7 @@ let
   sshRuntimeDirectory = "/run/kaiba-development-ssh";
   sshHostKey = "${sshRuntimeDirectory}/ssh_host_ed25519_key";
   expectedHashPattern = "[0-9a-f]{64}";
+  bootImageHashDecoder = import ../boot-image-hash-decoder.nix { inherit pkgs; };
   bootEvidence = pkgs.writeShellApplication {
     name = "kaiba-boot-evidence";
     runtimeInputs = with pkgs; [
@@ -48,34 +49,9 @@ let
       esac
 
       test -r "$chosen/boot_img_sha256" || fail missing-boot-image-hash
-      image_hash_size="$(stat --format=%s "$chosen/boot_img_sha256")"
-      case "$image_hash_size" in
-        32)
-          image_hash="$(od -An -tx1 -v "$chosen/boot_img_sha256" | tr -d ' \n')"
-          ;;
-        64)
-          # Current Pi 5 firmware may expose the 32-byte binary digest in a
-          # fixed 64-byte DT property padded with 32 NUL bytes.  Distinguish
-          # that representation from the also-supported 64-byte ASCII hex
-          # form before applying the canonical lowercase-hex checks below.
-          trailing_hex="$(tail -c 32 "$chosen/boot_img_sha256" | od -An -tx1 -v | tr -d ' \n')"
-          if test "$trailing_hex" = "$(printf '0%.0s' {1..64})"; then
-            image_hash="$(head -c 32 "$chosen/boot_img_sha256" | od -An -tx1 -v | tr -d ' \n')"
-          else
-            image_hash="$(tr -d '\000' < "$chosen/boot_img_sha256")"
-          fi
-          ;;
-        65)
-          image_hash="$(tr -d '\000' < "$chosen/boot_img_sha256")"
-          ;;
-        *)
-          fail malformed-boot-image-hash
-          ;;
-      esac
-      test "''${#image_hash}" -eq 64 || fail malformed-boot-image-hash
-      case "$image_hash" in
-        (*[!0-9a-f]*) fail malformed-boot-image-hash ;;
-      esac
+      if ! image_hash="$(${lib.getExe bootImageHashDecoder} "$chosen/boot_img_sha256" 2>/dev/null)"; then
+        fail malformed-boot-image-hash
+      fi
 
       # The expected whole-image digest cannot be embedded in boot.img without
       # creating a self-reference.  Emit the bootloader observation here; the
@@ -365,6 +341,13 @@ in
           RestrictNamespaces = true;
           SystemCallArchitectures = "native";
         };
+      };
+      services.sshd = lib.mkIf access.enable {
+        # Development SSH is root-equivalent through passwordless sudo.  Do
+        # not expose it unless the signed-boot and verified-root evidence job
+        # has completed successfully in this boot.
+        after = [ "kaiba-secure-boot-evidence.service" ];
+        requires = [ "kaiba-secure-boot-evidence.service" ];
       };
       services.kaiba-development-ssh-evidence = lib.mkIf access.enable {
         description = "Report the ephemeral development SSH host key on the trusted UART";

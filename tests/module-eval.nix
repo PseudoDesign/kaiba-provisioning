@@ -262,6 +262,15 @@ let
     kaiba.secureBootTarget.expectedCustomerKeyHash = "not-a-digest";
   };
 
+  secureBootTargetWithDevelopmentAccess = lib.recursiveUpdate secureBootTarget {
+    kaiba.secureBootTarget.developmentAccess = {
+      enable = true;
+      authorizedKey = lib.removeSuffix "\n" (
+        builtins.readFile ../keys/codex-rpi5-development-2026-09-05.pub
+      );
+    };
+  };
+
   signingTestPackage =
     pkgs.runCommand "kaiba-signing-module-fixture"
       {
@@ -429,6 +438,7 @@ let
   defaultStationDemoConfig = evaluateConfig provisioningStationDemoDefaultPackage;
   stationDemoIPv6Config = evaluateConfig provisioningStationDemoIPv6;
   secureBootTargetConfig = evaluateConfig secureBootTarget;
+  secureBootTargetWithDevelopmentAccessConfig = evaluateConfig secureBootTargetWithDevelopmentAccess;
   secureBootTargetPolicy = builtins.fromJSON (
     secureBootTargetConfig.environment.etc."kaiba-provisioning/target-policy.json".text
   );
@@ -632,6 +642,14 @@ let
     &&
       secureBootTargetConfig.systemd.services.kaiba-secure-boot-evidence.serviceConfig.ProtectSystem
       == "strict";
+
+  secureBootTargetDevelopmentAccessBoundary =
+    secureBootTargetWithDevelopmentAccessConfig.services.openssh.enable
+    && secureBootTargetWithDevelopmentAccessConfig.security.sudo.enable
+    && builtins.elem "kaiba-secure-boot-evidence.service" secureBootTargetWithDevelopmentAccessConfig.systemd.services.sshd.requires
+    && builtins.elem "kaiba-secure-boot-evidence.service" secureBootTargetWithDevelopmentAccessConfig.systemd.services.sshd.after
+    && builtins.elem "sshd.service" secureBootTargetWithDevelopmentAccessConfig.systemd.services.kaiba-development-ssh-evidence.requires
+    && builtins.elem "sshd.service" secureBootTargetWithDevelopmentAccessConfig.systemd.services.kaiba-development-ssh-evidence.after;
 
   physicalServiceBoundary =
     lib.hasInfix ''"--rpiboot-sysfs" "/sys/bus/usb/devices/1-1"'' laneGuardService.ExecStart
@@ -898,6 +916,8 @@ assert lib.assertMsg stationDemoBoundary
   "provisioning-station demo loopback, sandbox, or no-USB boundary is not enforced";
 assert lib.assertMsg secureBootTargetBoundary
   "secure-boot target dm-verity, no-enrollment, or runtime evidence boundary is not enforced";
+assert lib.assertMsg secureBootTargetDevelopmentAccessBoundary
+  "secure-boot development SSH is not gated on successful runtime boot evidence";
 assert lib.assertMsg physicalServiceBoundary
   "physical lane-guard mutation opt-in, device, or root service boundary is not enforced";
 assert lib.assertMsg signingServiceBoundary
@@ -931,6 +951,7 @@ pkgs.runCommand "kaiba-provisioning-module-evaluation" { } ''
     'provisioning-station-demo-sandbox-and-no-usb: pass' \
     'secure-boot-target-dm-verity-boundary: pass' \
     'secure-boot-target-enrollment-blocked: pass' \
+    'secure-boot-target-development-ssh-evidence-gate: pass' \
     'physical-lane-guard-explicit-mutation-boundary: pass' \
     'yubikey-signing-gate-credential-boundary: pass' \
     'yubikey-signing-gate-pcsc-authorization: pass' \
