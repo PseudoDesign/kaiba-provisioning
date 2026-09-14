@@ -470,23 +470,43 @@ func TestInitialGPTRecoveryV1Alpha2ClassifiesSingleLineageMedia(t *testing.T) {
 
 	t.Run("canonical NVMe selected lineage backup", func(t *testing.T) {
 		fixture := newInitialGPTNVMeFixture(t)
-		envelope, err := InspectInitialGPTRecoveryV1Alpha2(
-			fixture.reader,
-			testInitialGPTNVMeIdentity(),
-			testInitialGPTCaptureID("v1alpha2-canonical-nvme"),
-			testInitialGPTNVMePlannedRanges(),
+		identity := testInitialGPTNVMeIdentity()
+		// Exercise the real metadata parser, including both header and entry
+		// CRCs, without hashing the 8 GiB release range twice for a geometry
+		// assertion. The aligned NVMe case below retains the complete public
+		// Inspect/VerifyAgainst round trip and envelope checks.
+		snapshot, captured, err := captureInitialGPTWithPhysicalEndPolicy(
+			fixture.reader, identity.CapacityBytes, false, initialGPTUsableRangeV1Alpha2PiLocalNVMe,
 		)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if envelope.SelectedLineage.Placement != InitialGPTPlacementCanonicalPhysical ||
-			envelope.PhysicalEndState != InitialGPTPhysicalEndSelectedLineageBackup ||
-			envelope.PhysicalEndBackupLineage != nil || len(envelope.RecoveryRanges) != 6 ||
-			envelope.DestructiveStagingReady {
-			t.Fatalf("unexpected canonical NVMe classification: %#v", envelope)
+		if err := snapshot.validateWithUsableRangePolicy(identity, initialGPTUsableRangeV1Alpha2PiLocalNVMe); err != nil {
+			t.Fatal(err)
 		}
-		if err := envelope.VerifyAgainst(fixture.reader); err != nil {
-			t.Fatalf("VerifyAgainst canonical NVMe: %v", err)
+		if snapshot.Placement != InitialGPTPlacementCanonicalPhysical ||
+			snapshot.FirstUsableLBA != initialGPTCanonicalFirstUsableLBA {
+			t.Fatalf("unexpected canonical NVMe geometry: %#v", snapshot)
+		}
+		planned := testInitialGPTNVMePlannedRanges()
+		if err := validatePlannedPayloadRanges(identity, planned); err != nil {
+			t.Fatal(err)
+		}
+		specs, err := expectedInitialRecoveryRangeSpecsV1Alpha2(identity, snapshot, planned, InitialGPTPhysicalEndSelectedLineageBackup)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(specs) != 6 {
+			t.Fatalf("canonical NVMe recovery range count = %d; want 6", len(specs))
+		}
+		for _, purpose := range []InitialRecoveryRangePurpose{InitialRecoveryExistingBackupEntries, InitialRecoveryExistingBackupHeader} {
+			spec := findInitialRecoverySpec(t, specs, purpose)
+			if len(spec.purposes) != 2 {
+				t.Fatalf("canonical NVMe backup aliases changed: %#v", spec)
+			}
+			if _, ok := captured.digest(spec.offsetBytes, spec.sizeBytes); !ok {
+				t.Fatalf("canonical NVMe backup metadata was not captured: %#v", spec)
+			}
 		}
 	})
 
