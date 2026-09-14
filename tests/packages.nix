@@ -7,6 +7,40 @@
 }:
 
 let
+  goUnitTests = import ./go-unit.nix {
+    inherit lib pkgs;
+    source = built.goSource;
+  };
+  staticGoTests = import ./go-unit.nix {
+    inherit lib pkgs;
+    source = built.goSource;
+    name = "kaiba-go-static-contract-tests";
+    static = true;
+    # These packages previously ran in individual CGO_ENABLED=0 contracts.
+    # Share one Go cache and one result while retaining that build mode.
+    packages = [
+      "./internal/provisioning/bundle"
+      "./internal/provisioning/eepromsigning"
+      "./internal/provisioning/evidencefile"
+      "./internal/provisioning/mediacontract"
+      "./internal/provisioning/mediadevice"
+      "./internal/provisioning/mediainventory"
+      "./internal/provisioning/mediarelease"
+      "./internal/provisioning/mediaverity"
+      "./internal/provisioning/mediawriter"
+      "./internal/provisioning/planapproval"
+      "./internal/provisioning/rpibootbundle"
+      "./internal/provisioning/signedrelease"
+      "./cmd/kaiba-provision-finalize-release"
+      "./cmd/kaiba-provision-media-contract"
+      "./cmd/kaiba-provision-media-device-stager"
+      "./cmd/kaiba-provision-media-device-verifier"
+      "./cmd/kaiba-provision-media-fixture-stager"
+      "./cmd/kaiba-provision-media-verifier"
+      "./cmd/kaiba-provision-sign-eeprom"
+      "./cmd/kaiba-provision-unfused-runtime-record"
+    ];
+  };
   secureBootArtifactBuilder = import ../nix/secure-boot-artifacts.nix {
     inherit lib pkgs;
   };
@@ -2880,7 +2914,6 @@ let
           pkgs.check-jsonschema
           pkgs.coreutils
           pkgs.findutils
-          pkgs.go
           pkgs.gnugrep
           pkgs.jq
           pkgs.openssl
@@ -2889,16 +2922,9 @@ let
       }
       ''
         set -euo pipefail
-        export CGO_ENABLED=0
-        export GOCACHE="$TMPDIR/go-cache"
-        export GOPATH="$TMPDIR/go-path"
         export LC_ALL=C
 
-        cd ${built.goSource}
-        go test \
-          ./internal/provisioning/eepromsigning \
-          ./cmd/kaiba-provision-sign-eeprom \
-          -count=1
+        test -f ${staticGoTests}/passed
 
         readonly plan_schema=${built.goSource}/schemas/rpi5-eeprom-signing-plan-v1alpha1.schema.json
         readonly result_schema=${built.goSource}/schemas/rpi5-eeprom-signing-result-v1alpha1.schema.json
@@ -3692,37 +3718,19 @@ let
           pkgs.check-jsonschema
           pkgs.coreutils
           pkgs.gnugrep
-          pkgs.go
         ];
       }
       ''
         set -euo pipefail
-        export CGO_ENABLED=0
-        export GOCACHE="$TMPDIR/go-cache"
-        export GOPATH="$TMPDIR/go-path"
         export LC_ALL=C
 
-        cd ${built.goSource}
-        readonly focused_test_pattern='^(TestFinalizeVerifiesCompleteCrossBundleLineage|TestResolveRejectsBootPolicyAndSignedEEPROMConfigMismatch|TestResolveRejectsHistoricalBootPolicyForNewFinalization|TestResolveRejectsTreesOutsideCanonicalRPIBootBundleSet|TestResolveRequiresOwnedRecoveryUpdaterReplay|TestRetainedPublicationParentDetectsPathReplacement|TestTreePayloadLimitAccommodatesProductionRootImages|TestVerifyPublicationRejectsTamperingAndAdditions)$'
-        go test ./internal/provisioning/signedrelease \
-          -list "$focused_test_pattern" > "$TMPDIR/focused-tests.txt"
-        test "$(grep -Ec "$focused_test_pattern" "$TMPDIR/focused-tests.txt")" -eq 8
-        KAIBA_SIGNED_RELEASE_TEST_PUBLICATION="$TMPDIR/publication.json" \
-          go test ./internal/provisioning/signedrelease \
-            -run "$focused_test_pattern" \
-            -count=1
-        go test ./cmd/kaiba-provision-finalize-release \
-          -run '^(TestRunPassesTheExactFixedInputSet|TestProductionDependenciesFailClosedWithoutLinkerPath)$' \
-          -count=1
-        go test ./internal/provisioning/rpibootbundle \
-          -run '^TestSetRejectsWritableBundleRoot$' \
-          -count=1
+        test -f ${staticGoTests}/passed
 
         readonly publication_schema=${built.goSource}/schemas/rpi5-signed-release-publication-v1alpha1.schema.json
         check-jsonschema --check-metaschema "$publication_schema"
         check-jsonschema \
           --schemafile "$publication_schema" \
-          "$TMPDIR/publication.json"
+          ${staticGoTests}/publication.json
 
         test -x ${built.signedReleaseTool}/bin/kaiba-provision-finalize-release
         strings ${built.signedReleaseTool}/bin/kaiba-provision-finalize-release \
@@ -3777,25 +3785,13 @@ let
       {
         nativeBuildInputs = [
           pkgs.check-jsonschema
-          pkgs.go
           pkgs.gnugrep
           pkgs.jq
         ];
       }
       ''
         set -euo pipefail
-        export CGO_ENABLED=0
-        export GOCACHE="$TMPDIR/go-cache"
-        export GOPATH="$TMPDIR/go-path"
-
-        cd ${built.goSource}
-        readonly focused_test_pattern='^(Test(New)?SignedRelease|TestDirectoryTree|TestSnapshotDirectoryTree)'
-        go test ./internal/provisioning/bundle \
-          -list "$focused_test_pattern" > "$TMPDIR/focused-tests.txt"
-        grep -Eq "$focused_test_pattern" "$TMPDIR/focused-tests.txt"
-        go test ./internal/provisioning/bundle \
-          -run "$focused_test_pattern" \
-          -count=1
+        test -f ${staticGoTests}/passed
         check-jsonschema --check-metaschema \
           ${built.goSource}/schemas/rpi5-rpiboot-directory-tree-v1alpha1.schema.json \
           ${built.goSource}/schemas/rpi5-signed-release-manifest-v1alpha2.schema.json
@@ -5256,30 +5252,16 @@ let
         export PYTHONPYCACHEPREFIX="$TMPDIR/pycache"
 
         cd ${built.goSource}
-        go test \
-          ./internal/provisioning/evidencefile \
-          ./internal/provisioning/mediacontract \
-          ./internal/provisioning/mediadevice \
-          ./internal/provisioning/mediainventory \
-          ./internal/provisioning/mediarelease \
-          ./internal/provisioning/mediaverity \
-          ./internal/provisioning/mediawriter \
-          ./internal/provisioning/planapproval \
-          ./cmd/kaiba-provision-media-contract \
-          ./cmd/kaiba-provision-media-device-stager \
-          ./cmd/kaiba-provision-media-device-verifier \
-          ./cmd/kaiba-provision-media-fixture-stager \
-          ./cmd/kaiba-provision-media-verifier \
-          ./cmd/kaiba-provision-unfused-runtime-record
+        test -f ${staticGoTests}/passed
 
         # The evidence publisher uses Linux descriptor-relative APIs. Compile
-        # its tests for arm64 in the x86 fast-check job so architecture-specific
-        # portability regressions fail before native ARM image construction
-        # fans out.
-        GOOS=linux GOARCH=arm64 go test -c \
-          -o "$TMPDIR/evidencefile-linux-arm64.test" \
-          ./internal/provisioning/evidencefile
-        test -s "$TMPDIR/evidencefile-linux-arm64.test"
+        # its tests for arm64 on x86; native ARM runs them in unit-static.
+        ${lib.optionalString (pkgs.stdenv.hostPlatform.system == "x86_64-linux") ''
+          GOOS=linux GOARCH=arm64 go test -c \
+            -o "$TMPDIR/evidencefile-linux-arm64.test" \
+            ./internal/provisioning/evidencefile
+          test -s "$TMPDIR/evidencefile-linux-arm64.test"
+        ''}
 
         go list -deps ./cmd/kaiba-provision-media-device-verifier \
           > "$TMPDIR/device-verifier-deps"
@@ -5659,6 +5641,7 @@ let
           test -f ${signingCeremonyAutomationCheck}/passed
         ''}
         test -x ${built.suite}/bin/kaiba-provision
+        test -f ${goUnitTests}/passed
         test -x ${built.serviceSuite}/bin/kaiba-provision-audit
         test -x ${built.serviceSuite}/bin/kaiba-provision-authority-bridge
         test -x ${built.serviceSuite}/bin/kaiba-provision-control
@@ -6169,6 +6152,7 @@ in
     deviceProfileSchema
     eepromReleaseContract
     eepromSigningContract
+    goUnitTests
     mediaStagingFixtureContract
     physicalLaneGuardFixture
     productionMediaStagingContract
@@ -6182,6 +6166,7 @@ in
     signedReleaseFinalizationContract
     signedReleaseManifestContract
     signedBootPlanContract
+    staticGoTests
     unfusedCapsuleContract
     ;
 }

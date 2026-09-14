@@ -114,6 +114,11 @@ jobs:
           echo '::error::Cachix accepted the upload but the path could not be read back'
           exit 1
 
+      # Fail on Go regressions before realizing the broader package/VM graph.
+      # flake check reuses this exact result in the same runner's Nix store.
+      - name: Run Go unit tests
+        run: nix --accept-flake-config build -L --no-link .#checks.x86_64-linux.unit
+
       - name: Build x86_64 checks
         run: nix --accept-flake-config flake check -L
 

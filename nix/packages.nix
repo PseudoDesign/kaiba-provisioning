@@ -135,12 +135,9 @@ let
 
     vendorHash = null;
 
-    doCheck = true;
-    checkPhase = ''
-      runHook preCheck
-      go test ./...
-      runHook postCheck
-    '';
+    # checks.unit runs the complete suite independently of these binaries and
+    # their probe firmware. Packaging checks still build and inspect the suite.
+    doCheck = false;
   };
 
   serviceSuite = pkgs.buildGoModule {
@@ -162,7 +159,7 @@ let
 
     vendorHash = null;
 
-    # The primary suite already runs every package test.  Keeping the service
+    # The unit check already runs every package test. Keeping the service
     # link step separate prevents probe-only build-time paths from becoming
     # ambient configuration for the control and station processes.
     doCheck = false;
