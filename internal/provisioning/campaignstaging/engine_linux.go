@@ -12,8 +12,10 @@ import (
 	"io"
 	"os"
 	"syscall"
+	"time"
 
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/campaignmedia"
+	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/mediadevice"
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/mediainventory"
 )
 
@@ -39,7 +41,7 @@ func prepare(ctx context.Context, directory string, r recipe, opener Opener) (Pr
 	}
 	target, err := openTarget(ctx, opener, false, nil, r)
 	if err != nil {
-		return Preview{}, err
+		return Preview{}, fmt.Errorf("open preparation target read-only: %w", err)
 	}
 	closed := false
 	defer func() {
@@ -254,7 +256,7 @@ func execute(ctx context.Context, directory string, r recipe, approval Approval,
 	}
 	initial, err := openTarget(ctx, opener, false, &p.Attachment, r)
 	if err != nil {
-		return Report{}, err
+		return Report{}, fmt.Errorf("open execution preflight target read-only: %w", err)
 	}
 	err = verifyPreimages(ctx, initial, p.Backups)
 	closeErr := initial.Close()
@@ -282,7 +284,7 @@ func execute(ctx context.Context, directory string, r recipe, approval Approval,
 	}
 	target, err := openTarget(ctx, opener, true, &p.Attachment, r)
 	if err != nil {
-		return Report{}, err
+		return Report{}, fmt.Errorf("open execution target writable: %w", err)
 	}
 	closed := false
 	defer func() {
@@ -345,9 +347,13 @@ func execute(ctx context.Context, directory string, r recipe, approval Approval,
 	if err := check(); err != nil {
 		return Report{}, err
 	}
-	readback, err := verify(ctx, r, opener, &p.Attachment)
+	readbackTarget, err := openExecutionReadbackTarget(ctx, r, opener, p.Attachment, check)
 	if err != nil {
-		return Report{}, err
+		return Report{}, fmt.Errorf("open execution readback target read-only: %w", err)
+	}
+	readback, err := verifyOpenedTarget(ctx, r, readbackTarget)
+	if err != nil {
+		return Report{}, fmt.Errorf("verify execution readback: %w", err)
 	}
 	// Changes to an already copied source or a recovery file suppress success,
 	// even if final target bytes happen still to match the write plan.
@@ -389,8 +395,51 @@ func Verify(ctx context.Context, config Config, opener Opener) (Readback, error)
 func verify(ctx context.Context, r recipe, opener Opener, expected *mediainventory.TargetFacts) (Readback, error) {
 	target, err := openTarget(ctx, opener, false, expected, r)
 	if err != nil {
-		return Readback{}, err
+		return Readback{}, fmt.Errorf("open readback target read-only: %w", err)
 	}
+	return verifyOpenedTarget(ctx, r, target)
+}
+
+// Closing a writable block descriptor can cause udev to probe the device while
+// holding a shared flock. Only this post-write read-only acquisition waits for
+// that contention. Every attempt freshly inspects the same attachment through
+// the ordinary opener; no writer, byte readback, or completed attempt is retried.
+func openExecutionReadbackTarget(ctx context.Context, r recipe, opener Opener, expected mediainventory.TargetFacts, check func() error) (Target, error) {
+	waitContext, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	for {
+		if err := waitContext.Err(); err != nil {
+			return nil, err
+		}
+		if err := check(); err != nil {
+			return nil, err
+		}
+		target, err := openTarget(waitContext, opener, false, &expected, r)
+		if err == nil {
+			if err := waitContext.Err(); err != nil {
+				return nil, errors.Join(err, target.Close())
+			}
+			if err := check(); err != nil {
+				return nil, errors.Join(err, target.Close())
+			}
+			return target, nil
+		}
+		if !errors.Is(err, mediadevice.ErrDeviceLockBusy) {
+			return nil, err
+		}
+		timer := time.NewTimer(50 * time.Millisecond)
+		select {
+		case <-waitContext.Done():
+			timer.Stop()
+			return nil, fmt.Errorf("post-write read-only lock acquisition did not complete: %w", errors.Join(waitContext.Err(), err))
+		case <-timer.C:
+		}
+	}
+}
+
+// The caller transfers one successfully acquired read-only descriptor here.
+// Hash, revalidation and close failures are terminal and never reacquire it.
+func verifyOpenedTarget(ctx context.Context, r recipe, target Target) (Readback, error) {
 	closed := false
 	defer func() {
 		if !closed {

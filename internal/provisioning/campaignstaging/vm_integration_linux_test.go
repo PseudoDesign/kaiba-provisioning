@@ -26,7 +26,8 @@ import (
 // This test is enabled only by tests/campaign-staging-vm.nix. It creates
 // disposable loop devices inside that guest and uses the production Linux
 // adapter, including its fixed host and selector policy, without overrides.
-func TestCampaignStagingVM(t *testing.T) {
+func vmDevices(t *testing.T) (string, campaignmedia.StagingPlan, []string) {
+	t.Helper()
 	if os.Getenv("KAIBA_CAMPAIGN_STAGING_VM") != "1" {
 		t.Skip("requires the dedicated disposable NixOS VM")
 	}
@@ -34,7 +35,6 @@ func TestCampaignStagingVM(t *testing.T) {
 	if err != nil || string(marker) != "disposable-campaign-staging-test\n" {
 		t.Fatal("dedicated VM marker is missing")
 	}
-	ctx := context.Background()
 	root := t.TempDir()
 	if err := os.Chmod(root, 0700); err != nil {
 		t.Fatal(err)
@@ -87,6 +87,13 @@ func TestCampaignStagingVM(t *testing.T) {
 	// any busy attachment immediately and never retries a staging operation.
 	vmCommand(t, "udevadm", "settle")
 	vmHostname(t, campaignmedia.MalakSDHostname)
+	return root, plan, paths
+}
+
+func TestCampaignStagingVM(t *testing.T) {
+	root, plan, paths := vmDevices(t)
+	ctx := context.Background()
+	var err error
 	t.Log("Checking real Linux inventory, locks, mounted/held rejection, and selector replacement")
 	vmAdapterChecks(t, plan.Devices[0].Identity, paths)
 
@@ -194,6 +201,66 @@ func TestCampaignStagingVM(t *testing.T) {
 		config := Config{Plan: plan, Requirements: requirements, Envelopes: envelopes, Leg: device.Identity.Leg, Payloads: payloads[i]}
 		opener := FixedDeviceOpener{Identity: device.Identity, ProtectedDevicePaths: []string{"/dev/vda"}}
 		vmStagingChecks(t, ctx, root, config, opener)
+	}
+}
+
+// Reproduce the descriptor transition using the real udev watcher and the
+// fixed adapter without hashing full partitions. Every iteration starts
+// quiescent, writes one byte, synchronizes, closes, and independently opens
+// a read-only descriptor with the previous attachment facts.
+func TestCampaignStagingVMOpenTransitions(t *testing.T) {
+	_, plan, paths := vmDevices(t)
+	ctx := context.Background()
+	d := plan.Devices[0]
+	file, err := os.OpenFile(paths[0], os.O_RDWR, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range vmInitialGPTItems(t, d) {
+		if _, err := file.WriteAt(item.data, int64(item.offset)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := file.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	vmCommand(t, "udevadm", "settle")
+	opener := FixedDeviceOpener{Identity: d.Identity, ProtectedDevicePaths: []string{"/dev/vda"}}
+	for i := 0; i < 50; i++ {
+		target, err := opener.Open(ctx, true, nil)
+		if err != nil {
+			t.Fatalf("iteration %d initial writable open: %v", i, err)
+		}
+		facts := target.Facts()
+		if _, err := target.WriteAt([]byte{byte(i)}, int64(d.Partitions[0].ByteStart)); err != nil {
+			t.Fatal(err)
+		}
+		if err := target.Sync(); err != nil {
+			t.Fatal(err)
+		}
+		if err := target.Close(); err != nil {
+			t.Fatal(err)
+		}
+		reader, err := openExecutionReadbackTarget(ctx, recipe{identity: d.Identity}, opener, facts, func() error { return ctx.Err() })
+		if err != nil {
+			t.Log(vmCommand(t, "cat", "/proc/locks"))
+			t.Log(vmCommand(t, "ps", "-eo", "pid,comm"))
+			t.Fatalf("iteration %d writable-close to independent readonly-open: %v", i, err)
+		}
+		var readback [1]byte
+		if _, err := reader.ReadAt(readback[:], int64(d.Partitions[0].ByteStart)); err != nil {
+			t.Fatal(err)
+		}
+		if readback[0] != byte(i) {
+			t.Fatal("independent descriptor readback differs from the synchronized byte")
+		}
+		if err := reader.Close(); err != nil {
+			t.Fatal(err)
+		}
+		vmCommand(t, "udevadm", "settle")
 	}
 }
 
@@ -402,7 +469,7 @@ func vmStagingChecks(t *testing.T, ctx context.Context, root string, config Conf
 		directory := filepath.Join(root, "interrupted-sd")
 		preview, err := Prepare(ctx, directory, config, opener)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatal("interrupted Prepare:", err)
 		}
 		approval, err := Approve(preview, preview.PreviewDigest, "synthetic-vm-reviewer")
 		if err != nil {
@@ -465,7 +532,7 @@ func vmStagingChecks(t *testing.T, ctx context.Context, root string, config Conf
 	directory := filepath.Join(root, string(config.Leg))
 	preview, err := Prepare(ctx, directory, config, opener)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal("positive Prepare:", err)
 	}
 	approval, err := Approve(preview, preview.PreviewDigest, "synthetic-vm-reviewer")
 	if err != nil {
@@ -476,7 +543,7 @@ func vmStagingChecks(t *testing.T, ctx context.Context, root string, config Conf
 	}
 	report, err := Execute(ctx, directory, config, approval, opener)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal("positive Execute:", err)
 	}
 	if !report.BackupReadbackVerified || !report.Readback.CompleteRangesVerified || report.HardwareQualified || report.CampaignClaimsClosed {
 		t.Fatal("VM report violated the mechanical evidence boundary")

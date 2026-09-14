@@ -35,6 +35,22 @@ const (
 
 var stationHostnamePattern = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
 
+// ErrDeviceLockBusy identifies contention from the device's exclusive flock.
+// It does not classify EAGAIN from opening, inspecting or validating a device.
+var ErrDeviceLockBusy = errors.New("block-device lock contention")
+
+type deviceLockError struct{ cause error }
+
+func (err deviceLockError) Error() string {
+	return "lock pinned block device exclusively: " + err.cause.Error()
+}
+
+func (err deviceLockError) Unwrap() error { return err.cause }
+
+func (err deviceLockError) Is(target error) bool {
+	return target == ErrDeviceLockBusy && errors.Is(err.cause, syscall.EWOULDBLOCK)
+}
+
 var inspectProtectedDevice = func(path string) (uint64, error) {
 	info, err := os.Lstat(path)
 	if err != nil {
@@ -396,7 +412,7 @@ func OpenLocked(facts mediainventory.TargetFacts, writable bool) (*os.File, erro
 	}
 	if err := syscall.Flock(fd, syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		_ = file.Close()
-		return nil, fmt.Errorf("lock pinned block device exclusively: %w", err)
+		return nil, deviceLockError{cause: err}
 	}
 	if err := ValidateOpened(file, facts); err != nil {
 		_ = CloseLocked(file)

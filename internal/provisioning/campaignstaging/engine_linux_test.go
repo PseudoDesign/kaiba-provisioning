@@ -13,9 +13,11 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/bundle"
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/campaignmedia"
+	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/mediadevice"
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/mediainventory"
 )
 
@@ -582,3 +584,252 @@ func (shortReader) ReadAt(b []byte, off int64) (int, error) { return len(b) - 1,
 type discardAt struct{}
 
 func (discardAt) WriteAt(b []byte, off int64) (int, error) { return len(b), nil }
+
+type openerFunc func(context.Context, bool, *mediainventory.TargetFacts) (Target, error)
+
+func (f openerFunc) Open(ctx context.Context, writable bool, expected *mediainventory.TargetFacts) (Target, error) {
+	return f(ctx, writable, expected)
+}
+
+func testDeviceLockContention() error {
+	return fmt.Errorf("shared udev lock: %w", errors.Join(mediadevice.ErrDeviceLockBusy, syscall.EWOULDBLOCK))
+}
+
+func TestExecutionReadbackWaitsForContentionWithoutRepeatingWrites(t *testing.T) {
+	f := preparedTiny(t)
+	readbackOpens, writerOpens := 0, 0
+	opener := openerFunc(func(ctx context.Context, writable bool, expected *mediainventory.TargetFacts) (Target, error) {
+		if writable {
+			writerOpens++
+		} else if f.o.writes > 0 {
+			readbackOpens++
+			if expected == nil || *expected != f.p.Attachment {
+				t.Fatal("readback retry lost independently bound attachment")
+			}
+			if readbackOpens <= 2 {
+				// An opener must not be able to modify the expected identity
+				// that will be supplied to the next independent inspection.
+				expected.DiskSequence++
+				return nil, testDeviceLockContention()
+			}
+		}
+		return f.o.Open(ctx, writable, expected)
+	})
+	report, err := execute(context.Background(), f.directory, f.r, f.a, opener)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if readbackOpens != 3 || writerOpens != 1 || !report.Readback.CompleteRangesVerified {
+		t.Fatalf("wrong readback/write acquisition counts: reads=%d writers=%d", readbackOpens, writerOpens)
+	}
+	if f.o.writes != 5 {
+		t.Fatalf("payload/GPT bytes were replayed: %d writes", f.o.writes)
+	}
+}
+
+func TestReadbackAcquisitionStopsOnNonContentionErrors(t *testing.T) {
+	for _, failure := range []error{syscall.EWOULDBLOCK, syscall.EBUSY, syscall.EIO, errors.New("different attachment")} {
+		t.Run(failure.Error(), func(t *testing.T) {
+			f := preparedTiny(t)
+			readbacks := 0
+			opener := openerFunc(func(ctx context.Context, writable bool, expected *mediainventory.TargetFacts) (Target, error) {
+				if !writable && f.o.writes > 0 {
+					readbacks++
+					return nil, failure
+				}
+				return f.o.Open(ctx, writable, expected)
+			})
+			if _, err := execute(context.Background(), f.directory, f.r, f.a, opener); !errors.Is(err, failure) || errors.Is(err, mediadevice.ErrDeviceLockBusy) {
+				t.Fatal("lost readback acquisition failure:", err)
+			}
+			if readbacks != 1 {
+				t.Fatal("non-contention error was retried")
+			}
+			assertConsumed(t, f)
+		})
+	}
+}
+
+func TestReadbackWaitRejectsChangedAttachment(t *testing.T) {
+	f := preparedTiny(t)
+	readbacks := 0
+	opener := openerFunc(func(ctx context.Context, writable bool, expected *mediainventory.TargetFacts) (Target, error) {
+		if !writable && f.o.writes > 0 {
+			readbacks++
+			if readbacks == 1 {
+				f.o.facts.DiskSequence++
+				return nil, testDeviceLockContention()
+			}
+		}
+		return f.o.Open(ctx, writable, expected)
+	})
+	if _, err := execute(context.Background(), f.directory, f.r, f.a, opener); err == nil || !strings.Contains(err.Error(), "attachment") {
+		t.Fatal("changed attachment accepted after lock contention:", err)
+	}
+	if readbacks != 2 {
+		t.Fatal("identity mismatch was retried")
+	}
+	assertConsumed(t, f)
+}
+
+func TestReadbackWaitCancelsAndRemainsConsumed(t *testing.T) {
+	f := preparedTiny(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	readbacks := 0
+	opener := openerFunc(func(ctx context.Context, writable bool, expected *mediainventory.TargetFacts) (Target, error) {
+		if !writable && f.o.writes > 0 {
+			readbacks++
+			cancel()
+			return nil, testDeviceLockContention()
+		}
+		return f.o.Open(ctx, writable, expected)
+	})
+	if _, err := execute(ctx, f.directory, f.r, f.a, opener); !errors.Is(err, context.Canceled) {
+		t.Fatal("readback wait ignored cancellation:", err)
+	}
+	if readbacks != 1 {
+		t.Fatal("cancelled wait reopened target")
+	}
+	assertConsumed(t, f)
+}
+
+func TestReadbackAcquisitionHasFixedDeadline(t *testing.T) {
+	f := preparedTiny(t)
+	readbacks := 0
+	var firstContention time.Time
+	opener := openerFunc(func(ctx context.Context, writable bool, expected *mediainventory.TargetFacts) (Target, error) {
+		if !writable && f.o.writes > 0 {
+			readbacks++
+			if firstContention.IsZero() {
+				firstContention = time.Now()
+			}
+			return nil, testDeviceLockContention()
+		}
+		return f.o.Open(ctx, writable, expected)
+	})
+	if _, err := execute(context.Background(), f.directory, f.r, f.a, opener); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatal("permanent contention did not reach its fixed deadline:", err)
+	}
+	if readbacks < 2 || time.Since(firstContention) < 9*time.Second {
+		t.Fatal("fixed readback wait was not exercised")
+	}
+	assertConsumed(t, f)
+}
+
+func TestReadbackWaitRevalidatesEvidenceDirectory(t *testing.T) {
+	f := preparedTiny(t)
+	moved := f.directory + "-retained"
+	readbacks := 0
+	opener := openerFunc(func(ctx context.Context, writable bool, expected *mediainventory.TargetFacts) (Target, error) {
+		if !writable && f.o.writes > 0 {
+			readbacks++
+			if err := os.Rename(f.directory, moved); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Mkdir(f.directory, 0700); err != nil {
+				t.Fatal(err)
+			}
+			return nil, testDeviceLockContention()
+		}
+		return f.o.Open(ctx, writable, expected)
+	})
+	if _, err := execute(context.Background(), f.directory, f.r, f.a, opener); err == nil || !strings.Contains(err.Error(), "directory") {
+		t.Fatal("replaced evidence directory accepted during wait:", err)
+	}
+	if readbacks != 1 {
+		t.Fatal("another acquisition occurred after evidence replacement")
+	}
+	if _, err := os.Stat(filepath.Join(moved, "execution-started.json")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(moved, "execution-complete.json")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("failed acquisition published completion")
+	}
+}
+
+func TestOtherTargetOpensRemainImmediate(t *testing.T) {
+	for _, phase := range []string{"prepare", "preflight", "writable", "standalone-verify"} {
+		t.Run(phase, func(t *testing.T) {
+			f := preparedTiny(t)
+			attempts := 0
+			opener := openerFunc(func(ctx context.Context, writable bool, expected *mediainventory.TargetFacts) (Target, error) {
+				if phase != "writable" || writable {
+					attempts++
+					return nil, testDeviceLockContention()
+				}
+				return f.o.Open(ctx, writable, expected)
+			})
+			var err error
+			switch phase {
+			case "prepare":
+				_, err = prepare(context.Background(), f.directory+"-new", f.r, opener)
+			case "preflight", "writable":
+				_, err = execute(context.Background(), f.directory, f.r, f.a, opener)
+			case "standalone-verify":
+				_, err = verify(context.Background(), f.r, opener, nil)
+			}
+			if !errors.Is(err, syscall.EWOULDBLOCK) || !errors.Is(err, mediadevice.ErrDeviceLockBusy) || attempts != 1 {
+				t.Fatalf("%s did not immediately refuse contention: attempts=%d err=%v", phase, attempts, err)
+			}
+			if f.o.writes != 0 {
+				t.Fatal("contended acquisition wrote bytes")
+			}
+			if phase == "writable" {
+				assertConsumed(t, f)
+			} else if _, err := os.Stat(filepath.Join(f.directory, "execution-started.json")); !errors.Is(err, os.ErrNotExist) {
+				t.Fatal("read-only failure consumed an attempt")
+			}
+		})
+	}
+}
+
+type readbackFailureTarget struct {
+	Target
+	failRead, failClose, failRevalidate bool
+}
+
+func (t *readbackFailureTarget) Revalidate(ctx context.Context) error {
+	if t.failRevalidate {
+		return syscall.EWOULDBLOCK
+	}
+	return t.Target.Revalidate(ctx)
+}
+
+func (t *readbackFailureTarget) ReadAt(b []byte, offset int64) (int, error) {
+	if t.failRead {
+		return 0, syscall.EWOULDBLOCK
+	}
+	return t.Target.ReadAt(b, offset)
+}
+func (t *readbackFailureTarget) Close() error {
+	err := t.Target.Close()
+	if t.failClose {
+		return errors.Join(err, syscall.EWOULDBLOCK)
+	}
+	return err
+}
+
+func TestReadbackRevalidationHashAndCloseFailuresNeverRetry(t *testing.T) {
+	for _, phase := range []string{"revalidation", "hash", "close"} {
+		t.Run(phase, func(t *testing.T) {
+			f := preparedTiny(t)
+			readbacks := 0
+			opener := openerFunc(func(ctx context.Context, writable bool, expected *mediainventory.TargetFacts) (Target, error) {
+				target, err := f.o.Open(ctx, writable, expected)
+				if err == nil && !writable && f.o.writes > 0 {
+					readbacks++
+					return &readbackFailureTarget{Target: target, failRead: phase == "hash", failClose: phase == "close", failRevalidate: phase == "revalidation"}, nil
+				}
+				return target, err
+			})
+			if _, err := execute(context.Background(), f.directory, f.r, f.a, opener); !errors.Is(err, syscall.EWOULDBLOCK) || errors.Is(err, mediadevice.ErrDeviceLockBusy) {
+				t.Fatal("injected readback failure was lost:", err)
+			}
+			if readbacks != 1 {
+				t.Fatal("verification failure reacquired the target")
+			}
+			assertConsumed(t, f)
+		})
+	}
+}

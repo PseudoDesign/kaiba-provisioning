@@ -125,6 +125,15 @@ complete planned-range hashing before recording completion. `verify` performs
 a separate read-only observation of those final ranges and can run after
 reattachment; it does not require the old preimage to remain on the device.
 
+Closing the writer can trigger a brief
+[udev probe with a shared device lock](https://systemd.io/BLOCK_DEVICE_LOCKING/).
+Only execution's final read-only acquisition waits for lock contention, for
+at most ten seconds and subject to cancellation. Each acquisition repeats the
+full device checks against the original attachment and revalidates the evidence
+directory. Other open failures, changed attachments and readback failures stop
+immediately. Preparation, preflight, writable opens and standalone `verify`
+retain immediate refusal on a busy device. No writes are repeated while waiting.
+
 Repeat the workflow separately on the NVMe host with its configured candidate
 and fresh evidence directory. Both legs must be independently verified before
 the first baseline boot. Reports describe local mechanical consistency; all

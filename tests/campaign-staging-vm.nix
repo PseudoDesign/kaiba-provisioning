@@ -1,11 +1,18 @@
 {
   pkgs,
   source,
+  testName ? null,
 }:
 
 assert pkgs.stdenv.hostPlatform.system == "x86_64-linux";
 
 let
+  allTests = [
+    "TestCampaignStagingVMOpenTransitions"
+    "TestCampaignStagingVM"
+  ];
+  testNames = if testName == null then allTests else [ testName ];
+  testPattern = pkgs.lib.concatStringsSep "|" testNames;
   testBinary =
     pkgs.runCommand "kaiba-campaign-staging-vm-test-binary"
       {
@@ -30,8 +37,9 @@ let
       architecture = "x86_64-linux";
       realLinuxBlockAdapter = true;
       disposableLoopDevices = true;
-      fullFixedCampaignGeometry = true;
-      interruptedWriteAndRetryRejection = true;
+      fullFixedCampaignGeometry = builtins.elem "TestCampaignStagingVM" testNames;
+      interruptedWriteAndRetryRejection = builtins.elem "TestCampaignStagingVM" testNames;
+      readbackProbeTransitions = builtins.elem "TestCampaignStagingVMOpenTransitions" testNames;
       raspberryPiHardwareObserved = false;
       campaignClaimsClosed = false;
     };
@@ -62,19 +70,21 @@ let
       machine.succeed("mkdir -p /var/lib/campaign-staging-vm")
       status, output = machine.execute(
           "set -o pipefail; env TMPDIR=/var/lib/campaign-staging-vm KAIBA_CAMPAIGN_STAGING_VM=1 "
-          "campaign-staging-vm-test -test.run '^TestCampaignStagingVM$' "
+          "campaign-staging-vm-test -test.run '^(${testPattern})$' "
           "-test.v -test.timeout=150m 2>&1 | tee /var/lib/campaign-staging-vm/test-results.txt > /dev/ttyS0",
           timeout=9300,
       )
       print(machine.succeed("cat /var/lib/campaign-staging-vm/test-results.txt"))
       assert status == 0, output
-      machine.succeed("grep -F -- '--- PASS: TestCampaignStagingVM (' /var/lib/campaign-staging-vm/test-results.txt")
+      for name in ${builtins.toJSON testNames}:
+          machine.succeed("grep -F -- '--- PASS: " + name + " (' /var/lib/campaign-staging-vm/test-results.txt")
       machine.copy_from_machine("/var/lib/campaign-staging-vm/test-results.txt")
     '';
   };
 in
 # The NixOS launcher falls back to TCG when KVM is absent. Keep the isolated
 # NixOS-test requirement while allowing this check on hosted builders.
+assert testName == null || builtins.elem testName allTests;
 vm.overrideTestDerivation (_: {
   requiredSystemFeatures = [ "nixos-test" ];
 })
