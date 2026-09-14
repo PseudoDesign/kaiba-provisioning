@@ -639,6 +639,13 @@
           };
           stable-verifier-campaign-media = stableVerifierCampaignMediaCheck;
           stable-verifier-campaign-run = stableVerifierCampaignRunCheck;
+          stable-campaign-provisioner-toolchain =
+            import ./tests/rpi5-stable-campaign-provisioner-toolchain.nix
+              {
+                inherit lib pkgs;
+                nixosRaspberryPi = nixos-raspberrypi;
+                provisionerPkgs = stableCampaignProvisioner.nixosSystem.pkgs;
+              };
         }
         // lib.optionalAttrs (system == "x86_64-linux") {
           # This evaluates the provisioner's deliberately fixed x86_64 build

@@ -18,7 +18,6 @@ let
     modules = [
       nixosRaspberryPi.nixosModules.sd-image
       nixosRaspberryPi.nixosModules.raspberry-pi-5.base
-      nixosRaspberryPi.nixosModules.raspberry-pi-5.page-size-16k
       nixosRaspberryPi.nixosModules.usb-gadget-ethernet
       secureBootTargetModule
       (
@@ -170,6 +169,17 @@ let
 
           documentation.enable = false;
           nixpkgs.buildPlatform = buildPlatformSystem;
+          # The Pi needs 16 KiB jemalloc pages, but applying the upstream
+          # overlay to x86 build tools also changes Rust and make-initrd-ng,
+          # preventing reuse of their standard binary-cache outputs.
+          nixpkgs.overlays = lib.mkBefore [
+            (
+              final: prev:
+              lib.optionalAttrs prev.stdenv.hostPlatform.isAarch64 (
+                nixosRaspberryPi.overlays.jemalloc-page-size-16k final prev
+              )
+            )
+          ];
           environment = {
             etc."machine-id" = {
               mode = "0444";
