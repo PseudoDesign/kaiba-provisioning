@@ -524,6 +524,11 @@ remain fixed at LBA 34, and arbitrary intermediate or other aligned values are
 rejected. This does not change the intended final staging GPT, whose first
 usable LBA remains 34 and whose first partition still starts at LBA 2048.
 
+The [GPT metadata regression corpus](../internal/provisioning/campaignmedia/testdata/gpt-captures/README.md)
+provides a bounded read-only export and parser replay workflow for retaining
+future observations. Its initial NVMe fixture is explicitly reconstructed;
+raw physical GPT captures still need to be collected and reviewed.
+
 The development SD now has two distinguishable GPT histories. The primary at
 LBA 1 and its declared image-sized backup form one reciprocal selected
 lineage. The physical-end header and entry array form a CRC-valid canonical

@@ -1,0 +1,7 @@
+{
+  "leg": "pi-local-nvme",
+  "disk_guid": "bb5289ea-2c0b-424f-a4c7-23c8fdf1ebae",
+  "first_usable_lba": 2048,
+  "placement": "canonical-full-physical-device",
+  "physical_end_state": "selected-lineage-backup"
+}

@@ -40,6 +40,11 @@ jobs:
       - name: Test the inert Ubuntu signing-gate deployment
         run: tests/deployment/ubuntu_signing_gate_test.sh
 
+      - name: Test read-only GPT metadata capture
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python3 -m unittest discover -s scripts/diagnostics/gpt-capture -p 'test_*.py'
+
       - name: Check that the lock file is unchanged
         run: git diff --exit-code -- flake.lock
 
