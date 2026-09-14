@@ -32,6 +32,9 @@ require_no_arguments() {
 }
 
 run_ui() {
+  node --check internal/provisioning/stationui/web/app.js
+  node --check internal/provisioning/stationui/web/transport.js
+  node --check internal/provisioning/livestation/web/app.js
   python3 -B tests/station-ui/test_validate.py
   # The transport tests consume the real generated graph/runtime config.
   # Realize only the Pages bundle, without VM or image qualification.
