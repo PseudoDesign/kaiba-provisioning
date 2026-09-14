@@ -8,7 +8,7 @@
   },
   verifierPackage ? built.stableVerifierTool,
   authorityPackage ? built.verifierTestAuthority,
-  source ? built.goSource,
+  source ? built.verifierVMSource,
   fixtureGeneratorPackage ? null,
 }:
 

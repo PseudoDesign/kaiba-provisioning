@@ -1,6 +1,6 @@
 {
   pkgs,
-  source ? ../.,
+  source ? (import ../nix/go-sources.nix { lib = pkgs.lib; }).verifierFixture,
   kernel ? pkgs.writeText "stable-verifier-vm-kernel" "fixture kernel",
   initramfs ? pkgs.writeText "stable-verifier-vm-initramfs" "fixture initramfs",
   deviceTree ? pkgs.writeText "stable-verifier-vm-device-tree" "fixture device tree",

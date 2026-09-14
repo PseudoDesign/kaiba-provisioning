@@ -1,19 +1,7 @@
 {
   pkgs,
   lib,
-  moduleRoot ? lib.fileset.toSource {
-    root = ../.;
-    fileset = lib.fileset.unions [
-      ../cmd
-      ../config/rpi5-prototype-release/platform-adapter-v1alpha1.json
-      ../go.mod
-      ../internal
-      ../policies/raspberry-pi-5-development-posture-v1alpha1.json
-      ../profiles/device-classes/raspberry-pi-5-model-b-v1alpha1.json
-      ../schemas
-      ../signers/development-prototype/independent-review-2026-08-27.json
-    ];
-  },
+  moduleRoot ? null,
 }:
 
 let
@@ -27,10 +15,13 @@ let
   mkRpi5StableVerifierCampaignRun = import ./stable-verifier-campaign-run.nix {
     inherit lib pkgs;
   };
-  # moduleRoot is either the single-pass fileset above or an explicitly scoped
-  # caller input. Do not filter it again: a second pass over a store-backed
-  # subpath can leave an unmaterialized source path under lazy-tree Nix.
-  goSource = moduleRoot;
+  sources = import ./go-sources.nix { inherit lib; };
+  # Preserve explicit caller sources without filtering them a second time.
+  # Default hardware binaries use only their runtime imports, while tests and
+  # packages with embedded assets retain the complete application source.
+  scopedSource = name: if moduleRoot == null then sources.${name} else moduleRoot;
+  goSource = scopedSource "application";
+  verifierVMSource = scopedSource "verifierVM";
 
   # Keep the audited recovery firmware on the frozen Nixpkgs source while
   # backporting only the two upstream host-tool commits that make metadata
@@ -168,7 +159,7 @@ let
   stableVerifierTool = pkgs.buildGoModule {
     pname = "kaiba-rpi5-stable-verifier";
     inherit version;
-    src = goSource;
+    src = scopedSource "stableVerifier";
     subPackages = [ "cmd/kaiba-rpi5-stable-verifier" ];
     vendorHash = null;
     env.CGO_ENABLED = 0;
@@ -256,7 +247,7 @@ let
   stableCampaignGPTInspector = pkgs.buildGoModule {
     pname = "kaiba-rpi5-stable-campaign-gpt-inspect";
     inherit version;
-    src = goSource;
+    src = scopedSource "stableCampaignGPTInspector";
     subPackages = [ "cmd/kaiba-rpi5-stable-campaign-gpt-inspect" ];
     vendorHash = null;
     env.CGO_ENABLED = 0;
@@ -305,7 +296,7 @@ let
   rpi5KexecInputValidator = pkgs.buildGoModule {
     pname = "kaiba-rpi5-kexec-input-validate";
     inherit version;
-    src = goSource;
+    src = scopedSource "kexecInputValidator";
     subPackages = [ "cmd/kaiba-rpi5-kexec-input-validate" ];
     vendorHash = null;
     env.CGO_ENABLED = 0;
@@ -436,7 +427,7 @@ let
   verifierTestAuthority = pkgs.buildGoModule {
     pname = "kaiba-rpi5-verifier-test-authority";
     inherit version;
-    src = goSource;
+    src = scopedSource "verifierTestAuthority";
     subPackages = [ "cmd/kaiba-rpi5-verifier-test-authority" ];
     vendorHash = null;
     env.CGO_ENABLED = 0;
@@ -470,7 +461,7 @@ let
   oneBootProveTool = pkgs.buildGoModule {
     pname = "kaiba-rpi5-one-boot-prove";
     inherit version;
-    src = goSource;
+    src = scopedSource "oneBootProve";
     subPackages = [ "cmd/kaiba-rpi5-one-boot-prove" ];
     vendorHash = null;
     env.CGO_ENABLED = 0;
@@ -1270,10 +1261,10 @@ let
   inherit (signedReleaseFactories) mkRpi5VerifiedSignedRelease;
 
   productionMediaFactories = import ./media-staging.nix {
+    moduleRoot = goSource;
     inherit
       lib
       mediaContractTool
-      moduleRoot
       pkgs
       version
       ;
@@ -2309,6 +2300,7 @@ in
     stableVerifierTool
     suite
     verifierTestAuthority
+    verifierVMSource
     yubiKeyWrapperFoundation
     ;
 }
