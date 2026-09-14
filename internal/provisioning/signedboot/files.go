@@ -240,7 +240,7 @@ func readRegularFileAt(directory *os.File, name string, maximum int64) ([]byte, 
 	if name == "" || filepath.Base(name) != name || maximum <= 0 {
 		return nil, errors.New("invalid fixed input file configuration")
 	}
-	fd, err := syscall.Openat(int(directory.Fd()), name, syscall.O_RDONLY|syscall.O_CLOEXEC|syscall.O_NOFOLLOW, 0)
+	fd, err := syscall.Openat(int(directory.Fd()), name, syscall.O_RDONLY|syscall.O_CLOEXEC|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +264,7 @@ func readAbsoluteRegularFile(path string, maximum int64) ([]byte, error) {
 	if before.Mode()&os.ModeSymlink != 0 || !before.Mode().IsRegular() {
 		return nil, errors.New("input must be a regular non-symlink file")
 	}
-	file, err := os.OpenFile(path, os.O_RDONLY|syscall.O_CLOEXEC|syscall.O_NOFOLLOW, 0)
+	file, err := os.OpenFile(path, os.O_RDONLY|syscall.O_CLOEXEC|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		return nil, err
 	}

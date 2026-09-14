@@ -133,7 +133,8 @@ jobs:
       - name: Check the configured x86_64 signing runtime
         run: |
           nix --accept-flake-config build -L --no-link \
-            .#packages.x86_64-linux.kaiba-rpi5-stable-campaign-development-signing
+            .#packages.x86_64-linux.kaiba-rpi5-stable-campaign-development-signing \
+            .#packages.x86_64-linux.kaiba-rpi5-stable-verifier-development-signing
 
       - name: Configure GitHub Pages
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
@@ -245,6 +246,7 @@ jobs:
         run: |
           nix --accept-flake-config build -L --no-link \
             .#packages.aarch64-linux.kaiba-rpi5-stable-campaign-development-signing \
+            .#packages.aarch64-linux.kaiba-rpi5-stable-verifier-development-signing \
             .#packages.aarch64-linux.kaiba-rpi5-stable-campaign-provisioner-signing-plan
 
       - name: Build remaining ARM64 checks and operator-facing packages

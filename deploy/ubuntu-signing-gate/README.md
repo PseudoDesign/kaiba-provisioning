@@ -52,8 +52,10 @@ sudo apt-get install acl jq libccid pcscd polkitd
 > [!IMPORTANT]
 > A clean, revisioned Git checkout exports
 > `kaiba-rpi5-stable-campaign-development-signing`, the configured runtime for
-> the stable campaign's one-artifact ceremony. It is fixed to the reviewed
-> sacrificial development YubiKey, exposes only the stable command, receipt
+> the inspection provisioner's one-artifact ceremony. The separate
+> `kaiba-rpi5-stable-verifier-development-signing` runtime supports the
+> [verifier-only ceremony](../../docs/stable-verifier-signing.md). Each is fixed to the reviewed
+> sacrificial development YubiKey, exposes only its closed command, receipt
 > tool, gate, and token backend, and is not production-approved. The
 > historical five-artifact `development-signing` composition is still not
 > exported; its separate integration gate remains documented in the
@@ -64,6 +66,13 @@ Nix must already contain both the exact configured signing output and the
 immutable deployment bundle. Build them with named result links so the reviewed
 paths remain available until installation. For the stable campaign ceremony,
 build both outputs from the same clean, revisioned repository checkout:
+
+The example selects the inspection provisioner. For verifier signing, replace
+that package attribute with
+`packages.x86_64-linux.kaiba-rpi5-stable-verifier-development-signing`.
+The installer and preflight require exactly one of these two closed commands
+in the selected immutable package. They retain the same gate/backend,
+credentials and stopped-service checks.
 
 ```console
 nix build .#packages.x86_64-linux.kaiba-rpi5-stable-campaign-development-signing \

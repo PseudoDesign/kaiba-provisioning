@@ -353,6 +353,25 @@ let
     grantRegistryPath = "/etc/kaiba-provisioning/signing-grants.json";
     stableCampaignOnly = true;
   };
+  stableVerifierDevelopmentSigningArguments = {
+    name = "kaiba-stable-verifier-development-yubikey-signing-fixture";
+    signerID = "signer:development-fixture";
+    cohortID = "cohort:development-fixture";
+    tokenSerial = "12345678";
+    publicKeyPEM = developmentYubiKeyPublicKeyPEM;
+    publicKeyFingerprint = developmentYubiKeyPublicKeyFingerprint;
+    signerPolicyDigest = developmentYubiKeySignerPolicyDigest;
+    expectedCustomerKeyHash = developmentYubiKeyCustomerKeyHash;
+    grantRegistryPath = "/etc/kaiba-provisioning/signing-grants.json";
+    stableVerifierOnly = true;
+  };
+  stableVerifierDevelopmentYubiKeySigning = built.mkDevelopmentYubiKeySigning stableVerifierDevelopmentSigningArguments;
+  mixedStableSigningProfilesRejected =
+    !(builtins.tryEval (
+      (built.mkDevelopmentYubiKeySigning (
+        stableVerifierDevelopmentSigningArguments // { stableCampaignOnly = true; }
+      )).drvPath
+    )).success;
   developmentYubiKeySigningClosure = pkgs.closureInfo {
     rootPaths = [ developmentYubiKeySigning ];
   };
@@ -5439,6 +5458,45 @@ let
         for binary in $expected_stable_binaries; do
           test -x ${stableCampaignDevelopmentYubiKeySigning}/bin/"$binary"
         done
+
+        expected_verifier_binaries="$(${pkgs.coreutils}/bin/printf '%s\n' \
+          kaiba-provision-signing-gate \
+          kaiba-provision-signing-receipts \
+          kaiba-provision-yubikey-wrapper \
+          kaiba-rpi5-stable-verifier-signing)"
+        actual_verifier_binaries="$(
+          find -L ${stableVerifierDevelopmentYubiKeySigning}/bin \
+            -mindepth 1 -maxdepth 1 -type f -printf '%f\n' | sort
+        )"
+        test "$actual_verifier_binaries" = "$expected_verifier_binaries"
+        for binary in $expected_verifier_binaries; do
+          test -x ${stableVerifierDevelopmentYubiKeySigning}/bin/"$binary"
+        done
+        test '${builtins.toJSON stableVerifierDevelopmentYubiKeySigning.kaibaSigning.stableVerifierOnly}' = true
+        test '${builtins.toJSON mixedStableSigningProfilesRejected}' = true
+        test '${builtins.toJSON stableVerifierDevelopmentYubiKeySigning.kaibaSigning.stableCampaignOnly}' = false
+        test '${
+          builtins.toJSON (stableVerifierDevelopmentYubiKeySigning.kaibaSigning ? stableCampaignSigning)
+        }' = false
+        test '${
+          builtins.toJSON (stableVerifierDevelopmentYubiKeySigning.kaibaSigning ? signedBoot)
+        }' = false
+        test '${
+          builtins.toJSON (stableVerifierDevelopmentYubiKeySigning.kaibaSigning ? eepromSigningTool)
+        }' = false
+        test '${stableVerifierDevelopmentYubiKeySigning.kaibaSigning.stableVerifierSigningConfiguration.gateSocketPath}' = \
+          '/run/kaiba-provision-signing/signing.sock'
+        test '${stableVerifierDevelopmentYubiKeySigning.kaibaSigning.stableVerifierSigningConfiguration.signerID}' = \
+          'signer:development-fixture'
+        test '${stableVerifierDevelopmentYubiKeySigning.kaibaSigning.stableVerifierSigningConfiguration.cohortID}' = \
+          'cohort:development-fixture'
+        test '${stableVerifierDevelopmentYubiKeySigning.kaibaSigning.stableVerifierSigningConfiguration.pkcs11URI}' = \
+          'pkcs11:serial=12345678;id=%02;type=private'
+        test '${stableVerifierDevelopmentYubiKeySigning.kaibaSigning.stableVerifierSigningConfiguration.publicKeyFingerprint}' = \
+          '${developmentYubiKeyPublicKeyFingerprint}'
+        test '${stableVerifierDevelopmentYubiKeySigning.kaibaSigning.stableVerifierSigningConfiguration.expectedPublicKeyPath}' = \
+          '${stableVerifierDevelopmentYubiKeySigning.kaibaSigning.reviewedPublicKeyPEM}'
+        test '${builtins.toJSON stableVerifierDevelopmentYubiKeySigning.kaibaSigning.stableVerifierSigningConfiguration.runtimeAuthoritySelectors}' = false
         test '${builtins.toJSON stableCampaignDevelopmentYubiKeySigning.kaibaSigning.stableCampaignOnly}' = \
           true
         test '${builtins.toJSON (stableCampaignDevelopmentYubiKeySigning.kaibaSigning ? signingClient)}' = \
@@ -5620,6 +5678,18 @@ let
         test ! -s "$TMPDIR/stable-sign.stdout"
         grep -F 'usage: kaiba-rpi5-stable-campaign-signing' \
           "$TMPDIR/stable-sign.stderr" > /dev/null
+
+        set +e
+        ${stableVerifierDevelopmentYubiKeySigning}/bin/kaiba-rpi5-stable-verifier-signing \
+          sign --plan /tmp/kaiba-plan --output /tmp/kaiba-signed \
+          --socket /tmp/attacker.sock \
+          > "$TMPDIR/verifier-sign.stdout" 2> "$TMPDIR/verifier-sign.stderr"
+        verifier_sign_status="$?"
+        set -e
+        test "$verifier_sign_status" -eq 2
+        test ! -s "$TMPDIR/verifier-sign.stdout"
+        grep -F 'usage: kaiba-rpi5-stable-verifier-signing' \
+          "$TMPDIR/verifier-sign.stderr" > /dev/null
 
         mkdir -p "$out"
         touch "$out/passed"

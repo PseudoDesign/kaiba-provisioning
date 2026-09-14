@@ -59,6 +59,8 @@
           stableVerifierEventV1Alpha1 = ./schemas/rpi5-stable-verifier-event-v1alpha1.schema.json;
           stableVerifierPolicyV1Alpha1 = ./schemas/rpi5-stable-verifier-policy-v1alpha1.schema.json;
           stableVerifierSpikeEvidenceV1Alpha1 = ./schemas/rpi5-stable-verifier-spike-evidence-v1alpha1.schema.json;
+          stableVerifierSigningIntentV1Alpha1 = ./schemas/rpi5-stable-campaign-verifier-signing-intent-v1alpha1.schema.json;
+          stableVerifierSigningApprovalV1Alpha1 = ./schemas/rpi5-stable-campaign-verifier-signing-approval-v1alpha1.schema.json;
           stableCampaignProvisionerArtifactSetV1Alpha1 = ./schemas/rpi5-stable-campaign-provisioner-artifact-set-v1alpha1.schema.json;
           stableCampaignProvisionerBootIntegrityV1Alpha1 = ./schemas/rpi5-stable-campaign-provisioner-boot-integrity-v1alpha1.schema.json;
           stableCampaignProvisionerSigningApprovalV1Alpha1 = ./schemas/rpi5-stable-campaign-provisioner-signing-approval-v1alpha1.schema.json;
@@ -353,6 +355,10 @@
             builtins.removeAttrs args [ "system" ]
           );
 
+        mkRpi5StableVerifierSigningPlan =
+          { system, ... }@args:
+          packagesBySystem.${system}.mkRpi5StableVerifierSigningPlan (builtins.removeAttrs args [ "system" ]);
+
         mkRpi5EEPROMRelease =
           { system, ... }@args:
           packagesBySystem.${system}.mkRpi5EEPROMRelease (builtins.removeAttrs args [ "system" ]);
@@ -382,6 +388,12 @@
         mkRpi5VerifiedStableCampaignProvisionerSigning =
           { system, ... }@args:
           packagesBySystem.${system}.mkRpi5VerifiedStableCampaignProvisionerSigning (
+            builtins.removeAttrs args [ "system" ]
+          );
+
+        mkRpi5VerifiedStableVerifierSigning =
+          { system, ... }@args:
+          packagesBySystem.${system}.mkRpi5VerifiedStableVerifierSigning (
             builtins.removeAttrs args [ "system" ]
           );
 
@@ -468,6 +480,7 @@
           kaiba-rpi5-stable-campaign-stage = built.stableCampaignStagingTool;
           kaiba-rpi5-stable-campaign-packet = built.stableCampaignPacketTool;
           kaiba-rpi5-stable-campaign-signing = built.stableCampaignSigningTool;
+          kaiba-rpi5-stable-verifier-signing = built.stableVerifierSigningTool;
           kaiba-rpi5-stable-verifier = built.stableVerifierTool;
           kaiba-rpi5-verifier-test-authority = built.verifierTestAuthority;
           provisioning-suite = built.suite;
@@ -505,6 +518,19 @@
             signerPolicyDigest =
               assets.signers.developmentPrototype.independentReview.public_bindings.signer_policy_digest;
             stableCampaignOnly = true;
+            tokenSerial = assets.signers.developmentPrototype.independentReview.token.serial;
+          };
+          kaiba-rpi5-stable-verifier-development-signing = built.mkDevelopmentYubiKeySigning {
+            name = "kaiba-rpi5-stable-verifier-development-signing";
+            cohortID = "cohort:prototype";
+            expectedCustomerKeyHash = stableCampaignExpectedCustomerKeyHash;
+            publicKeyFingerprint =
+              assets.signers.developmentPrototype.independentReview.public_bindings.public_key_fingerprint;
+            publicKeyPEM = assets.signers.developmentPrototype.reviewedBootPublicKey;
+            signerID = "signer:prototype";
+            signerPolicyDigest =
+              assets.signers.developmentPrototype.independentReview.public_bindings.signer_policy_digest;
+            stableVerifierOnly = true;
             tokenSerial = assets.signers.developmentPrototype.independentReview.token.serial;
           };
         }
@@ -568,6 +594,9 @@
                 inherit lib pkgs;
               };
           stableCampaignSigningCheck = import ./tests/rpi5-stable-campaign-signing.nix {
+            inherit built lib pkgs;
+          };
+          stableVerifierSigningCheck = import ./tests/rpi5-stable-verifier-signing.nix {
             inherit built lib pkgs;
           };
           aarch64GuestPkgs =
@@ -1226,6 +1255,7 @@
           stable-campaign-provisioner-signed-boot-filesystem =
             stableCampaignProvisionerSignedBootFilesystemCheck;
           stable-campaign-signing = stableCampaignSigningCheck;
+          stable-verifier-signing = stableVerifierSigningCheck;
           stable-verifier-initramfs-vm = pkgs.linkFarm "kaiba-stable-verifier-initramfs-vm" [
             {
               name = "fail-closed";
