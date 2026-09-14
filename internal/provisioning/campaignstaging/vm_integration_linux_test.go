@@ -82,6 +82,10 @@ func TestCampaignStagingVM(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Remove(campaignmedia.MalakSDSelector); _ = os.Remove(campaignmedia.PiLocalNVMeSelector) })
+	// udev briefly holds a shared flock while probing a newly attached loop.
+	// Wait for fixture initialization; the production opener still refuses
+	// any busy attachment immediately and never retries a staging operation.
+	vmCommand(t, "udevadm", "settle")
 	vmHostname(t, campaignmedia.MalakSDHostname)
 	t.Log("Checking real Linux inventory, locks, mounted/held rejection, and selector replacement")
 	vmAdapterChecks(t, plan.Devices[0].Identity, paths)
@@ -271,13 +275,16 @@ func vmAdapterChecks(t *testing.T, identity campaignmedia.DeviceIdentity, paths 
 		t.Fatal("opener accepted an active holder")
 	}
 	vmCommand(t, "dmsetup", "remove", "campaign-held")
+	vmCommand(t, "udevadm", "settle")
 	vmCommand(t, "mkfs.ext4", "-F", "-b", "4096", paths[0], "8192")
+	vmCommand(t, "udevadm", "settle")
 	mountpoint := t.TempDir()
 	vmCommand(t, "mount", paths[0], mountpoint)
 	if _, err := opener.Open(ctx, true, nil); err == nil {
 		t.Fatal("opener accepted a mounted target")
 	}
 	vmCommand(t, "umount", mountpoint)
+	vmCommand(t, "udevadm", "settle")
 	target, err = opener.Open(ctx, true, &facts)
 	if err != nil {
 		t.Fatal(err)
@@ -485,6 +492,7 @@ func vmStagingChecks(t *testing.T, ctx context.Context, root string, config Conf
 	backing := vmCommand(t, "losetup", "--noheadings", "--output", "BACK-FILE", loop)
 	vmCommand(t, "losetup", "--detach", loop)
 	vmCommand(t, "losetup", loop, backing)
+	vmCommand(t, "udevadm", "settle")
 	if stale, err := opener.Open(ctx, false, &preview.Attachment); err == nil {
 		stale.Close()
 		t.Fatal("opener accepted the previous attachment after actual loop reattachment")

@@ -47,8 +47,12 @@ operation; they do not authenticate a board or physical storage identity.
 
 ## Prepare and review each leg
 
-Keep raw captures and recovery bytes in an existing protected directory
-outside Git and the Nix store. Use the independent v1alpha2 SD and NVMe
+Keep raw captures and recovery bytes in an existing root-owned protected
+directory outside Git and the Nix store. Every ancestor must be root-owned
+and not writable by other users; root-owned sticky ancestors such as `/tmp`
+are permitted. An operator-owned home directory is rejected even under sudo.
+Run the examples in a root shell with `umask 077` so redirected reports also
+remain private. Use the independent v1alpha2 SD and NVMe
 envelopes and [recovery requirements](stable-campaign-recovery.md) matching
 the exact pinned staging plan. The selected device must still match every
 captured preimage byte.
@@ -57,10 +61,12 @@ The following is the operator interface for a separately reviewed physical
 ceremony. Developing or building this candidate does not execute these steps.
 
 ```console
+sudo -i
+umask 077
 stage=/nix/store/REVIEWED-CANDIDATE/bin/kaiba-rpi5-stable-campaign-stage
 evidence=/absolute/protected/campaign
 
-sudo "$stage" prepare --directory "$evidence/sd-attempt-1" \
+"$stage" prepare --directory "$evidence/sd-attempt-1" \
   --requirements "$evidence/requirements.json" \
   --sd-envelope "$evidence/sd-envelope.json" \
   --nvme-envelope "$evidence/nvme-envelope.json" \
@@ -93,14 +99,14 @@ invoking `execute`.
 ## Execute once and verify independently
 
 ```console
-sudo "$stage" execute --directory "$evidence/sd-attempt-1" \
+"$stage" execute --directory "$evidence/sd-attempt-1" \
   --approval "$evidence/sd-approval.json" \
   --requirements "$evidence/requirements.json" \
   --sd-envelope "$evidence/sd-envelope.json" \
   --nvme-envelope "$evidence/nvme-envelope.json" \
   > "$evidence/sd-staging-report.json"
 
-sudo "$stage" verify \
+"$stage" verify \
   --requirements "$evidence/requirements.json" \
   --sd-envelope "$evidence/sd-envelope.json" \
   --nvme-envelope "$evidence/nvme-envelope.json" \

@@ -61,7 +61,7 @@ let
       status, output = machine.execute(
           "set -o pipefail; env TMPDIR=/var/lib/campaign-staging-vm KAIBA_CAMPAIGN_STAGING_VM=1 "
           "campaign-staging-vm-test -test.run '^TestCampaignStagingVM$' "
-          "-test.v -test.timeout=50m 2>&1 | tee /var/lib/campaign-staging-vm/test-results.txt > /dev/console",
+          "-test.v -test.timeout=50m 2>&1 | tee /var/lib/campaign-staging-vm/test-results.txt > /dev/ttyS0",
           timeout=3300,
       )
       print(machine.succeed("cat /var/lib/campaign-staging-vm/test-results.txt"))
