@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export bounded GPT metadata regions from a read-only 512-byte-sector source."""
+"""Export bounded candidate GPT metadata regions from a read-only source."""
 
 import argparse
 import base64
@@ -49,7 +49,7 @@ def capture(fd, description):
         raise ValueError("primary GPT alternate LBA is outside the supported capture bounds")
 
     # Fixed 128-by-128 geometry: head plus declared and physical-end backup
-    # metadata. Do not follow arbitrary entry-array pointers or hash payload ranges.
+    # candidates. Their bytes remain untrusted until parser replay and review.
     intervals = sorted([
         (0, 34 * SECTOR),
         ((alternate - 32) * SECTOR, (alternate + 1) * SECTOR),

@@ -27,14 +27,17 @@ python3 scripts/diagnostics/gpt-capture/capture.py \
 ```
 
 On Linux the same tool accepts a block-device source opened read-only. It exports
-at most 50 KiB of metadata: the first 34 sectors, the 33 sectors ending
+at most 50 KiB from candidate GPT metadata locations: the first 34 sectors, the 33 sectors ending
 at the primary header's declared backup, and the final 33 physical sectors.
 Overlapping regions are merged. Both passes must agree. It records source kind,
 capacity, timestamp, tool digest, and a SHA-256 digest for each byte region.
 It reads only those bounded locations and does not repair media or invoke the
 full campaign inspector. This diagnostic is limited to 512-byte sectors and
-the campaign's 128-by-128 GPT entry layout. It preserves raw metadata even if
-its checksums or geometry are invalid; parser replay decides acceptance.
+the campaign's 128-by-128 GPT entry layout. It preserves the raw bytes even if
+their checksums or geometry are invalid; parser replay decides acceptance.
+A corrupt but in-range declared backup LBA can select non-GPT bytes, including
+payload content. Review the captured byte regions before sharing or checking
+in a capture.
 
 Review the capture's source description and metadata against the original
 observation before adding it here. Preserve the raw bytes and recorded source

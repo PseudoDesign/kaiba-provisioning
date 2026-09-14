@@ -14,8 +14,8 @@ import (
 	"time"
 )
 
-// Metadata fixtures deliberately cannot serve payload bytes. A missing capture
-// region is an error, rather than an invented zero-filled part of the device.
+// The fixture reader serves only captured regions. A missing region is an
+// error, rather than an invented zero-filled part of the device.
 type initialGPTMetadataCapture struct {
 	SchemaVersion          string `json:"schema_version"`
 	SourceKind             string `json:"source_kind"`
