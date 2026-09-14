@@ -34,6 +34,8 @@ reviewed inputs: `lib.mkRpi5PhysicalLaneGuard`,
 ## Quick start
 
 The supported development systems are `x86_64-linux` and `aarch64-linux`.
+Build natively for the selected architecture; see the
+[native-build policy](#native-build-policy) for remote builders and exceptions.
 Nix supplies a Go toolchain compatible with the module's Go 1.24 requirement
 and the other development tools:
 
@@ -141,6 +143,45 @@ supplied by a reviewed consumer before starting a new live ceremony.
 The deployment bundles are inert by design: installation does not enable or
 start their services. Follow the linked preflight and operator steps before
 crossing a hardware or signing boundary.
+
+## Native-build policy
+
+Avoid cross-compilation in Kaiba's Nix projects. Native builds are the default
+for application packages, kernels, NixOS images, and signing artifacts. Use
+`x86_64-linux` builders for x86 packages and `aarch64-linux` builders for ARM
+packages, locally and in CI. Apply the same default to downstream projects
+that consume this flake.
+
+Nix supports cross-compilation, but cross-built derivations differ from native
+ones and have more limited upstream binary-cache coverage. A small platform
+override can therefore trigger builds of an entire compiler and userspace
+closure. Native builds let us reuse the pinned Nixpkgs and Raspberry Pi caches
+and share our own outputs through Cachix. See the
+[Nix cross-compilation documentation](https://nix.dev/tutorials/cross-compilation.html).
+
+- Keep `stdenv.buildPlatform` and `stdenv.hostPlatform` the same for normal
+  package builds. Do not introduce `pkgsCross`, `crossSystem`, or an x86
+  `nixpkgs.buildPlatform` for an ARM image as a convenience fallback.
+- From an x86 workstation, obtain ARM outputs from a trusted binary cache or
+  configure a native ARM remote builder. Selecting an `aarch64-linux` flake
+  attribute does not make an x86 machine able to build missing ARM outputs.
+  The x86 signing workstation can verify and package existing ARM artifacts
+  without compiling ARM programs.
+- Run checks that realize ARM programs or images on ARM runners. Keep x86
+  configuration checks evaluation-only: interpolating a target store path
+  into a test script can pull in its complete cross-built dependency graph,
+  even inside a shell conditional. Exclude such references during Nix
+  evaluation instead.
+- Keep overlays scoped to the packages that need them so a target-specific
+  change does not invalidate cached build tools on another architecture.
+
+The existing exceptions are narrow: the Go `evidencefile` compile-only ARM
+portability test, same-CPU glibc-to-musl `pkgsStatic` tools such as initramfs
+BusyBox, and evaluation-only cross-platform fixtures that do not realize ARM
+outputs on x86. QEMU VM execution is emulation, not cross-compilation. These
+exceptions are not a precedent for cross-building full system images. Any new
+exception needs an explicit rationale in the change, a dependency/cache-cost
+assessment, and tests; prefer native coverage whenever it meets the need.
 
 ## CI, Cachix, and GitHub Pages
 

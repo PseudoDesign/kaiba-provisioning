@@ -28,6 +28,7 @@ The canonical development posture remains
 
 | Document | Purpose | Current basis |
 | --- | --- | --- |
+| [Native-build policy](../README.md#native-build-policy) | Avoid cross-compilation; select native builders, reuse caches, and keep exceptions narrow | Development and CI policy |
 | [Architecture and trust boundaries](architecture-and-trust-boundaries.md) | Components, authority boundaries, fixed campaign, and failure behavior | Components/contracts implemented; configured composition and physical gates open |
 | [Raspberry Pi 5 secure-boot model](raspberry-pi-5-secure-boot.md) | Native boot chain, ownership boundary, supported claims, and explicit non-claims | Design and software contracts implemented; physical enforcement not evidenced |
 | [Secure-boot execution plan](raspberry-pi-5-secure-boot-execution-plan.md) | Ordered SB-00 through SB-10 gates and their current closure status | Development plan; irreversible gates remain blocked |

@@ -65,8 +65,11 @@ silently rewritten.
 
 The root flake exports these constructor families on supported Linux systems.
 System-parametric constructors take `system`; the stable-campaign post-sign
-constructor fixes its x86 build and AArch64 target platforms. Other arguments
-are specific immutable inputs rather than general runtime selectors.
+constructor runs natively on x86 to verify and materialize already-built ARM
+artifacts, without cross-compiling their contents. Other arguments are
+specific immutable inputs rather than general runtime selectors. New
+constructors and consumers must follow the
+[native-build policy](../README.md#native-build-policy).
 
 | Family | Exported attributes |
 | --- | --- |
