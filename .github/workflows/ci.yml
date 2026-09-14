@@ -28,6 +28,11 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Test read-only GPT metadata capture
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python3 -m unittest discover -s scripts/diagnostics/gpt-capture -p 'test_*.py'
+
       - name: Install Nix
         uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342 # v31.11.0
         with:
