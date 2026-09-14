@@ -1,0 +1,63 @@
+name: Build input isolation
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/build-inputs.yml
+      - flake.nix
+      - flake.lock
+      - go.mod
+      - nix/go-sources.nix
+      - nix/packages.nix
+      - tests/build-inputs.py
+      - tests/stable-handoff-aarch64-kexec-file-vm.nix
+      - tests/stable-verifier-aarch64-kexec-vm.nix
+      - tests/stable-verifier-campaign-media.nix
+      - tests/stable-verifier-initramfs-vm.nix
+      - tests/stable-verifier-vm-fixture.nix
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/build-inputs.yml
+      - flake.nix
+      - flake.lock
+      - go.mod
+      - nix/go-sources.nix
+      - nix/packages.nix
+      - tests/build-inputs.py
+      - tests/stable-handoff-aarch64-kexec-file-vm.nix
+      - tests/stable-verifier-aarch64-kexec-vm.nix
+      - tests/stable-verifier-campaign-media.nix
+      - tests/stable-verifier-initramfs-vm.nix
+      - tests/stable-verifier-vm-fixture.nix
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-inputs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  input-isolation:
+    name: Hardware and VM derivation identities
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342 # v31.11.0
+        with:
+          enable_kvm: false
+          github_access_token: ${{ github.token }}
+
+      # Evaluate real derivation identities after source mutations. This job
+      # neither realizes the hardware images nor boots the VM checks.
+      - name: Check source invalidation boundaries
+        run: python3 tests/build-inputs.py
