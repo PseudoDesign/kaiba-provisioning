@@ -189,7 +189,7 @@
       mkRpi5StableCampaignProvisionerSystem =
         {
           sourceRevision,
-          buildPlatformSystem ? "x86_64-linux",
+          buildPlatformSystem ? "aarch64-linux",
         }:
         assert lib.assertMsg (builtins.elem buildPlatformSystem systems)
           "the stable-campaign provisioner build platform must be one of the flake's supported systems";
@@ -222,7 +222,7 @@
       mkRpi5StableCampaignProvisioner =
         {
           sourceRevision,
-          buildPlatformSystem ? "x86_64-linux",
+          buildPlatformSystem ? "aarch64-linux",
         }:
         let
           provisionerSystem = mkRpi5StableCampaignProvisionerSystem {
@@ -484,7 +484,8 @@
         // lib.optionalAttrs (system == "aarch64-linux") {
           kaiba-rpi5-self-kexec-diagnostic = built.rpi5SelfKexecDiagnostic;
         }
-        // lib.optionalAttrs (self ? rev && system == "x86_64-linux") {
+        # The signing workstation is independent of the Pi image builder.
+        // lib.optionalAttrs (self ? rev) {
           kaiba-rpi5-stable-campaign-development-signing = built.mkDevelopmentYubiKeySigning {
             name = "kaiba-rpi5-stable-campaign-development-signing";
             cohortID = "cohort:prototype";
@@ -498,6 +499,10 @@
             stableCampaignOnly = true;
             tokenSerial = assets.signers.developmentPrototype.independentReview.token.serial;
           };
+        }
+        # Publish one native ARM artifact lineage, never a host-dependent
+        # alternative under the x86 package set.
+        // lib.optionalAttrs (self ? rev && system == "aarch64-linux") {
           kaiba-rpi5-stable-campaign-provisioner-unsigned =
             (mkRpi5StableCampaignProvisioner {
               sourceRevision = stableCampaignSourceRevision;
@@ -639,11 +644,23 @@
           };
           stable-verifier-campaign-media = stableVerifierCampaignMediaCheck;
           stable-verifier-campaign-run = stableVerifierCampaignRunCheck;
-        }
-        // lib.optionalAttrs (system == "x86_64-linux") {
-          # This evaluates the provisioner's deliberately fixed x86_64 build
-          # graph. Do not export it to the native ARM64 check set: its store
-          # references include x86_64 build-time helpers by contract.
+          stable-campaign-provisioner-toolchain =
+            import ./tests/rpi5-stable-campaign-provisioner-toolchain.nix
+              {
+                inherit lib pkgs;
+                nixosRaspberryPi = nixos-raspberrypi;
+                provisionerPkgs = stableCampaignProvisioner.nixosSystem.pkgs;
+              };
+          stable-campaign-provisioner-platform =
+            import ./tests/rpi5-stable-campaign-provisioner-platform.nix
+              {
+                inherit lib pkgs self;
+                nativeProvisioner = mkRpi5StableCampaignProvisioner {
+                  sourceRevision = stableCampaignSourceRevision;
+                };
+              };
+          # Evaluate both the canonical native ARM configuration and the
+          # optional x86 cross-build fixture using each runner's own helpers.
           stable-campaign-provisioner-rpi5-hardware-eval =
             pkgs.runCommand "kaiba-stable-campaign-provisioner-rpi5-hardware-eval" { }
               ''
@@ -674,13 +691,13 @@
                   59d06b61-bf85-4d77-89c3-9e5395934ff8
                 test ${toString stableCampaignProvisioner.unsignedArtifacts.kaibaUnsignedArtifacts.bootPartitionSizeBytes} = \
                   134217728
-                test ${lib.escapeShellArg stableCampaignProvisioner.nixosSystem.pkgs.stdenv.buildPlatform.system} = x86_64-linux
+                test ${lib.escapeShellArg stableCampaignProvisioner.nixosSystem.pkgs.stdenv.buildPlatform.system} = ${system}
                 test ${lib.escapeShellArg stableCampaignProvisioner.nixosSystem.pkgs.stdenv.hostPlatform.system} = aarch64-linux
-                test ${lib.escapeShellArg stableCampaignProvisioner.inspectorPackage.stdenv.buildPlatform.system} = x86_64-linux
+                test ${lib.escapeShellArg stableCampaignProvisioner.inspectorPackage.stdenv.buildPlatform.system} = ${system}
                 test ${lib.escapeShellArg stableCampaignProvisioner.inspectorPackage.stdenv.hostPlatform.system} = aarch64-linux
-                test ${lib.escapeShellArg stableCampaignProvisioner.rootImage.system} = x86_64-linux
-                test ${lib.escapeShellArg stableCampaignProvisioner.firmwareTree.system} = x86_64-linux
-                test ${lib.escapeShellArg stableCampaignProvisioner.unsignedArtifacts.system} = x86_64-linux
+                test ${lib.escapeShellArg stableCampaignProvisioner.rootImage.system} = ${system}
+                test ${lib.escapeShellArg stableCampaignProvisioner.firmwareTree.system} = ${system}
+                test ${lib.escapeShellArg stableCampaignProvisioner.unsignedArtifacts.system} = ${system}
                 test ${
                   if
                     builtins.elem stableCampaignProvisioner.inspectorPackage stableCampaignProvisioner.nixosSystem.config.environment.systemPackages
@@ -734,9 +751,14 @@
                 } = true
                 test ${lib.escapeShellArg stableCampaignProvisioner.unsignedArtifacts.kaibaUnsignedArtifacts.signingStatus} = unsigned
                 test ${builtins.toJSON stableCampaignProvisioner.unsignedArtifacts.kaibaUnsignedArtifacts.mutationCapable} = false
-                grep -aF '/bin/kaiba-rpi5-boot-image-hash-decode' \
-                  ${lib.escapeShellArg stableCampaignProvisioner.nixosSystem.config.systemd.services.kaiba-secure-boot-evidence.serviceConfig.ExecStart} \
-                  > /dev/null
+                # Reading the rendered script realizes its runtime closure.
+                # Exclude the reference during Nix evaluation on x86, rather
+                # than using a shell conditional that still pulls in ARM tools.
+                ${lib.optionalString (system == "aarch64-linux") ''
+                  grep -aF '/bin/kaiba-rpi5-boot-image-hash-decode' \
+                    ${lib.escapeShellArg stableCampaignProvisioner.nixosSystem.config.systemd.services.kaiba-secure-boot-evidence.serviceConfig.ExecStart} \
+                    > /dev/null
+                ''}
                 test ${
                   if
                     builtins.elem "kaiba-secure-boot-evidence.service" stableCampaignProvisioner.nixosSystem.config.systemd.services.sshd.requires
@@ -765,7 +787,7 @@
                   if
                     !(builtins.tryEval (
                       (self.lib.mkRpi5SecureBootArtifacts {
-                        system = "x86_64-linux";
+                        inherit system;
                         rootDeviceBinding = "rpi5-sd-card";
                       }).drvPath
                     )).success
@@ -776,13 +798,12 @@
                 } = true
                 test ${
                   if
-                    self ? rev
-                    &&
+                    !(self ? rev)
+                    || system != "aarch64-linux"
+                    ||
                       stableCampaignProvisioner.unsignedArtifacts.drvPath
-                      == self.packages.x86_64-linux.kaiba-rpi5-stable-campaign-provisioner-unsigned.drvPath
+                      == self.packages.aarch64-linux.kaiba-rpi5-stable-campaign-provisioner-unsigned.drvPath
                   then
-                    "true"
-                  else if !(self ? rev) then
                     "true"
                   else
                     "false"
@@ -1209,9 +1230,8 @@
           };
         }
         // lib.optionalAttrs (system == "aarch64-linux") {
-          # Build the full provisioner artifact contract natively. The
-          # production package remains an x86_64 cross-build, while CI avoids
-          # rebuilding the AArch64 userspace through the cross toolchain.
+          # Validate the same native ARM bytes exported for signing. The CI
+          # signing-plan build reuses this exact artifact closure.
           stable-campaign-provisioner-unsigned-artifacts = stableCampaignProvisionerArtifactCheck;
           # This check builds and boots a native AArch64 NixOS closure. Keep it
           # on the native ARM64 CI runner; exporting it under x86_64-linux makes
