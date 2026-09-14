@@ -489,4 +489,228 @@ func TestInitialGPTRecoveryV1Alpha2ClassifiesSingleLineageMedia(t *testing.T) {
 			t.Fatalf("VerifyAgainst canonical NVMe: %v", err)
 		}
 	})
+
+	t.Run("aligned Pi-local NVMe selected lineage backup", func(t *testing.T) {
+		fixture := newInitialGPTAlignedNVMeFixture(t)
+		primaryHeader := fixture.reader.regions[int64(LogicalSectorSizeBytes)]
+		backupEntriesOffset := (fixture.embeddedLBAs - 33) * LogicalSectorSizeBytes
+		backupHeaderOffset := (fixture.embeddedLBAs - 1) * LogicalSectorSizeBytes
+		if got := binary.LittleEndian.Uint32(primaryHeader[16:20]); got != 0x82ec0f8d {
+			t.Fatalf("aligned fixture primary-header CRC32 = %#08x; want observed %#08x", got, uint32(0x82ec0f8d))
+		}
+		if got := binary.LittleEndian.Uint32(primaryHeader[88:92]); got != 0x42c0e789 {
+			t.Fatalf("aligned fixture entry-array CRC32 = %#08x; want observed %#08x", got, uint32(0x42c0e789))
+		}
+		// The CRC32 values above came from the read-only physical diagnostic.
+		// These SHA-256 values bind the deterministic reviewed reconstruction;
+		// they are not presented as physical readback evidence.
+		for _, want := range []struct {
+			name   string
+			bytes  []byte
+			digest bundle.Digest
+		}{
+			{"primary header", primaryHeader, "sha256:d6a4aeb3485ead585cef1c07f38ad8370e54a40631e1cea22f039a76b483be25"},
+			{"primary entries", fixture.primaryEntries, "sha256:a98a1876141fc842c3947ae6c9836b530e5de14a76d0826479f9c746bf367b95"},
+			{"backup entries", fixture.reader.regions[int64(backupEntriesOffset)], "sha256:a98a1876141fc842c3947ae6c9836b530e5de14a76d0826479f9c746bf367b95"},
+			{"backup header", fixture.reader.regions[int64(backupHeaderOffset)], "sha256:63f5f0f304e5a669b726642ef7c243ae75c79c88fedc50b0c44a417e18aba076"},
+		} {
+			if got := bundle.Sum(want.bytes); got != want.digest {
+				t.Fatalf("aligned fixture %s digest = %q; want reconstructed fixture %q", want.name, got, want.digest)
+			}
+		}
+
+		envelope, err := InspectInitialGPTRecoveryV1Alpha2(
+			fixture.reader,
+			testInitialGPTNVMeIdentity(),
+			testInitialGPTCaptureID("v1alpha2-aligned-nvme"),
+			testInitialGPTNVMePlannedRanges(),
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if envelope.SelectedLineage.Placement != InitialGPTPlacementCanonicalPhysical ||
+			envelope.SelectedLineage.FirstUsableLBA != initialGPTAlignedNVMeFirstUsableLBA ||
+			envelope.SelectedLineage.LastUsableLBA != PiLocalNVMeCapacityBytes/LogicalSectorSizeBytes-34 ||
+			envelope.PhysicalEndState != InitialGPTPhysicalEndSelectedLineageBackup ||
+			envelope.PhysicalEndBackupLineage != nil || len(envelope.RecoveryRanges) != 6 ||
+			envelope.DestructiveStagingReady {
+			t.Fatalf("unexpected aligned NVMe classification: %#v", envelope)
+		}
+		if err := envelope.VerifyAgainst(fixture.reader); err != nil {
+			t.Fatalf("VerifyAgainst aligned NVMe: %v", err)
+		}
+		for _, target := range []struct {
+			name   string
+			offset uint64
+		}{
+			{"primary header", LogicalSectorSizeBytes},
+			{"backup header", backupHeaderOffset},
+		} {
+			t.Run("changed "+target.name, func(t *testing.T) {
+				changed := fixture.reader.clone()
+				header := append([]byte(nil), changed.regions[int64(target.offset)]...)
+				header[16] ^= 0x80
+				changed.put(target.offset, header)
+				if err := envelope.VerifyAgainst(changed); err == nil {
+					t.Fatalf("VerifyAgainst accepted a changed aligned-NVMe %s", target.name)
+				}
+			})
+		}
+		for _, want := range []struct {
+			purpose InitialRecoveryRangePurpose
+			offset  uint64
+			size    uint64
+		}{
+			{InitialRecoveryProtectiveMBR, 0, LogicalSectorSizeBytes},
+			{InitialRecoveryPrimaryHeader, LogicalSectorSizeBytes, LogicalSectorSizeBytes},
+			{InitialRecoveryPrimaryEntryArray, 2 * LogicalSectorSizeBytes, initialGPTEntryArrayBytes},
+			{InitialRecoveryPlannedRelease, PiLocalNVMeReleaseStartBytes, PiLocalNVMeReleaseCapacityBytes},
+			{InitialRecoveryExistingBackupEntries, PiLocalNVMeCapacityBytes - LogicalSectorSizeBytes - initialGPTEntryArrayBytes, initialGPTEntryArrayBytes},
+			{InitialRecoveryExistingBackupHeader, PiLocalNVMeCapacityBytes - LogicalSectorSizeBytes, LogicalSectorSizeBytes},
+		} {
+			got := findInitialRecoveryRangeV1Alpha2(t, envelope, want.purpose)
+			if got.OffsetBytes != want.offset || got.SizeBytes != want.size {
+				t.Fatalf("aligned NVMe recovery range %q = %d:%d; want %d:%d", want.purpose, got.OffsetBytes, got.SizeBytes, want.offset, want.size)
+			}
+		}
+		backupEntries := findInitialRecoveryRangeV1Alpha2(t, envelope, InitialRecoveryExistingBackupEntries)
+		backupHeader := findInitialRecoveryRangeV1Alpha2(t, envelope, InitialRecoveryExistingBackupHeader)
+		if len(backupEntries.Purposes) != 2 ||
+			backupEntries.Purposes[0] != InitialRecoveryExistingBackupEntries ||
+			backupEntries.Purposes[1] != InitialRecoveryFinalBackupEntries ||
+			len(backupHeader.Purposes) != 2 ||
+			backupHeader.Purposes[0] != InitialRecoveryExistingBackupHeader ||
+			backupHeader.Purposes[1] != InitialRecoveryFinalBackupHeader {
+			t.Fatalf("aligned NVMe physical-end recovery aliases changed: entries=%#v header=%#v", backupEntries.Purposes, backupHeader.Purposes)
+		}
+
+		tampered := envelope
+		tampered.SelectedLineage.FirstUsableLBA = 2049
+		tampered.EnvelopeDigest = ""
+		if _, err := tampered.Seal(); err == nil {
+			t.Fatal("v1alpha2 envelope accepted an unreviewed serialized first-usable LBA")
+		}
+	})
+}
+
+func TestInitialGPTRecoveryV1Alpha2RejectsUnreviewedUsableRanges(t *testing.T) {
+	tests := []struct {
+		name     string
+		fixture  func(*testing.T) *initialGPTFixture
+		identity DeviceIdentity
+		planned  []PlannedPayloadRange
+	}{
+		{
+			name: "NVMe first usable 35",
+			fixture: func(t *testing.T) *initialGPTFixture {
+				fixture := newInitialGPTNVMeFixture(t)
+				fixture.firstUsableLBA = 35
+				fixture.rebuild(t)
+				return fixture
+			},
+			identity: testInitialGPTNVMeIdentity(), planned: testInitialGPTNVMePlannedRanges(),
+		},
+		{
+			name: "NVMe first usable 2047",
+			fixture: func(t *testing.T) *initialGPTFixture {
+				fixture := newInitialGPTNVMeFixture(t)
+				fixture.firstUsableLBA = 2047
+				fixture.rebuild(t)
+				return fixture
+			},
+			identity: testInitialGPTNVMeIdentity(), planned: testInitialGPTNVMePlannedRanges(),
+		},
+		{
+			name: "NVMe first usable 4096",
+			fixture: func(t *testing.T) *initialGPTFixture {
+				fixture := newInitialGPTNVMeFixture(t)
+				fixture.firstUsableLBA = 4096
+				fixture.rebuild(t)
+				return fixture
+			},
+			identity: testInitialGPTNVMeIdentity(), planned: testInitialGPTNVMePlannedRanges(),
+		},
+		{
+			name: "NVMe first usable 2049",
+			fixture: func(t *testing.T) *initialGPTFixture {
+				fixture := newInitialGPTNVMeFixture(t)
+				fixture.firstUsableLBA = 2049
+				fixture.rebuild(t)
+				return fixture
+			},
+			identity: testInitialGPTNVMeIdentity(), planned: testInitialGPTNVMePlannedRanges(),
+		},
+		{
+			name: "image-sized NVMe first usable 2048",
+			fixture: func(t *testing.T) *initialGPTFixture {
+				fixture := newInitialGPTAlignedNVMeFixture(t)
+				partitionEndLBA := (PiLocalNVMeReleaseStartBytes + PiLocalNVMeReleaseCapacityBytes) / LogicalSectorSizeBytes
+				fixture.embeddedLBAs = partitionEndLBA + 34
+				fixture.lastUsableLBA = fixture.embeddedLBAs - 34
+				fixture.rebuild(t)
+				return fixture
+			},
+			identity: testInitialGPTNVMeIdentity(), planned: testInitialGPTNVMePlannedRanges(),
+		},
+		{
+			name: "development SD first usable 2048",
+			fixture: func(t *testing.T) *initialGPTFixture {
+				fixture := newInitialGPTFixture(t)
+				fixture.embeddedLBAs = MalakSDCapacityBytes / LogicalSectorSizeBytes
+				fixture.firstUsableLBA = initialGPTAlignedNVMeFirstUsableLBA
+				fixture.lastUsableLBA = fixture.embeddedLBAs - 34
+				fixture.rebuild(t)
+				return fixture
+			},
+			identity: testInitialGPTIdentity(), planned: testInitialGPTPlannedRanges(),
+		},
+		{
+			name: "aligned NVMe last usable mismatch",
+			fixture: func(t *testing.T) *initialGPTFixture {
+				fixture := newInitialGPTAlignedNVMeFixture(t)
+				fixture.lastUsableLBA--
+				fixture.rebuild(t)
+				return fixture
+			},
+			identity: testInitialGPTNVMeIdentity(), planned: testInitialGPTNVMePlannedRanges(),
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			fixture := test.fixture(t)
+			if _, err := InspectInitialGPTRecoveryV1Alpha2(
+				fixture.reader, test.identity, testInitialGPTCaptureID("v1alpha2-unreviewed-usable-range"), test.planned,
+			); err == nil {
+				t.Fatal("v1alpha2 accepted an unreviewed selected-lineage usable range")
+			}
+		})
+	}
+}
+
+func TestInitialGPTRecoveryV1Alpha2AlignedNVMeRequiresReciprocalFixedPartitionState(t *testing.T) {
+	t.Run("backup first usable differs", func(t *testing.T) {
+		fixture := newInitialGPTAlignedNVMeFixture(t)
+		backupOffset := int64((fixture.embeddedLBAs - 1) * LogicalSectorSizeBytes)
+		backup := append([]byte(nil), fixture.reader.regions[backupOffset]...)
+		binary.LittleEndian.PutUint64(backup[40:48], initialGPTCanonicalFirstUsableLBA)
+		recomputeInitialGPTTestHeaderCRC(backup)
+		fixture.reader.put(uint64(backupOffset), backup)
+		if _, err := InspectInitialGPTRecoveryV1Alpha2(
+			fixture.reader, testInitialGPTNVMeIdentity(), testInitialGPTCaptureID("v1alpha2-divergent-aligned-backup"), testInitialGPTNVMePlannedRanges(),
+		); err == nil {
+			t.Fatal("v1alpha2 accepted primary and backup headers with different first-usable LBAs")
+		}
+	})
+
+	t.Run("release partition geometry differs", func(t *testing.T) {
+		fixture := newInitialGPTAlignedNVMeFixture(t)
+		binary.LittleEndian.PutUint64(fixture.primaryEntries[32:40], initialGPTAlignedNVMeFirstUsableLBA+1)
+		fixture.backupEntries = append([]byte(nil), fixture.primaryEntries...)
+		fixture.rebuild(t)
+		if _, err := InspectInitialGPTRecoveryV1Alpha2(
+			fixture.reader, testInitialGPTNVMeIdentity(), testInitialGPTCaptureID("v1alpha2-wrong-aligned-partition"), testInitialGPTNVMePlannedRanges(),
+		); err == nil {
+			t.Fatal("v1alpha2 accepted aligned usable-range media with changed release-partition geometry")
+		}
+	})
 }

@@ -132,7 +132,7 @@ func newInitialGPTNVMeFixture(t *testing.T) *initialGPTFixture {
 			size: int64(PiLocalNVMeCapacityBytes), regions: make(map[int64][]byte),
 		},
 		embeddedLBAs:   totalLBAs,
-		firstUsableLBA: 34,
+		firstUsableLBA: initialGPTCanonicalFirstUsableLBA,
 		lastUsableLBA:  totalLBAs - 34,
 		diskGUID:       testNVMeDiskGUID,
 		primaryEntries: make([]byte, initialGPTEntryArrayBytes),
@@ -141,6 +141,14 @@ func newInitialGPTNVMeFixture(t *testing.T) *initialGPTFixture {
 		PiLocalNVMeReleaseStartBytes/LogicalSectorSizeBytes,
 		(PiLocalNVMeReleaseStartBytes+PiLocalNVMeReleaseCapacityBytes)/LogicalSectorSizeBytes-1, "KAIBA_RELEASE")
 	fixture.backupEntries = append([]byte(nil), fixture.primaryEntries...)
+	fixture.rebuild(t)
+	return fixture
+}
+
+func newInitialGPTAlignedNVMeFixture(t *testing.T) *initialGPTFixture {
+	t.Helper()
+	fixture := newInitialGPTNVMeFixture(t)
+	fixture.firstUsableLBA = initialGPTAlignedNVMeFirstUsableLBA
 	fixture.rebuild(t)
 	return fixture
 }
@@ -525,8 +533,24 @@ func TestInitialGPTRecoveryDerivesCanonicalNVMeGeometry(t *testing.T) {
 	}
 }
 
+func TestInitialGPTRecoveryV1Alpha1RejectsAlignedNVMeUsableRange(t *testing.T) {
+	fixture := newInitialGPTAlignedNVMeFixture(t)
+	if _, _, err := captureInitialGPT(fixture.reader, PiLocalNVMeCapacityBytes); err == nil ||
+		!strings.Contains(err.Error(), "usable range is not allowed") {
+		t.Fatalf("v1alpha1 accepted the v1alpha2-only aligned NVMe usable range: %v", err)
+	}
+}
+
 func TestInitialGPTRecoveryRejectsInvalidCRCsDivergenceAndPartitionGeometry(t *testing.T) {
 	tests := map[string]func(*testing.T, *initialGPTFixture){
+		"usable range overlaps primary entries": func(t *testing.T, fixture *initialGPTFixture) {
+			fixture.firstUsableLBA = 33
+			fixture.rebuild(t)
+		},
+		"last usable does not match embedded end": func(t *testing.T, fixture *initialGPTFixture) {
+			fixture.lastUsableLBA--
+			fixture.rebuild(t)
+		},
 		"protective MBR": func(t *testing.T, fixture *initialGPTFixture) {
 			mbr := append([]byte(nil), fixture.reader.regions[0]...)
 			mbr[511] = 0

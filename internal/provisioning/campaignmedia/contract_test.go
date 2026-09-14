@@ -20,6 +20,17 @@ const (
 
 func testDigest(label string) bundle.Digest { return bundle.Sum([]byte(label)) }
 
+func TestFinalNVMeGPTKeepsCanonicalFirstUsableLBA(t *testing.T) {
+	metadata := mustTestPlan(t).Devices[1].GPT
+	if metadata.FirstUsableLBA != initialGPTCanonicalFirstUsableLBA {
+		t.Fatalf("final NVMe GPT first usable LBA = %d; want %d", metadata.FirstUsableLBA, initialGPTCanonicalFirstUsableLBA)
+	}
+	metadata.FirstUsableLBA = initialGPTAlignedNVMeFirstUsableLBA
+	if err := metadata.validate(mustTestPlan(t).Devices[1].Identity); err == nil {
+		t.Fatal("final staging GPT accepted the initial-media-only aligned first-usable LBA")
+	}
+}
+
 func testCampaignBinding() CampaignBinding {
 	return CampaignBinding{
 		CampaignID:                       "rpi5-stable-verifier-physical-20260911",

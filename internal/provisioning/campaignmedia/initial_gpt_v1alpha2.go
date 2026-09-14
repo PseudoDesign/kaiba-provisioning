@@ -133,9 +133,16 @@ func InspectInitialGPTRecoveryV1Alpha2(reader io.ReaderAt, identity DeviceIdenti
 		return InitialGPTRecoveryEnvelopeV1Alpha2{}, fmt.Errorf("inspect initial GPT v1alpha2: planned payloads: %w", err)
 	}
 
-	selected, captured, err := captureInitialGPTWithPhysicalEndPolicy(reader, identity.CapacityBytes, false)
+	usableRangePolicy := initialGPTUsableRangeStrict
+	if identity.Leg == LegPiLocalNVMe {
+		usableRangePolicy = initialGPTUsableRangeV1Alpha2PiLocalNVMe
+	}
+	selected, captured, err := captureInitialGPTWithPhysicalEndPolicy(reader, identity.CapacityBytes, false, usableRangePolicy)
 	if err != nil {
 		return InitialGPTRecoveryEnvelopeV1Alpha2{}, fmt.Errorf("inspect initial GPT v1alpha2: %w", err)
+	}
+	if err := selected.validateWithUsableRangePolicy(identity, usableRangePolicy); err != nil {
+		return InitialGPTRecoveryEnvelopeV1Alpha2{}, fmt.Errorf("inspect initial GPT v1alpha2: selected lineage: %w", err)
 	}
 	state := InitialGPTPhysicalEndSelectedLineageBackup
 	var physicalEnd *InitialGPTPhysicalEndBackupLineage
@@ -536,7 +543,11 @@ func (envelope InitialGPTRecoveryEnvelopeV1Alpha2) validate(requireDigest bool) 
 	if envelope.DeviceIdentityDigest != identityDigest {
 		return errors.New("device_identity_digest does not bind the fixed identity under v1alpha2")
 	}
-	if err := envelope.SelectedLineage.validate(envelope.Identity); err != nil {
+	usableRangePolicy := initialGPTUsableRangeStrict
+	if envelope.Identity.Leg == LegPiLocalNVMe {
+		usableRangePolicy = initialGPTUsableRangeV1Alpha2PiLocalNVMe
+	}
+	if err := envelope.SelectedLineage.validateWithUsableRangePolicy(envelope.Identity, usableRangePolicy); err != nil {
 		return fmt.Errorf("selected lineage: %w", err)
 	}
 	if err := validatePlannedPayloadRanges(envelope.Identity, envelope.PlannedPayloadRanges); err != nil {
