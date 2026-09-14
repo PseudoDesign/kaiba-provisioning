@@ -123,7 +123,7 @@ The following package groups are exported for both `x86_64-linux` and
 | Public signing and release tools | `kaiba-provision-signing-approval`, `kaiba-provision-signing-receipts`, `kaiba-provision-sign-boot`, `kaiba-provision-sign-eeprom`, `kaiba-provision-rpiboot-bundles`, `kaiba-provision-finalize-release` |
 | Media and unfused tools | `kaiba-provision-media-contract`, `kaiba-provision-unfused-compat`, `kaiba-provision-unfused-evidence`, `kaiba-provision-unfused-runtime-record` |
 | Stable-verifier spike | `kaiba-rpi5-stable-verifier`, `kaiba-rpi5-verifier-test-authority`, `kaiba-rpi5-one-boot-prove` (development-only, static executables) |
-| Stable-campaign provisioner | `kaiba-rpi5-stable-campaign-provisioner-unsigned`, `kaiba-rpi5-stable-campaign-provisioner-signing-plan`, and `kaiba-rpi5-stable-campaign-development-signing` (`x86_64-linux` only; exported only from a clean, revisioned Git flake; signing runtime uses the non-production prototype key) |
+| Stable-campaign provisioner | `kaiba-rpi5-stable-campaign-provisioner-unsigned` and `kaiba-rpi5-stable-campaign-provisioner-signing-plan` (`aarch64-linux` only; canonical native ARM build); `kaiba-rpi5-stable-campaign-development-signing` (both platforms; signing runtime uses the non-production prototype key); all three require a clean, revisioned Git flake |
 | Fail-closed foundations | `kaiba-provision-signer-foundation`, `kaiba-provision-signing-client-foundation`, `kaiba-provision-signing-gate-foundation`, `kaiba-provision-yubikey-wrapper-foundation` |
 | Suites and immutable inputs | `provisioning-suite`, `provisioning-services`, `provisioning-test-result`, `rpi5-physical-lane-guard-fixture`, `rpi5-probe-bundle`, `rpi5-eeprom-release` |
 | Deployment bundles | `ubuntu-provisioning-authority-deployment`, `ubuntu-signing-gate-deployment` |
@@ -137,6 +137,15 @@ five-artifact integration boundary. Do not copy
 historical `nix build` commands for those names without first restoring and
 reviewing the corresponding outputs. The workflow-specific guides call out
 that integration boundary where it matters.
+
+The stable-campaign Pi artifacts have one canonical native ARM build lineage.
+An x86 workstation must use an ARM remote builder or obtain the complete
+outputs from a trusted binary cache; selecting the `aarch64-linux` attribute
+does not make an x86 machine a native ARM builder. The development signing
+runtime remains available on x86 for the YubiKey workstation, and the post-sign
+filesystem constructor remains x86-hosted. Switching from the former x86
+cross-build changes artifact bytes and digests: review the new signing plan
+and obtain new approvals and signatures rather than reusing the old ones.
 
 The direct ceremony-helper package is instantiated with an all-zero source
 revision and `sourceTreeClean = false`, so its `prepare-public` path fails

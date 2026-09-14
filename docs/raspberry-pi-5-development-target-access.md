@@ -77,12 +77,36 @@ an arbitrary clean revision.
 
 On a clean Git revision, the same closed development artifact set is exposed
 as
-`packages.x86_64-linux.kaiba-rpi5-stable-campaign-provisioner-unsigned`.
-Malak builds the AArch64 Pi payload through the fixed x86_64-to-AArch64 build
-configuration. The package is intentionally absent for dirty source trees so
-an unsigned bundle cannot claim an ambiguous source revision. It remains
-unsigned and development-only: build completion does not authorize signing,
-media writes, or a hardware campaign.
+`packages.aarch64-linux.kaiba-rpi5-stable-campaign-provisioner-unsigned`,
+with the matching plan at
+`packages.aarch64-linux.kaiba-rpi5-stable-campaign-provisioner-signing-plan`.
+These use one canonical native AArch64 build configuration, also built by CI
+on a native ARM64 runner. The packages are intentionally absent for dirty
+source trees so an unsigned bundle cannot claim an ambiguous source revision.
+It remains unsigned and development-only: build completion does not authorize
+signing, media writes, or a hardware campaign.
+
+On a native ARM Linux builder, build the reviewed clean Git revision with:
+
+```console
+nix --accept-flake-config build --no-link --print-out-paths \
+  .#packages.aarch64-linux.kaiba-rpi5-stable-campaign-provisioner-unsigned \
+  .#packages.aarch64-linux.kaiba-rpi5-stable-campaign-provisioner-signing-plan
+```
+
+On x86 Malak, configure an ARM remote builder or use a trusted binary cache
+containing the complete requested output closures before running those same
+commands. There is no longer an x86 cross-built variant of these artifacts;
+choosing an ARM attribute alone cannot build missing ARM derivations locally.
+The configured development signing runtime is still available as
+`packages.x86_64-linux.kaiba-rpi5-stable-campaign-development-signing` for the
+x86 YubiKey workstation, as well as under `packages.aarch64-linux` for ARM
+workstations. The post-sign filesystem constructor remains x86-hosted.
+
+The native ARM lineage changes the artifact bytes and digests from the former
+x86 cross-build. Review its new signing plan and obtain new approvals and
+signatures; prior approvals or signatures must not be reused for the new
+artifacts.
 
 This exception deliberately does not claim the general unsigned-artifact-set
 contract. Its dedicated provisioner manifest marks the 96 MiB `boot.img` as a
