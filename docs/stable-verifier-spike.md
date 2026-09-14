@@ -520,7 +520,10 @@ one SD envelope and one NVMe envelope to the sealed staging plan and enumerate
 every required recovery range. The v1alpha2 catalog also retains both complete
 capture envelopes and their fixed descriptive selectors. Durable backup
 capture, independent readback, live-device attachment proof, operator approval, and write authority
-remain absent or hard-false, and no campaign writer exists in this cut.
+remain absent or hard-false for physical staging. The separate
+[regular-file sandbox](stable-campaign-sandbox.md) now rehearses backup and
+write operations with synthetic copies and evidence; a qualified physical
+campaign writer remains outstanding.
 
 The fixed pre-staging Pi-local NVMe uses a valid 1 MiB-aligned GPT usable range:
 its first usable LBA is 2048, while its reciprocal backup header remains at the

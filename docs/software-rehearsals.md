@@ -65,6 +65,15 @@ nix run .#kaiba-provision-integrated-rehearsal -- \
 Preserve the state directory when diagnosing restart and evidence behavior.
 Do not relabel its files as live authority or hardware evidence.
 
+## Stable-campaign disk sandbox
+
+The [stable-campaign staging sandbox](stable-campaign-sandbox.md) additionally
+exercises durable recovery backups, approval-bound full-range writes,
+interrupted-run refusal, and independent readback on newly created regular
+files. It consumes the fixed campaign's v1alpha2 recovery contracts and has a
+dedicated generated sparse-disk integration check. Its approval and reports
+remain explicitly synthetic.
+
 ## Browser simulation
 
 The loopback demo renders the generated finite transition graph and serves an
@@ -121,4 +130,3 @@ Use these layers to find defects before approaching a physical boundary, but
 do not add their assurance levels together and call the result a hardware test.
 The physical requirements remain in the
 [execution plan](raspberry-pi-5-secure-boot-execution-plan.md).
-

@@ -50,6 +50,10 @@ capabilities and independent complete-partition readback before a physical
 attempt. Successful catalog construction does not authorize GPT repair,
 signing, storage writes, or power operations.
 
+The separate [regular-file sandbox](stable-campaign-sandbox.md) now implements
+and tests the recovery/write sequence on synthetic disk copies. Its reports
+and rehearsal acknowledgement do not satisfy this contract's physical gates.
+
 ## Software validation
 
 ```console
