@@ -23,7 +23,9 @@ let
 
   vm = pkgs.testers.runNixOSTest {
     name = "kaiba-campaign-staging-block-device-vm";
-    globalTimeout = 3600;
+    # Complete preimage/source/readback checks hash about 234 GiB. TCG can
+    # take over 90 minutes for those passes; KVM completes much sooner.
+    globalTimeout = 9600;
     passthru.kaibaCampaignStagingVM = {
       architecture = "x86_64-linux";
       realLinuxBlockAdapter = true;
@@ -61,8 +63,8 @@ let
       status, output = machine.execute(
           "set -o pipefail; env TMPDIR=/var/lib/campaign-staging-vm KAIBA_CAMPAIGN_STAGING_VM=1 "
           "campaign-staging-vm-test -test.run '^TestCampaignStagingVM$' "
-          "-test.v -test.timeout=50m 2>&1 | tee /var/lib/campaign-staging-vm/test-results.txt > /dev/ttyS0",
-          timeout=3300,
+          "-test.v -test.timeout=150m 2>&1 | tee /var/lib/campaign-staging-vm/test-results.txt > /dev/ttyS0",
+          timeout=9300,
       )
       print(machine.succeed("cat /var/lib/campaign-staging-vm/test-results.txt"))
       assert status == 0, output
