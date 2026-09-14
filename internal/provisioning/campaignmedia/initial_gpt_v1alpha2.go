@@ -638,10 +638,13 @@ func (envelope InitialGPTRecoveryEnvelopeV1Alpha2) CanonicalJSON() ([]byte, erro
 }
 
 // ParseInitialGPTRecoveryEnvelopeV1Alpha2 accepts strict canonical JSON,
-// optionally followed by one LF. VerifyAgainst is still required for bytes.
+// optionally followed by one LF. Only physical_end_backup_lineage may be null;
+// the physical-end state must justify its absence. VerifyAgainst is still
+// required for bytes.
 func ParseInitialGPTRecoveryEnvelopeV1Alpha2(encoded []byte) (InitialGPTRecoveryEnvelopeV1Alpha2, error) {
 	var envelope InitialGPTRecoveryEnvelopeV1Alpha2
-	if err := strictCanonicalDecode(encoded, &envelope, func() ([]byte, error) { return envelope.CanonicalJSON() }); err != nil {
+	allowedNulls := map[string]struct{}{"$.physical_end_backup_lineage": {}}
+	if err := strictCanonicalDecodeWithNulls(encoded, &envelope, func() ([]byte, error) { return envelope.CanonicalJSON() }, allowedNulls); err != nil {
 		return InitialGPTRecoveryEnvelopeV1Alpha2{}, fmt.Errorf("parse initial GPT recovery envelope v1alpha2: %w", err)
 	}
 	return envelope, nil

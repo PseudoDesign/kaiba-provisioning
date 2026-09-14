@@ -244,6 +244,41 @@ let
     };
   };
 
+  stableCampaignRecoveryRequirementsTool = pkgs.buildGoModule {
+    pname = "kaiba-rpi5-stable-campaign-recovery-requirements";
+    inherit version;
+    src = goSource;
+    subPackages = [ "cmd/kaiba-rpi5-stable-campaign-recovery-requirements" ];
+    vendorHash = null;
+    env.CGO_ENABLED = 0;
+    ldflags = [
+      "-s"
+      "-w"
+    ];
+    # checks.unit runs the complete Go suite once for this source tree.
+    doCheck = false;
+    passthru.kaibaRpi5StableCampaignRecoveryRequirements = {
+      schemaVersion = "kaiba.provisioning.rpi5-stable-verifier-recovery-backup-requirements/v1alpha2";
+      blockDeviceReadsPerformed = false;
+      blockDeviceWritesPerformed = false;
+      destructiveStagingReady = false;
+      inputPathAccess = "caller-selected-regular-files-opened-read-only";
+      nonRegularInputs = "rejected-before-readable-open";
+      filesystemOutputPathAuthority = false;
+      physicalExecutionReady = false;
+      productionReady = false;
+      stdoutCanonicalRequirements = true;
+    };
+    meta = {
+      mainProgram = "kaiba-rpi5-stable-campaign-recovery-requirements";
+      description = "Bind descriptive recovery requirements to Pi 5 campaign plans and v1alpha2 GPT captures";
+      platforms = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
+    };
+  };
+
   stableCampaignGPTInspector = pkgs.buildGoModule {
     pname = "kaiba-rpi5-stable-campaign-gpt-inspect";
     inherit version;
@@ -2296,6 +2331,7 @@ in
     signedReleaseTool
     stableCampaignGPTInspector
     stableCampaignPlanTool
+    stableCampaignRecoveryRequirementsTool
     stableCampaignSigningTool
     stableVerifierTool
     suite
