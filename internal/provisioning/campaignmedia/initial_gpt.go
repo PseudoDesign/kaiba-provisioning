@@ -31,6 +31,16 @@ const (
 	initialGPTEntryCount      = uint32(128)
 	initialGPTEntrySizeBytes  = uint32(128)
 	initialGPTEntryArrayBytes = uint64(initialGPTEntryCount) * uint64(initialGPTEntrySizeBytes)
+
+	initialGPTCanonicalFirstUsableLBA   = uint64(34)
+	initialGPTAlignedNVMeFirstUsableLBA = PiLocalNVMeReleaseStartBytes / LogicalSectorSizeBytes
+)
+
+type initialGPTUsableRangePolicy uint8
+
+const (
+	initialGPTUsableRangeStrict initialGPTUsableRangePolicy = iota
+	initialGPTUsableRangeV1Alpha2PiLocalNVMe
 )
 
 const (
@@ -189,6 +199,9 @@ func InspectInitialGPTRecovery(reader io.ReaderAt, identity DeviceIdentity, capt
 	if err != nil {
 		return InitialGPTRecoveryEnvelope{}, fmt.Errorf("inspect initial GPT: %w", err)
 	}
+	if err := snapshot.validate(identity); err != nil {
+		return InitialGPTRecoveryEnvelope{}, fmt.Errorf("inspect initial GPT: selected lineage: %w", err)
+	}
 	identityDigest, err := deriveInitialGPTIdentityDigest(identity)
 	if err != nil {
 		return InitialGPTRecoveryEnvelope{}, fmt.Errorf("inspect initial GPT: %w", err)
@@ -285,7 +298,7 @@ func parseInitialGPT(reader io.ReaderAt, capacityBytes uint64) (InitialGPTSnapsh
 }
 
 func captureInitialGPT(reader io.ReaderAt, capacityBytes uint64) (InitialGPTSnapshot, capturedInitialGPTMetadata, error) {
-	return captureInitialGPTWithPhysicalEndPolicy(reader, capacityBytes, true)
+	return captureInitialGPTWithPhysicalEndPolicy(reader, capacityBytes, true, initialGPTUsableRangeStrict)
 }
 
 // captureInitialGPTWithPhysicalEndPolicy shares the strict selected-lineage
@@ -293,7 +306,7 @@ func captureInitialGPT(reader io.ReaderAt, capacityBytes uint64) (InitialGPTSnap
 // its original fail-closed rejection of every GPT signature at the physical
 // end. The v1alpha2 caller passes false, then independently parses that sector
 // and its declared entry array before accepting it as evidence.
-func captureInitialGPTWithPhysicalEndPolicy(reader io.ReaderAt, capacityBytes uint64, rejectPhysicalEndGPT bool) (InitialGPTSnapshot, capturedInitialGPTMetadata, error) {
+func captureInitialGPTWithPhysicalEndPolicy(reader io.ReaderAt, capacityBytes uint64, rejectPhysicalEndGPT bool, usableRangePolicy initialGPTUsableRangePolicy) (InitialGPTSnapshot, capturedInitialGPTMetadata, error) {
 	if capacityBytes%LogicalSectorSizeBytes != 0 {
 		return InitialGPTSnapshot{}, nil, errors.New("physical capacity is not a whole number of 512-byte sectors")
 	}
@@ -322,8 +335,8 @@ func captureInitialGPTWithPhysicalEndPolicy(reader io.ReaderAt, capacityBytes ui
 		return InitialGPTSnapshot{}, nil, errors.New("primary GPT alternate LBA is outside the physical device")
 	}
 	embeddedTotalLBAs := primary.alternateLBA + 1
-	if primary.firstUsableLBA != 34 || primary.lastUsableLBA != primary.alternateLBA-33 {
-		return InitialGPTSnapshot{}, nil, errors.New("primary GPT usable range does not match its embedded container")
+	if !usableRangePolicy.accepts(primary.firstUsableLBA, primary.lastUsableLBA, primary.alternateLBA, physicalTotalLBAs) {
+		return InitialGPTSnapshot{}, nil, errors.New("primary GPT usable range is not allowed by the selected-lineage policy")
 	}
 	if err := verifyInitialProtectiveMBR(mbr, primary.alternateLBA); err != nil {
 		return InitialGPTSnapshot{}, nil, err
@@ -407,6 +420,21 @@ func captureInitialGPTWithPhysicalEndPolicy(reader io.ReaderAt, capacityBytes ui
 		})
 	}
 	return snapshot, captured, nil
+}
+
+func (policy initialGPTUsableRangePolicy) accepts(firstUsableLBA, lastUsableLBA, backupHeaderLBA, physicalTotalLBAs uint64) bool {
+	if lastUsableLBA != backupHeaderLBA-33 {
+		return false
+	}
+	switch policy {
+	case initialGPTUsableRangeStrict:
+		return firstUsableLBA == initialGPTCanonicalFirstUsableLBA
+	case initialGPTUsableRangeV1Alpha2PiLocalNVMe:
+		return firstUsableLBA == initialGPTCanonicalFirstUsableLBA ||
+			(firstUsableLBA == initialGPTAlignedNVMeFirstUsableLBA && backupHeaderLBA == physicalTotalLBAs-1)
+	default:
+		return false
+	}
 }
 
 func verifyInitialProtectiveMBR(mbr []byte, embeddedLastLBA uint64) error {
@@ -879,6 +907,10 @@ func (envelope InitialGPTRecoveryEnvelope) validate(requireDigest bool) error {
 }
 
 func (snapshot InitialGPTSnapshot) validate(identity DeviceIdentity) error {
+	return snapshot.validateWithUsableRangePolicy(identity, initialGPTUsableRangeStrict)
+}
+
+func (snapshot InitialGPTSnapshot) validateWithUsableRangePolicy(identity DeviceIdentity, usableRangePolicy initialGPTUsableRangePolicy) error {
 	physicalTotalLBAs := identity.CapacityBytes / LogicalSectorSizeBytes
 	if snapshot.PhysicalTotalLBAs != physicalTotalLBAs || snapshot.EmbeddedGPTTotalLBAs < 68 ||
 		snapshot.EmbeddedGPTTotalLBAs > physicalTotalLBAs || snapshot.ProtectiveMBRLastLBA != snapshot.EmbeddedGPTTotalLBAs-1 {
@@ -894,9 +926,9 @@ func (snapshot InitialGPTSnapshot) validate(identity DeviceIdentity) error {
 	if snapshot.PrimaryHeaderLBA != 1 || snapshot.PrimaryEntryArrayLBA != 2 ||
 		snapshot.BackupHeaderLBA != snapshot.EmbeddedGPTTotalLBAs-1 ||
 		snapshot.BackupEntryArrayLBA != snapshot.BackupHeaderLBA-32 ||
-		snapshot.FirstUsableLBA != 34 || snapshot.LastUsableLBA != snapshot.BackupHeaderLBA-33 ||
+		!usableRangePolicy.accepts(snapshot.FirstUsableLBA, snapshot.LastUsableLBA, snapshot.BackupHeaderLBA, physicalTotalLBAs) ||
 		snapshot.PartitionEntryCount != initialGPTEntryCount || snapshot.PartitionEntrySizeBytes != initialGPTEntrySizeBytes {
-		return errors.New("snapshot does not describe the required reciprocal 128x128 GPT geometry")
+		return errors.New("snapshot does not describe the required reciprocal 128x128 GPT geometry and usable range")
 	}
 	if err := validateInitialGPTGUID("snapshot disk GUID", snapshot.DiskGUID); err != nil {
 		return err
@@ -931,6 +963,14 @@ func (snapshot InitialGPTSnapshot) validate(identity DeviceIdentity) error {
 	for index := 1; index < len(byStart); index++ {
 		if byStart[index].FirstLBA <= byStart[index-1].LastLBA {
 			return errors.New("snapshot partitions overlap")
+		}
+	}
+	if usableRangePolicy == initialGPTUsableRangeV1Alpha2PiLocalNVMe && snapshot.FirstUsableLBA == initialGPTAlignedNVMeFirstUsableLBA {
+		fixed, ok := fixedIdentityFor(identity.Leg)
+		if !ok || identity.Leg != LegPiLocalNVMe || snapshot.Placement != InitialGPTPlacementCanonicalPhysical ||
+			len(fixed.partitions) != 1 || len(snapshot.Partitions) != 1 ||
+			!initialGPTPartitionMatchesFixed(snapshot.Partitions[0], fixed.partitions[0]) {
+			return errors.New("aligned Pi-local NVMe usable range does not retain the fixed release-partition state")
 		}
 	}
 	return nil

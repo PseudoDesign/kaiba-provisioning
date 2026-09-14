@@ -515,6 +515,15 @@ enumerates every required recovery range. Durable backup capture, independent
 readback, live-device attachment proof, operator approval, and write authority
 remain absent or hard-false, and no campaign writer exists in this cut.
 
+The fixed pre-staging Pi-local NVMe uses a valid 1 MiB-aligned GPT usable range:
+its first usable LBA is 2048, while its reciprocal backup header remains at the
+physical end and its last usable LBA remains 33 sectors before that header. The
+explicit v1alpha2 Pi-local-NVMe policy accepts exactly first-usable LBA 34 or
+this physical-end-backed LBA 2048 form. The development-SD and v1alpha1 paths
+remain fixed at LBA 34, and arbitrary intermediate or other aligned values are
+rejected. This does not change the intended final staging GPT, whose first
+usable LBA remains 34 and whose first partition still starts at LBA 2048.
+
 The development SD now has two distinguishable GPT histories. The primary at
 LBA 1 and its declared image-sized backup form one reciprocal selected
 lineage. The physical-end header and entry array form a CRC-valid canonical
