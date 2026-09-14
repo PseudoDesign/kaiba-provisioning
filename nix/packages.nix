@@ -820,6 +820,32 @@ let
     };
   };
 
+  stableVerifierSigningTool = pkgs.buildGoModule {
+    pname = "kaiba-rpi5-stable-verifier-signing";
+    inherit version;
+    src = goSource;
+    subPackages = [ "cmd/kaiba-rpi5-stable-verifier-signing" ];
+    vendorHash = null;
+    doCheck = false;
+    passthru.kaibaStableVerifierSigningTool = {
+      approvalSchemaVersion = "kaiba.provisioning.rpi5-stable-campaign-verifier-signing-approval/v1alpha1";
+      intentSchemaVersion = "kaiba.provisioning.rpi5-stable-campaign-verifier-signing-intent/v1alpha1";
+      blockDeviceWriteCapable = false;
+      directHardwareAccess = false;
+      eepromProgrammingCapable = false;
+      mutationCapable = false;
+      oneTimeSettingCapable = false;
+      otpCapable = false;
+      privateKeyAccess = false;
+      signingAuthorityConfigured = false;
+    };
+    meta = {
+      mainProgram = "kaiba-rpi5-stable-verifier-signing";
+      description = "Public one-image stable-verifier signing contract and authenticated finalizer";
+      platforms = lib.platforms.linux;
+    };
+  };
+
   # Keep the software-only rehearsal in its own derivation.  In particular,
   # do not symlink it from serviceSuite: that output also contains the lane
   # guard and would make the closure boundary impossible to audit.
@@ -1424,6 +1450,19 @@ let
     mkRpi5VerifiedStableCampaignProvisionerSigning
     ;
 
+  stableVerifierSigningFactories = import ./rpi5-stable-verifier-signing.nix {
+    inherit
+      lib
+      pkgs
+      signingReceiptsTool
+      stableVerifierSigningTool
+      ;
+  };
+  inherit (stableVerifierSigningFactories)
+    mkRpi5StableVerifierSigningPlan
+    mkRpi5VerifiedStableVerifierSigning
+    ;
+
   unfusedCapsuleFactories = import ./unfused-capsule.nix {
     inherit lib pkgs mkRpi5UnfusedVerifier;
     unsignedArtifactSchema = goSource + "/schemas/unsigned-artifact-set-v1alpha1.schema.json";
@@ -1944,6 +1983,7 @@ let
       tokenSerial,
       name ? "kaiba-development-yubikey-signing",
       stableCampaignOnly ? false,
+      stableVerifierOnly ? false,
     }:
     assert lib.assertMsg (canonicalIdentifier cohortID) "cohortID must be a canonical identifier";
     assert lib.assertMsg (canonicalIdentifier signerID) "signerID must be a canonical identifier";
@@ -1957,6 +1997,10 @@ let
     assert lib.assertMsg (canonicalRawDigest expectedCustomerKeyHash)
       "expectedCustomerKeyHash must contain 64 lowercase hexadecimal characters";
     assert lib.assertMsg (builtins.isBool stableCampaignOnly) "stableCampaignOnly must be a boolean";
+    assert lib.assertMsg (builtins.isBool stableVerifierOnly) "stableVerifierOnly must be a boolean";
+    assert lib.assertMsg (
+      !(stableCampaignOnly && stableVerifierOnly)
+    ) "the provisioner and verifier signing profiles are mutually exclusive";
     assert lib.assertMsg (storeBacked publicKeyPEM) "publicKeyPEM must be a fixed Nix-store path";
     assert lib.assertMsg (
       cleanAbsolute grantRegistryPath && !lib.hasPrefix "${builtins.storeDir}/" grantRegistryPath
@@ -2148,6 +2192,18 @@ let
           "-X=main.expectedPublicKeyFingerprint=${publicKeyFingerprint}"
         ];
       };
+      stableVerifierSigning = buildCommand {
+        pname = "${name}-stable-verifier-signing";
+        subPackage = "cmd/kaiba-rpi5-stable-verifier-signing";
+        ldflags = [
+          "-X=main.signingGateSocketPath=${socketPath}"
+          "-X=main.signerID=${signerID}"
+          "-X=main.cohortID=${cohortID}"
+          "-X=main.signingPKCS11URI=${pkcs11URI}"
+          "-X=main.expectedPublicKeyPath=${reviewedPublicKeyPEM}"
+          "-X=main.expectedPublicKeyFingerprint=${publicKeyFingerprint}"
+        ];
+      };
     in
     pkgs.symlinkJoin {
       inherit name;
@@ -2155,10 +2211,10 @@ let
         customerKeyContract
         signingGate
         signingReceiptsTool
-        stableCampaignSigning
         yubiKeyWrapper
       ]
-      ++ lib.optionals (!stableCampaignOnly) [
+      ++ [ (if stableVerifierOnly then stableVerifierSigning else stableCampaignSigning) ]
+      ++ lib.optionals (!(stableCampaignOnly || stableVerifierOnly)) [
         eepromSigningTool
         signedBoot
         signer
@@ -2180,24 +2236,30 @@ let
           signerPolicyDigest
           signingGate
           signingReceiptsTool
-          stableCampaignSigning
           stableCampaignOnly
+          stableVerifierOnly
           socketPath
           stateDirectoryPath
           ykcs11Module
           yubiKeyWrapper
           ;
-        stableCampaignSigningConfiguration = {
-          gateSocketPath = socketPath;
-          inherit
-            cohortID
-            pkcs11URI
-            publicKeyFingerprint
-            signerID
-            ;
-          expectedPublicKeyPath = reviewedPublicKeyPEM;
-          runtimeAuthoritySelectors = false;
-        };
+        ${
+          if stableVerifierOnly then
+            "stableVerifierSigningConfiguration"
+          else
+            "stableCampaignSigningConfiguration"
+        } =
+          {
+            gateSocketPath = socketPath;
+            inherit
+              cohortID
+              pkcs11URI
+              publicKeyFingerprint
+              signerID
+              ;
+            expectedPublicKeyPath = reviewedPublicKeyPEM;
+            runtimeAuthoritySelectors = false;
+          };
         customerKeyHashFile = "${customerKeyContract}/share/kaiba/customer-key-hash";
         customerPublicKeyBinary = "${customerKeyContract}/share/kaiba/customer-public-key.bin";
         signerPolicyDigestFile = "${customerKeyContract}/share/kaiba/signer-policy-digest";
@@ -2209,7 +2271,13 @@ let
         incompleteGrantRetryPolicy = "deny_same_grant_require_new_approval";
         privateKeyOperationUpperBoundDeclared = false;
       }
-      // lib.optionalAttrs (!stableCampaignOnly) {
+      // (
+        if stableVerifierOnly then
+          { inherit stableVerifierSigning; }
+        else
+          { inherit stableCampaignSigning; }
+      )
+      // lib.optionalAttrs (!(stableCampaignOnly || stableVerifierOnly)) {
         inherit
           eepromSigningTool
           signedBoot
@@ -2229,9 +2297,16 @@ let
       };
       meta = {
         mainProgram =
-          if stableCampaignOnly then "kaiba-rpi5-stable-campaign-signing" else "kaiba-provision-signer";
+          if stableVerifierOnly then
+            "kaiba-rpi5-stable-verifier-signing"
+          else if stableCampaignOnly then
+            "kaiba-rpi5-stable-campaign-signing"
+          else
+            "kaiba-provision-signer";
         description =
-          if stableCampaignOnly then
+          if stableVerifierOnly then
+            "Narrow approval-gated development YubiKey signer for one stable-verifier boot image"
+          else if stableCampaignOnly then
             "Narrow approval-gated development YubiKey signer for one stable-campaign boot artifact"
           else
             "Approval-gated development YubiKey Raspberry Pi signing chain";
@@ -2385,6 +2460,7 @@ in
     mkRpi5StableVerifierCampaignMedia
     mkRpi5StableVerifierCampaignRun
     mkRpi5StableCampaignProvisionerSigningPlan
+    mkRpi5StableVerifierSigningPlan
     mkRpi5PhysicalLaneGuard
     mkRpi5DevelopmentSecureBootOperationalPayload
     mkRpi5DevelopmentSecureBootRunner
@@ -2396,6 +2472,7 @@ in
     mkRpi5VerifiedRPIBootBundles
     mkRpi5VerifiedSigningReceipts
     mkRpi5VerifiedStableCampaignProvisionerSigning
+    mkRpi5VerifiedStableVerifierSigning
     mkRpi5VerifiedSignedRelease
     mkRpi5ReleaseIntent
     mkRpi5UnfusedVerifier
@@ -2437,6 +2514,7 @@ in
     stableCampaignPacketTool
     mkRpi5StableCampaignStaging
     stableCampaignSigningTool
+    stableVerifierSigningTool
     stableVerifierTool
     suite
     verifierTestAuthority

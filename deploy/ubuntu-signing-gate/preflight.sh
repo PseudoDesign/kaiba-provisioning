@@ -435,10 +435,24 @@ if [[ -z "$staging_root" ]]; then
 fi
 assert_no_extended_acl "$package_on_disk"
 
+# The immutable package selects one of the two closed one-image commands.
+# A package exposing both profiles is ambiguous and must be reviewed separately.
+stable_commands=()
+for candidate in \
+  bin/kaiba-rpi5-stable-campaign-signing \
+  bin/kaiba-rpi5-stable-verifier-signing; do
+  if [[ -e "$package_on_disk/$candidate" || -L "$package_on_disk/$candidate" ]]; then
+    stable_commands+=("$candidate")
+  fi
+done
+(( ${#stable_commands[@]} == 1 )) ||
+  die "configured signing package must contain exactly one closed provisioner or verifier signing command"
+stable_command=${stable_commands[0]}
+
 for relative_path in \
   bin/kaiba-provision-signing-gate \
   bin/kaiba-provision-signing-receipts \
-  bin/kaiba-rpi5-stable-campaign-signing \
+  "$stable_command" \
   bin/kaiba-provision-yubikey-wrapper \
   share/kaiba/customer-key-hash \
   share/kaiba/signer-policy-digest \
@@ -450,7 +464,7 @@ done
 for executable in \
   bin/kaiba-provision-signing-gate \
   bin/kaiba-provision-signing-receipts \
-  bin/kaiba-rpi5-stable-campaign-signing \
+  "$stable_command" \
   bin/kaiba-provision-yubikey-wrapper; do
   [[ -x "$package_on_disk/$executable" ]] ||
     die "configured signing package executable is not executable: $executable"

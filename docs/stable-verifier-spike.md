@@ -107,6 +107,8 @@ handoff.
 | --- | --- |
 | `nixosModules.stable-verifier-spike` | Installs the verifier and public trust inputs in a systemd initramfs, mounts `KAIBA_RELEASE` read-only, configures bounded networking, and creates the fail-closed verifier unit |
 | `mkRpi5StableVerifierUnsignedBoot` | Builds a deterministic `boot.img` from an exact caller-supplied firmware tree plus public verifier inputs; requires an exact Pi platform revision and NAR hash |
+| `mkRpi5StableVerifierSigningPlan` | Revalidates the unsigned verifier and constructs the public one-image signing intent using the reviewed development key bindings |
+| `mkRpi5VerifiedStableVerifierSigning` | Verifies the boot signature, exact approval/grant and authenticated signing receipt, retaining the twelve public files consumed by campaign media |
 | `mkRpi5StableVerifierTestSD` | Verifies an externally produced canonical Raspberry Pi `boot.sig` under the separately supplied Pi firmware-signing public key, then emits the outer FAT boot filesystem containing only `boot.img`, `boot.sig`, and `config.txt` |
 | `mkRpi5DelegatedReleaseSpike` | Validates the resolved Pi 5 DTB and explicit debug-UART command line, then copies the fixed release roles and optional `.dtbo` overlays into an exact, read-only `nvme-release/` payload; runtime signature validation remains the verifier's responsibility |
 | `mkRpi5StableVerifierSpikeRig` | Groups a verified test-SD filesystem artifact with its delegated NVMe release payload without writing a device |
@@ -130,6 +132,10 @@ firmware-signing public key before the test-SD artifact is assembled. This
 preserves the design's separation between the rarely used Pi customer key and
 the release-policy hierarchy. Private signing material must never be passed to
 a constructor.
+
+Use the [verifier-only signing workflow](stable-verifier-signing.md) for the
+campaign's authenticated verifier evidence. The standalone test-SD constructor
+does not supply that approval/receipt lineage.
 
 The flake also exports static `kaiba-rpi5-stable-verifier`,
 `kaiba-rpi5-verifier-test-authority`, `kaiba-rpi5-one-boot-prove`, and

@@ -96,6 +96,27 @@ let
     && !(contract.mutationCapable or true)
     && !(contract.privateKeyAccess or true)
     && !(contract.signingAuthorityConfigured or true);
+  verifiedStableVerifierContractValid =
+    artifact:
+    let
+      contract =
+        if builtins.isAttrs artifact && artifact ? kaibaVerifiedStableVerifierSigning then
+          artifact.kaibaVerifiedStableVerifierSigning
+        else
+          { };
+    in
+    (contract.verificationMode or null) == "authenticated_offline"
+    && (contract.authorizationScope or null) == "stable_campaign_verifier_boot"
+    && (contract.authenticatedReceiptCount or null) == 1
+    && (contract.receiptAttestationRequired or false)
+    && !(contract.blockDeviceWriteCapable or true)
+    && !(contract.directHardwareAccess or true)
+    && !(contract.eepromProgrammingCapable or true)
+    && !(contract.mutationCapable or true)
+    && !(contract.oneTimeSettingCapable or true)
+    && !(contract.otpCapable or true)
+    && !(contract.privateKeyAccess or true)
+    && !(contract.signingAuthorityConfigured or true);
   delegatedReleaseContractValid =
     artifact:
     let
@@ -146,9 +167,12 @@ let
       ../internal/provisioning/rpi5bootsig
       ../internal/provisioning/signedboot
       ../internal/provisioning/signing
+      ../internal/provisioning/signingapproval
       ../internal/provisioning/signinggate
+      ../internal/provisioning/signingreceipts
       ../internal/provisioning/stablecampaign
       ../internal/provisioning/stableverifier
+      ../internal/provisioning/stableverifiersigning
       ../internal/provisioning/verifierevents
     ];
   };
@@ -165,11 +189,15 @@ let
       "path/filepath"
       "sort"
       "strconv"
+      "syscall"
 
+      "github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/bundle"
       "github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/campaignmedia"
       "github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/signedboot"
+      "github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/signingreceipts"
       "github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/stablecampaign"
       "github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/stableverifier"
+      "github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/stableverifiersigning"
     )
 
     func fail(err error) {
@@ -501,13 +529,22 @@ let
     }
 
     func validateSignedBoot(bundlePath string) {
-      expected := []string{
+      finalizedNames := []string{
         "boot.img", "boot.sig", "manifest.json", "public.pem", "release-intent.json",
         "signing-plan.json", "signing-result.json",
       }
+      expected := append([]string(nil), finalizedNames...)
       entries, err := os.ReadDir(bundlePath)
       if err != nil {
         fail(err)
+      }
+      // Each profile has a closed file set and a separate intent parser.
+      // A twelve-file generic bundle cannot masquerade as verifier evidence.
+      verifierEvidence := len(entries) == 12
+      if verifierEvidence {
+        expected = append(expected, "approval.json", "signing-grants.json",
+          "signing-receipts.json", "receipt-verification.json", "unsigned-artifact-manifest.json")
+        sort.Strings(expected)
       }
       names := make([]string, 0, len(entries))
       for _, entry := range entries {
@@ -570,10 +607,51 @@ let
           fail(err)
         }
       }
-      if err := signedboot.Finalize(planDirectory, resultDirectory, finalDirectory); err != nil {
+      if verifierEvidence {
+        loaded, err := stableverifiersigning.LoadPlanDirectory(planDirectory)
+        if err != nil {
+          fail(err)
+        }
+        intent, err := stableverifiersigning.ParseIntent(loaded.ReleaseIntentJSON)
+        if err != nil {
+          fail(err)
+        }
+        unsignedManifest := readBoundedEvidence(bundlePath, "unsigned-artifact-manifest.json", 65536)
+        if err := stableverifiersigning.ValidateUnsignedManifest(unsignedManifest, intent); err != nil {
+          fail(fmt.Errorf("verifier unsigned manifest: %w", err))
+        }
+        if err := stableverifiersigning.Finalize(planDirectory, resultDirectory,
+          filepath.Join(bundlePath, "approval.json"), filepath.Join(bundlePath, "signing-grants.json"),
+          filepath.Join(bundlePath, "signing-receipts.json"), finalDirectory); err != nil {
+          fail(fmt.Errorf("re-finalize authenticated verifier input: %w", err))
+        }
+        result, err := signedboot.LoadResultDirectory(resultDirectory)
+        if err != nil {
+          fail(err)
+        }
+        registry, err := signingreceipts.ParseRegistry(readBoundedEvidence(bundlePath, "signing-grants.json", 1024*1024))
+        if err != nil {
+          fail(err)
+        }
+        _, verification, err := signingreceipts.ParseAndVerify(
+          readBoundedEvidence(bundlePath, "signing-receipts.json", signingreceipts.MaxExportBytes),
+          registry, loaded.PublicPEM, []bundle.Digest{result.Result.GateReceiptDigest})
+        if err != nil {
+          fail(err)
+        }
+        var summary bytes.Buffer
+        encoder := json.NewEncoder(&summary)
+        encoder.SetEscapeHTML(false)
+        if err := encoder.Encode(verification); err != nil {
+          fail(err)
+        }
+        if !bytes.Equal(summary.Bytes(), readBoundedEvidence(bundlePath, "receipt-verification.json", 65536)) {
+          fail(errors.New("receipt-verification.json differs from authenticated verification"))
+        }
+      } else if err := signedboot.Finalize(planDirectory, resultDirectory, finalDirectory); err != nil {
         fail(fmt.Errorf("re-finalize signed-boot input: %w", err))
       }
-      for _, name := range expected {
+      for _, name := range finalizedNames {
         supplied, err := os.ReadFile(filepath.Join(bundlePath, name))
         if err != nil {
           fail(err)
@@ -586,6 +664,37 @@ let
           fail(fmt.Errorf("signed-boot file %q differs from production re-finalization", name))
         }
       }
+    }
+
+    func readBoundedEvidence(directory, name string, limit int) []byte {
+      path := filepath.Join(directory, name)
+      before, err := os.Lstat(path)
+      if err != nil || before.Mode()&os.ModeSymlink != 0 || !before.Mode().IsRegular() || before.Size() <= 0 || before.Size() > int64(limit) {
+        fail(fmt.Errorf("evidence %q must be a bounded regular non-symlink file", name))
+      }
+      file, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK|syscall.O_CLOEXEC, 0)
+      if err != nil {
+        fail(err)
+      }
+      defer file.Close()
+      opened, err := file.Stat()
+      if err != nil || !opened.Mode().IsRegular() || !os.SameFile(before, opened) ||
+        before.Size() != opened.Size() || !before.ModTime().Equal(opened.ModTime()) {
+        fail(fmt.Errorf("evidence %q changed while opening", name))
+      }
+      encoded, err := io.ReadAll(io.LimitReader(file, int64(limit)+1))
+      if err != nil || len(encoded) != int(before.Size()) || len(encoded) > limit {
+        fail(fmt.Errorf("evidence %q changed or exceeded its limit", name))
+      }
+      after, err := file.Stat()
+      if err != nil || after.Size() != opened.Size() || !after.ModTime().Equal(opened.ModTime()) {
+        fail(fmt.Errorf("evidence %q changed while reading", name))
+      }
+      current, err := os.Lstat(path)
+      if err != nil || !os.SameFile(opened, current) || current.Mode()&os.ModeSymlink != 0 {
+        fail(fmt.Errorf("evidence %q was replaced while reading", name))
+      }
+      return encoded
     }
   '';
   campaignContractToolSource = pkgs.runCommand "kaiba-stable-campaign-contract-source" { } ''
@@ -666,22 +775,33 @@ let
     validation_tmp="$(mktemp -d)"
     trap 'rm -rf -- "$validation_tmp"' EXIT
 
-    # A kaibaVerifiedSignedBoot value is treated as an untrusted public byte
-    # container here. Re-open all seven finalizer outputs and re-establish the
-    # cryptographic and manifest bindings rather than trusting passthru flags.
+    # Both supported profiles are untrusted public byte containers. The Go
+    # verifier reopens the closed seven- or twelve-file set and independently
+    # establishes its signature, lineage and (for the verifier) receipt.
     test -d "$verified_signed_boot"
     test ! -L "$verified_signed_boot"
+    kaiba-stable-campaign-contract signed-boot "$verified_signed_boot"
+    signing_intent_schema="$(jq -er .schema_version "$verified_signed_boot/release-intent.json")"
     find "$verified_signed_boot" -mindepth 1 -maxdepth 1 -printf '%f\n' | sort \
       > "$validation_tmp/actual-signed-boot-files"
-    printf '%s\n' \
-      boot.img \
-      boot.sig \
-      manifest.json \
-      public.pem \
-      release-intent.json \
-      signing-plan.json \
-      signing-result.json \
-      > "$validation_tmp/expected-signed-boot-files"
+    {
+      printf '%s\n' \
+        boot.img \
+        boot.sig \
+        manifest.json \
+        public.pem \
+        release-intent.json \
+        signing-plan.json \
+        signing-result.json
+      case "$signing_intent_schema" in
+        kaiba.provisioning.rpi5-release-intent/v1alpha1) ;;
+        kaiba.provisioning.rpi5-stable-campaign-verifier-signing-intent/v1alpha1)
+          printf '%s\n' approval.json receipt-verification.json signing-grants.json \
+            signing-receipts.json unsigned-artifact-manifest.json
+          ;;
+        *) echo 'unsupported campaign signing intent' >&2; exit 1 ;;
+      esac
+    } | sort > "$validation_tmp/expected-signed-boot-files"
     cmp "$validation_tmp/expected-signed-boot-files" \
       "$validation_tmp/actual-signed-boot-files"
     while IFS= read -r file_name; do
@@ -690,7 +810,6 @@ let
       test ! -L "$input"
       test -s "$input"
     done < "$validation_tmp/expected-signed-boot-files"
-    kaiba-stable-campaign-contract signed-boot "$verified_signed_boot"
 
     readonly boot_image="$verified_signed_boot/boot.img"
     readonly boot_signature="$verified_signed_boot/boot.sig"
@@ -798,9 +917,15 @@ let
       --arg signer_policy_digest "$signer_policy_digest" \
       --arg expected_customer_key_hash '${expectedCustomerKeyHash}' \
       '
-        .schema_version == "kaiba.provisioning.rpi5-release-intent/v1alpha1"
+        (
+          (.schema_version == "kaiba.provisioning.rpi5-release-intent/v1alpha1"
+            and .signing_policy_digest == $signer_policy_digest)
+          or
+          (.schema_version == "kaiba.provisioning.rpi5-stable-campaign-verifier-signing-intent/v1alpha1"
+            and .authorization_scope == "stable_campaign_verifier_boot"
+            and .signer_policy_digest == $signer_policy_digest)
+        )
         and .public_key_fingerprint == $public_key_fingerprint
-        and .signing_policy_digest == $signer_policy_digest
         and .expected_customer_key_hash == $expected_customer_key_hash
       ' "$verified_signed_boot/release-intent.json" > /dev/null
 
@@ -1426,8 +1551,10 @@ assert lib.assertMsg (storeBacked signerIndependentReview)
   "signerIndependentReview must be one fixed public Nix-store path";
 assert lib.assertMsg (storeBacked verifiedSignedBoot)
   "verifiedSignedBoot must be one fixed public Nix-store path";
-assert lib.assertMsg (verifiedSignedBootContractValid verifiedSignedBoot)
-  "verifiedSignedBoot must carry mkRpi5VerifiedSignedBoot pure-offline lineage";
+assert lib.assertMsg (
+  verifiedSignedBootContractValid verifiedSignedBoot
+  || verifiedStableVerifierContractValid verifiedSignedBoot
+) "verifiedSignedBoot must carry verified generic boot or authenticated stable-verifier lineage";
 assert lib.assertMsg (storeBacked campaignPlan)
   "campaignPlan must be one fixed public Nix-store path";
 assert lib.assertMsg (storeBacked campaignMutationInputs)

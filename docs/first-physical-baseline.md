@@ -55,6 +55,9 @@ the following operator records. Record:
   selected handoff mode and platform pins. For the file/live-FDT candidate,
   use `mkRpi5StableVerifierFileLiveFDTHardwareSystem` with its existing kernel
   policy. Retain the current signing review and approval boundaries.
+  Use the [verifier-only signing route](stable-verifier-signing.md) to bind the
+  actual unsigned verifier to its one-image approval and authenticated receipt;
+  pass its verified evidence to campaign media construction.
 - The sealed baseline media and the run-1 `manifest.json` and
   `materialization.json` from `mkRpi5StableVerifierCampaignRun`. Keep the full
   code-derived campaign plan intact while selecting `runIndex = 1`.
