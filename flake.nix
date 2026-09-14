@@ -460,6 +460,7 @@
           kaiba-rpi5-stable-campaign-gpt-inspect = built.stableCampaignGPTInspector;
           kaiba-rpi5-stable-campaign-plan = built.stableCampaignPlanTool;
           kaiba-rpi5-stable-campaign-recovery-requirements = built.stableCampaignRecoveryRequirementsTool;
+          kaiba-rpi5-stable-campaign-sandbox = built.stableCampaignSandboxTool;
           kaiba-rpi5-stable-campaign-signing = built.stableCampaignSigningTool;
           kaiba-rpi5-stable-verifier = built.stableVerifierTool;
           kaiba-rpi5-verifier-test-authority = built.verifierTestAuthority;
@@ -645,6 +646,8 @@
           stable-verifier-campaign-media = stableVerifierCampaignMediaCheck;
           stable-verifier-campaign-run = stableVerifierCampaignRunCheck;
           stable-campaign-recovery-requirements = provisioning.stableCampaignRecoveryRequirementsContract;
+          stable-campaign-sandbox = provisioning.stableCampaignSandboxContract;
+          stable-campaign-sandbox-integration = provisioning.stableCampaignSandboxIntegration;
           stable-campaign-provisioner-toolchain =
             import ./tests/rpi5-stable-campaign-provisioner-toolchain.nix
               {
