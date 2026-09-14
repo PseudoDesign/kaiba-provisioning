@@ -254,42 +254,11 @@ func ResolvePublicArtifactSources(plan Plan, supplied PublicArtifactSources) (Re
 
 	for _, recipe := range plan.BoundReplacements {
 		replacementBytes := boundedBytes[recipe.ReplacementInput]
-		replacementManifest, err := parseCanonicalManifestStructure(replacementBytes)
+		validatedReplacement, err := validateBoundReplacementStructure(recipe, positiveManifest, replacementBytes)
 		if err != nil {
-			return ResolvedPublicArtifacts{}, fmt.Errorf("replacement recipe %q: %w", recipe.RecipeID, err)
-		}
-		differences := manifestDifferenceSelectors(positiveManifest, replacementManifest)
-		if recipe.DifferenceSelector == "$" {
-			if len(differences) == 0 {
-				return ResolvedPublicArtifacts{}, fmt.Errorf(
-					"replacement recipe %q changes transport bytes but not manifest structure",
-					recipe.RecipeID,
-				)
-			}
-		} else {
-			if len(differences) != 1 || differences[0] != recipe.DifferenceSelector {
-				return ResolvedPublicArtifacts{}, fmt.Errorf(
-					"replacement recipe %q differs at %v, want exactly [%s]",
-					recipe.RecipeID, differences, recipe.DifferenceSelector,
-				)
-			}
+			return ResolvedPublicArtifacts{}, err
 		}
 		if recipe.RecipeID == "delegated-key-replacement-boots:replacement-manifest" {
-			validatedReplacement, parseErr := stableverifier.ParseManifest(replacementBytes)
-			if parseErr != nil {
-				return ResolvedPublicArtifacts{}, fmt.Errorf("replacement recipe %q must contain a valid canonical manifest: %w", recipe.RecipeID, parseErr)
-			}
-			positivePreimage, preimageErr := positiveManifest.SigningPreimage()
-			if preimageErr != nil {
-				return ResolvedPublicArtifacts{}, preimageErr
-			}
-			replacementPreimage, preimageErr := validatedReplacement.SigningPreimage()
-			if preimageErr != nil {
-				return ResolvedPublicArtifacts{}, preimageErr
-			}
-			if !bytes.Equal(positivePreimage, replacementPreimage) {
-				return ResolvedPublicArtifacts{}, fmt.Errorf("replacement recipe %q changes signed release content rather than only delegated signatures", recipe.RecipeID)
-			}
 			replacementDigest, digestErr := validatedReplacement.Digest()
 			if digestErr != nil {
 				return ResolvedPublicArtifacts{}, digestErr
@@ -308,6 +277,62 @@ func ResolvePublicArtifactSources(plan Plan, supplied PublicArtifactSources) (Re
 	}
 
 	return resolution, nil
+}
+
+// ValidateBoundReplacement checks one fixed recipe against exact positive and
+// replacement manifest bytes. It uses the same structural/selector checks as
+// complete campaign resolution and, for the positive replacement case, requires
+// an identical signing preimage. It does not authenticate delegated signatures.
+func ValidateBoundReplacement(recipe BoundReplacementMutationRecipe, positiveBytes, replacementBytes []byte) error {
+	if err := recipe.Validate(); err != nil {
+		return err
+	}
+	if err := verifyArtifactBytes(recipe.Before, positiveBytes); err != nil {
+		return fmt.Errorf("replacement before binding: %w", err)
+	}
+	if err := verifyArtifactBytes(recipe.After, replacementBytes); err != nil {
+		return fmt.Errorf("replacement after binding: %w", err)
+	}
+	positive, err := stableverifier.ParseManifest(positiveBytes)
+	if err != nil {
+		return fmt.Errorf("positive release manifest: %w", err)
+	}
+	_, err = validateBoundReplacementStructure(recipe, positive, replacementBytes)
+	return err
+}
+
+func validateBoundReplacementStructure(recipe BoundReplacementMutationRecipe, positiveManifest stableverifier.Manifest, replacementBytes []byte) (stableverifier.Manifest, error) {
+	replacementManifest, err := parseCanonicalManifestStructure(replacementBytes)
+	if err != nil {
+		return stableverifier.Manifest{}, fmt.Errorf("replacement recipe %q: %w", recipe.RecipeID, err)
+	}
+	differences := manifestDifferenceSelectors(positiveManifest, replacementManifest)
+	if recipe.DifferenceSelector == "$" {
+		if len(differences) == 0 {
+			return stableverifier.Manifest{}, fmt.Errorf("replacement recipe %q changes transport bytes but not manifest structure", recipe.RecipeID)
+		}
+	} else if len(differences) != 1 || differences[0] != recipe.DifferenceSelector {
+		return stableverifier.Manifest{}, fmt.Errorf("replacement recipe %q differs at %v, want exactly [%s]", recipe.RecipeID, differences, recipe.DifferenceSelector)
+	}
+	if recipe.RecipeID == "delegated-key-replacement-boots:replacement-manifest" {
+		validatedReplacement, err := stableverifier.ParseManifest(replacementBytes)
+		if err != nil {
+			return stableverifier.Manifest{}, fmt.Errorf("replacement recipe %q must contain a valid canonical manifest: %w", recipe.RecipeID, err)
+		}
+		positivePreimage, err := positiveManifest.SigningPreimage()
+		if err != nil {
+			return stableverifier.Manifest{}, err
+		}
+		replacementPreimage, err := validatedReplacement.SigningPreimage()
+		if err != nil {
+			return stableverifier.Manifest{}, err
+		}
+		if !bytes.Equal(positivePreimage, replacementPreimage) {
+			return stableverifier.Manifest{}, fmt.Errorf("replacement recipe %q changes signed release content rather than only delegated signatures", recipe.RecipeID)
+		}
+		return validatedReplacement, nil
+	}
+	return replacementManifest, nil
 }
 
 func planPublicInput(plan Plan, name string) ArtifactBinding {
