@@ -129,10 +129,12 @@ separate from the normal Go suite and is included in the native Nix checks.
 ## Physical work still required
 
 Synthetic approval and reports cannot satisfy the live campaign's backup,
-attachment, approval, or writer requirements. Physical staging still needs a
-reviewed adapter bound to the actual SD/NVMe selectors, current recovery-byte
-capture, independently validated readback and attachment observations, and
-live operator approval. Real media durability, disconnects, power loss, cold
+attachment, approval, or writer requirements. The separate
+[per-leg candidate](stable-campaign-staging.md) implements that device path
+and is tested on disposable virtual block devices. Physical staging still needs
+its reviewed configuration, current recovery-byte capture, independently
+validated readback and attachment observations, and explicit operator approval.
+Real media durability, disconnects, power loss, cold
 readback, and Pi boot behavior require hardware qualification. The
 [first physical baseline](first-physical-baseline.md) remains the next hardware
 milestone.

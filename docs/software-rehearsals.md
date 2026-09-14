@@ -2,7 +2,7 @@
 
 The repository provides safe ways to inspect the fixed seven-operation state
 machine and its durable control/audit integration without a Raspberry Pi,
-YubiKey, GPIO line, RPIBOOT device, serial port, or block device.
+YubiKey, GPIO line, RPIBOOT device, serial port, or physical storage attachment.
 
 These rehearsals are development tools. They cannot close a physical
 qualification gate, authorize a release, or produce evidence that secure boot
@@ -74,6 +74,20 @@ files. It consumes the fixed campaign's v1alpha2 recovery contracts and has a
 dedicated generated sparse-disk integration check. Its approval and reports
 remain explicitly synthetic.
 
+## Campaign block-device VM
+
+The [per-leg staging candidate](stable-campaign-staging.md) has a separate
+NixOS VM check, `stable-campaign-staging-vm`. It exercises actual Linux block
+inventory, exclusive opens, disk-sequence checks, mounted/held target refusal,
+recovery capture, writes and reopened readback on disposable virtual disks.
+Both campaign geometries are retained; an interrupted write must retain its
+journal and refuse another execution. Physical-device behavior remains open.
+
+The `stable-campaign-packet-integration` check separately verifies the complete
+public input chain for runs 1 and 2 against generated media and mutation
+fixtures. Its packet enumerates the required observations without claiming
+that they occurred.
+
 ## Browser simulation
 
 The loopback demo renders the generated finite transition graph and serves an
@@ -125,6 +139,8 @@ production image, a block-device write, or cold-readback evidence. See
 | Browser simulation | Operator workflow and UI state transitions | Live backend authority |
 | Unfused capsule verification | Public signature, boot/root lineage, and fixture correlation | Native secure-boot enforcement |
 | Regular-file media fixture | Deterministic complete-media bytes and verifier behavior | Correct device selection, power cycle, or Pi boot |
+| Campaign block-device VM | Linux attachment checks, recovery, execute-once writes and independent readback on disposable disks | Physical SD/NVMe durability, disconnects or cold-power behavior |
+| First-baseline preparation packet | Consistent public bytes, contracts, payloads and selected runs | Source provenance, operator approval, observed boot or claim closure |
 
 Use these layers to find defects before approaching a physical boundary, but
 do not add their assurance levels together and call the result a hardware test.

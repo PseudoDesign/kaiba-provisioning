@@ -20,10 +20,13 @@ identifies the immediate implementation work:
   supplied staging plan using the [v1alpha2 recovery-requirements
   tool](stable-campaign-recovery.md). Its descriptive catalog retains both
   GPT lineages and every recovery range; it does not capture recovery bytes.
-- Physical recovery-byte capture, independent attachment/readback evidence,
-  operator approval and a qualified campaign-specific writer remain missing. Nix media
-  materializers and the GPT inspector cannot substitute for that boundary.
-  Keep `destructive_staging_ready=false`; do not repair GPTs to bypass it.
+- Build the [per-leg staging candidate](stable-campaign-staging.md) against
+  the reviewed plan and all four payloads. Its software path implements durable
+  recovery capture, explicit local acknowledgement, execute-once writes and
+  separate readback. The actual captures, independent attachment observations,
+  execution approval and physical writer qualification must still be obtained
+  on the selected devices. Keep the descriptive catalogs'
+  `destructive_staging_ready=false`; do not repair GPTs to bypass that boundary.
 - The [regular-file sandbox](stable-campaign-sandbox.md) rehearses those
   recovery and staging operations with synthetic copies. Its tested software
   behavior does not close the physical capture, attachment, approval, or
@@ -39,7 +42,11 @@ document or assembling a packet does not close them.
 ## Prepare one operational packet
 
 Use the existing campaign plan and artifact records; keep raw material in the
-operator's protected evidence directory outside Git. Record:
+operator's protected evidence directory outside Git. Run the
+[packet checker](stable-campaign-packet.md) to cross-check both selected runs,
+their actual public inputs, all four payloads and the staging/recovery
+contracts. Its source revision remains a caller assertion; it cannot replace
+the following operator records. Record:
 
 - The reviewed clean source commit, matching CI revision, native build
   platform, immutable artifact paths and digests. Pin the actual revision

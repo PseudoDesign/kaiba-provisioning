@@ -58,6 +58,11 @@ assert lib.assertMsg (
 
 pkgs.runCommand "kaiba-stable-verifier-campaign-run-test"
   {
+    passthru.packetIntegration = import ./campaign-packet.nix {
+      inherit lib pkgs baselineMedia;
+      run1 = builtins.elemAt runs 0;
+      run2 = builtins.elemAt runs 1;
+    };
     baselineMediaInput = baselineMedia;
     campaignMutationInputsInput =
       baselineMedia.kaibaRpi5StableVerifierCampaignMedia.campaignMutationInputs;
