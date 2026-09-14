@@ -528,7 +528,6 @@
           provisioning = provisioningBySystem.${system};
           stableVerifierVMFixture = import ./tests/stable-verifier-vm-fixture.nix {
             inherit pkgs;
-            source = repositorySource;
           };
           stableVerifierInitramfsVM = import ./tests/stable-verifier-initramfs-vm.nix {
             inherit pkgs built;
@@ -582,7 +581,6 @@
             inherit pkgs;
             guestPkgs = aarch64GuestPkgs;
             requireInPlacePatch = ./nix/patches/arm64-kexec-file-require-in-place.patch;
-            source = repositorySource;
           };
           stableVerifierHardwareConstructor = import ./nix/stable-verifier-hardware.nix {
             nixosRaspberryPi = nixos-raspberrypi;

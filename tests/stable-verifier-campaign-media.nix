@@ -65,7 +65,6 @@ let
 
   verifierTrustFixture = import ./stable-verifier-vm-fixture.nix {
     inherit pkgs;
-    source = ../.;
   };
   fixtureSigningKey =
     pkgs.runCommand "kaiba-campaign-media-signing-public-key"

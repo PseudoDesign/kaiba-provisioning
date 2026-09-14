@@ -1,7 +1,7 @@
 {
   pkgs,
-  source,
   lib ? pkgs.lib,
+  source ? (import ../nix/go-sources.nix { inherit lib; }).stableHandoffVM,
   guestPkgs ? pkgs,
   qemuPackage ? pkgs.qemu,
   requireInPlacePatch,
@@ -328,16 +328,8 @@ let
           "$out/cmd/kaiba-stablehandoff-kexec-file-vm" \
           "$out/internal/provisioning/stablehandoff"
         install -m 0444 "$sourceInput/go.mod" "$out/go.mod"
-        for file in \
-          archive.go \
-          kexec_linux.go \
-          memfd_linux.go \
-          syscall_linux_arm64.go
-        do
-          install -m 0444 \
-            "$sourceInput/internal/provisioning/stablehandoff/$file" \
-            "$out/internal/provisioning/stablehandoff/$file"
-        done
+        cp -R "$sourceInput/internal/provisioning/stablehandoff"/. \
+          "$out/internal/provisioning/stablehandoff/"
         install -m 0444 \
           "$mainInput" \
           "$out/cmd/kaiba-stablehandoff-kexec-file-vm/main.go"
