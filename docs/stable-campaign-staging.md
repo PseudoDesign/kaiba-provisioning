@@ -22,19 +22,22 @@ For the SD leg, a consumer can expose:
 kaiba.lib.mkRpi5StableCampaignStaging {
   system = "x86_64-linux";
   leg = "malak-sd";
-  stagingPlan = "${reviewedMedia}/staging-plan.json";
+  stagingPlan = reviewedStagingPlan;
   payloads = {
-    boot-filesystem = "${reviewedRun}/boot.fat";
-    root-data = "${reviewedRun}/root.img";
-    root-hash = "${reviewedRun}/root-hash.img";
+    boot-filesystem = "${reviewedRun}/sd/boot-filesystem.img";
+    root-data = "${reviewedRun}/sd/root-data.img";
+    root-hash = "${reviewedRun}/sd/root-hash.img";
   };
 }
 ```
 
-Supply actual output filenames from the reviewed materialization. The NVMe
+Here `reviewedRun` is the reviewed campaign materialization, and
+`reviewedStagingPlan` is the immutable store path to the separately prepared
+staging-plan JSON. The materialization does not generate that plan. The NVMe
 candidate uses `system = "aarch64-linux"`, `leg = "pi-local-nvme"` and exactly
-the `release-filesystem` payload. Build it natively or obtain it from a trusted
-native ARM builder. All plan and payload paths must be immutable store paths;
+the `release-filesystem` payload at
+`"${reviewedRun}/nvme/release-filesystem.img"`. Build it natively or obtain it
+from a trusted native ARM builder. All plan and payload paths must be immutable store paths;
 the tool revalidates their typed contracts, exact sizes, hashes and zero tails.
 The [packet checker](stable-campaign-packet.md) ties those inputs to the first
 two selected campaign runs.
