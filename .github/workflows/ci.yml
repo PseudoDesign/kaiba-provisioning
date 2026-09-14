@@ -40,6 +40,11 @@ jobs:
       - name: Test the inert Ubuntu signing-gate deployment
         run: tests/deployment/ubuntu_signing_gate_test.sh
 
+      - name: Test release candidate source and provenance checks
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 -m unittest discover -s tests/release-candidate -p 'test_*.py' -v
+
       - name: Check that the lock file is unchanged
         run: git diff --exit-code -- flake.lock
 
@@ -117,7 +122,10 @@ jobs:
       - name: Build x86_64 checks
         run: nix --accept-flake-config flake check -L
 
-      - name: Build the exact x86_64 stable signing gate
+      # Realize configured outputs as integration coverage, including on the
+      # prospective PR merge revision. Operators obtain artifacts for signing
+      # only from the separately selected release-candidate source revision.
+      - name: Check the configured x86_64 signing runtime
         run: |
           nix --accept-flake-config build -L --no-link \
             .#packages.x86_64-linux.kaiba-rpi5-stable-campaign-development-signing
@@ -156,7 +164,7 @@ jobs:
           path: _site
 
   # Preserve the existing required-check context while failing closed unless
-  # both the x86 checks/gate and the native ARM checks/signing lineage pass.
+  # both x86 and ARM checks, including configured operator outputs, pass.
   x86_64:
     name: x86_64 Nix checks
     if: always()
@@ -225,10 +233,10 @@ jobs:
           nix --accept-flake-config build -L --no-link \
             .#checks.aarch64-linux.stable-campaign-provisioner-unsigned-artifacts
 
-      # Build the canonical native ARM Pi image on the same runner as its
-      # artifact check, reusing their common store paths even on read-only PR
-      # caches. The x86 signing gate remains covered in the x86 core lane.
-      - name: Build the exact native ARM stable signing lineage and configured gate
+      # Public configured outputs need realization coverage beyond fixtures.
+      # A PR's synthetic merge revision is an integration input, not the source
+      # for operator approval. Main pushes also populate the trusted cache.
+      - name: Check the configured native ARM signing lineage and runtime
         run: |
           nix --accept-flake-config build -L --no-link \
             .#packages.aarch64-linux.kaiba-rpi5-stable-campaign-development-signing \

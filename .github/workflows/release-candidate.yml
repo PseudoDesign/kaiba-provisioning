@@ -1,0 +1,124 @@
+name: Release candidate artifacts
+run-name: Release candidate ${{ inputs.source_sha }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Full lowercase 40-character commit SHA already on main
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    name: Validate immutable candidate source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.source.outputs.source_sha }}
+    steps:
+      - name: Check out the workflow revision and main history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Require a full commit SHA in the dispatched main history
+        id: source
+        env:
+          CANDIDATE_SHA: ${{ inputs.source_sha }}
+          DISPATCH_MAIN_SHA: ${{ github.sha }}
+        run: |
+          python3 .github/scripts/release_candidate.py select-source \
+            --repository . --source-sha "$CANDIDATE_SHA" \
+            --main-sha "$DISPATCH_MAIN_SHA" --workflow-ref "$GITHUB_REF" \
+            >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Candidate artifacts (${{ matrix.system }})
+    needs: source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+          - system: x86_64-linux
+            runner: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 240
+    steps:
+      # Keep the reporting tool pinned to the workflow, even when preparing an
+      # older candidate that predates this workflow. Neither checkout is mutable.
+      - name: Check out the workflow tools
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: workflow
+          persist-credentials: false
+
+      - name: Check out the selected candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+          path: candidate
+          persist-credentials: false
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342 # v31.11.0
+        with:
+          enable_kvm: false
+
+      - name: Configure binary caches (read-only)
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: kaiba-provisioning
+          extraPullNames: nixos-raspberrypi
+          skipPush: true
+
+      - name: Build and export the exact public candidate outputs
+        env:
+          CANDIDATE_SHA: ${{ needs.source.outputs.sha }}
+          CANDIDATE_SYSTEM: ${{ matrix.system }}
+          DISPATCH_MAIN_SHA: ${{ github.sha }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+        run: |
+          python3 workflow/.github/scripts/release_candidate.py build \
+            --repository candidate --source-sha "$CANDIDATE_SHA" \
+            --main-sha "$DISPATCH_MAIN_SHA" --workflow-sha "$WORKFLOW_SHA" \
+            --system "$CANDIDATE_SYSTEM" --output "$RUNNER_TEMP/candidate-artifacts"
+          cat "$RUNNER_TEMP/candidate-artifacts/SUMMARY.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload public outputs and provenance
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: candidate-${{ needs.source.outputs.sha }}-${{ matrix.system }}
+          path: ${{ runner.temp }}/candidate-artifacts/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+  candidate:
+    name: Release candidate artifacts complete
+    if: always()
+    needs: [source, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Require both architecture exports
+        env:
+          SOURCE_RESULT: ${{ needs.source.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          CANDIDATE_SHA: ${{ needs.source.outputs.sha }}
+        run: |
+          if [ "$SOURCE_RESULT" != success ] || [ "$BUILD_RESULT" != success ]; then
+            echo "::error::source=$SOURCE_RESULT build=$BUILD_RESULT"
+            exit 1
+          fi
+          printf 'Public candidate artifacts prepared for %s. Signing and hardware qualification remain separate.\n' \
+            "$CANDIDATE_SHA" >> "$GITHUB_STEP_SUMMARY"
