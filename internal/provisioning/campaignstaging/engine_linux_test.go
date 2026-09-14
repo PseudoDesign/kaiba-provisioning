@@ -19,6 +19,48 @@ import (
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/mediainventory"
 )
 
+// Nix's user namespace can expose the host-root-owned / and /tmp using the
+// overflow UID instead of UID 0. Only this test binary admits that observed
+// namespace root owner. Production executables retain the fixed UID 0/current
+// operator rule, and the real block-device VM (where / is UID 0) uses it too.
+// Evidence-directory/file ownership and all path/mode checks remain active.
+func TestMain(m *testing.M) {
+	info, err := os.Lstat("/")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "inspect test namespace root:", err)
+		os.Exit(1)
+	}
+	rootUID := info.Sys().(*syscall.Stat_t).Uid
+	if !defaultDirectoryOwnerAllowed(rootUID) {
+		directoryOwnerAllowed = func(uid uint32) bool {
+			return defaultDirectoryOwnerAllowed(uid) || uid == rootUID
+		}
+	}
+	os.Exit(m.Run())
+}
+
+func TestProductionDirectoryOwnerRuleRemainsStrict(t *testing.T) {
+	if !defaultDirectoryOwnerAllowed(0) || !defaultDirectoryOwnerAllowed(uint32(os.Geteuid())) {
+		t.Fatal("runtime owner policy rejected root/current operator")
+	}
+	untrusted := uint32(1)
+	for untrusted == uint32(os.Geteuid()) {
+		untrusted++
+	}
+	if defaultDirectoryOwnerAllowed(untrusted) {
+		t.Fatal("runtime owner policy accepted another owner")
+	}
+	original := directoryOwnerAllowed
+	directoryOwnerAllowed = func(uint32) bool { return false }
+	t.Cleanup(func() { directoryOwnerAllowed = original })
+	if directory, err := openDirectory("/"); err == nil {
+		directory.Close()
+		t.Fatal("directory traversal bypassed its ownership guard")
+	} else if !strings.Contains(err.Error(), "untrusted owner") {
+		t.Fatal("unexpected ownership refusal:", err)
+	}
+}
+
 // The public API always derives fixed full-capacity campaign geometry. Tiny
 // private recipes let failure tests exercise the identical I/O engine quickly;
 // the opt-in VM integration covers real geometry and real Linux block ioctls.

@@ -18,6 +18,15 @@ import (
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/bundle"
 )
 
+// The runtime rule admits only root and the executing operator. The private
+// function seam lets regular-file tests model unmapped root ownership in a
+// restricted build namespace without widening the production rule.
+var directoryOwnerAllowed = defaultDirectoryOwnerAllowed
+
+func defaultDirectoryOwnerAllowed(uid uint32) bool {
+	return uid == 0 || uid == uint32(os.Geteuid())
+}
+
 // Every path component must be a real trusted directory. Sticky directories
 // owned by root/current uid (such as /tmp) may contain the private 0700 child.
 func openDirectory(path string) (*os.File, error) {
@@ -33,7 +42,7 @@ func openDirectory(path string) (*os.File, error) {
 		if err := syscall.Fstat(fd, &s); err != nil {
 			return err
 		}
-		if s.Uid != 0 && s.Uid != uint32(os.Geteuid()) {
+		if !directoryOwnerAllowed(s.Uid) {
 			return errors.New("directory ancestor has an untrusted owner")
 		}
 		if s.Mode&0022 != 0 && s.Mode&syscall.S_ISVTX == 0 {
