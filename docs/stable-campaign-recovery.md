@@ -50,6 +50,14 @@ capabilities and independent complete-partition readback before a physical
 attempt. Successful catalog construction does not authorize GPT repair,
 signing, storage writes, or power operations.
 
+The separate [regular-file sandbox](stable-campaign-sandbox.md) now implements
+and tests the recovery/write sequence on synthetic disk copies. Its reports
+and rehearsal acknowledgement do not satisfy this contract's physical gates.
+The [per-leg device staging candidate](stable-campaign-staging.md) implements
+the Linux device boundary and is tested on virtual block devices. Its actual
+physical capture, readback and operator review remain separate from this
+descriptive catalog.
+
 ## Software validation
 
 ```console

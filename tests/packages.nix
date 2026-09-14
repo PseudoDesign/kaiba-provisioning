@@ -5651,6 +5651,44 @@ let
         touch "$out/passed"
       '';
 
+  stableCampaignSandboxContract =
+    pkgs.runCommand "kaiba-stable-campaign-sandbox-contract" { nativeBuildInputs = [ pkgs.gnugrep ]; }
+      ''
+        set -euo pipefail
+        readonly sandbox=${built.stableCampaignSandboxTool}/bin/kaiba-rpi5-stable-campaign-sandbox
+        test -x "$sandbox"
+        "$sandbox" --help > "$TMPDIR/help.stdout" 2> "$TMPDIR/help.stderr"
+        test ! -s "$TMPDIR/help.stdout"
+        grep -F 'prepare|approve|execute' "$TMPDIR/help.stderr" > /dev/null
+        grep -F 'synthetic' "$TMPDIR/help.stderr" > /dev/null
+        for action in prepare approve execute; do
+          "$sandbox" "$action" --help > "$TMPDIR/$action.stdout" 2> "$TMPDIR/$action.stderr"
+          test ! -s "$TMPDIR/$action.stdout"
+          test -s "$TMPDIR/$action.stderr"
+        done
+        grep -F -- '-sd-image' "$TMPDIR/prepare.stderr" > /dev/null
+        grep -F -- '-nvme-image' "$TMPDIR/prepare.stderr" > /dev/null
+        grep -F -- '-preview' "$TMPDIR/approve.stderr" > /dev/null
+        grep -F -- '-reviewer' "$TMPDIR/approve.stderr" > /dev/null
+        grep -F -- '-approval' "$TMPDIR/execute.stderr" > /dev/null
+        test '${built.stableCampaignSandboxTool.kaibaRpi5StableCampaignSandbox.approvalScope}' = 'synthetic-regular-files-only'
+        test '${builtins.toJSON built.stableCampaignSandboxTool.kaibaRpi5StableCampaignSandbox.blockDeviceReadsPerformed}' = 'false'
+        test '${builtins.toJSON built.stableCampaignSandboxTool.kaibaRpi5StableCampaignSandbox.blockDeviceWritesPerformed}' = 'false'
+        test '${builtins.toJSON built.stableCampaignSandboxTool.kaibaRpi5StableCampaignSandbox.destructiveStagingReady}' = 'false'
+        test '${builtins.toJSON built.stableCampaignSandboxTool.kaibaRpi5StableCampaignSandbox.hardwareObserved}' = 'false'
+        test '${built.stableCampaignSandboxTool.kaibaRpi5StableCampaignSandbox.mutationScope}' = 'new-sandbox-regular-file-copies'
+        test '${builtins.toJSON built.stableCampaignSandboxTool.kaibaRpi5StableCampaignSandbox.productionReady}' = 'false'
+        test '${built.stableCampaignSandboxTool.kaibaRpi5StableCampaignSandbox.recoveryScope}' = 'captured-ranges-only-not-whole-disk'
+        test '${builtins.toJSON built.stableCampaignSandboxTool.kaibaRpi5StableCampaignSandbox.retryAfterStartedExecution}' = 'false'
+        mkdir -p "$out"
+        touch "$out/passed"
+      '';
+
+  stableCampaignSandboxIntegration = import ./campaign-sandbox.nix {
+    inherit pkgs;
+    source = built.goSource;
+  };
+
   provisioningTestResult =
     pkgs.runCommand "kaiba-provisioning-test-result-${pkgs.stdenv.hostPlatform.system}"
       {
@@ -6193,6 +6231,8 @@ in
     signedReleaseManifestContract
     signedBootPlanContract
     stableCampaignRecoveryRequirementsContract
+    stableCampaignSandboxContract
+    stableCampaignSandboxIntegration
     staticGoTests
     unfusedCapsuleContract
     ;

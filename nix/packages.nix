@@ -279,6 +279,106 @@ let
     };
   };
 
+  stableCampaignSandboxTool = pkgs.buildGoModule {
+    pname = "kaiba-rpi5-stable-campaign-sandbox";
+    inherit version;
+    src = goSource;
+    subPackages = [ "cmd/kaiba-rpi5-stable-campaign-sandbox" ];
+    vendorHash = null;
+    env.CGO_ENABLED = 0;
+    ldflags = [
+      "-s"
+      "-w"
+    ];
+    # checks.unit runs the fast suite; a separate check exercises the complete
+    # fixed-geometry sparse-file workflow through its public API.
+    doCheck = false;
+    passthru.kaibaRpi5StableCampaignSandbox = {
+      approvalScope = "synthetic-regular-files-only";
+      blockDeviceReadsPerformed = false;
+      blockDeviceWritesPerformed = false;
+      destructiveStagingReady = false;
+      hardwareObserved = false;
+      mutationScope = "new-sandbox-regular-file-copies";
+      productionReady = false;
+      recoveryScope = "captured-ranges-only-not-whole-disk";
+      retryAfterStartedExecution = false;
+    };
+    meta = {
+      mainProgram = "kaiba-rpi5-stable-campaign-sandbox";
+      description = "Rehearse Pi 5 campaign recovery and staging on private regular-file copies";
+      platforms = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
+    };
+  };
+
+  stableCampaignStagingTool = pkgs.buildGoModule {
+    pname = "kaiba-rpi5-stable-campaign-stage";
+    inherit version;
+    src = goSource;
+    subPackages = [ "cmd/kaiba-rpi5-stable-campaign-stage" ];
+    vendorHash = null;
+    env.CGO_ENABLED = 0;
+    ldflags = [
+      "-s"
+      "-w"
+    ];
+    doCheck = false;
+    passthru.kaibaRpi5StableCampaignStaging = {
+      configured = false;
+      approvalScope = "explicit-local-operator-acknowledgement";
+      genericDeviceAccess = false;
+      hardwareQualified = false;
+      campaignClaimsClosed = false;
+      productionReady = false;
+      retryAfterStartedExecution = false;
+      recoveryScope = "all-v1alpha2-captured-ranges-not-whole-disk";
+    };
+    meta = {
+      mainProgram = "kaiba-rpi5-stable-campaign-stage";
+      description = "Unconfigured per-leg campaign recovery, staging and readback candidate";
+      platforms = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
+    };
+  };
+
+  mkRpi5StableCampaignStaging = import ./campaign-staging.nix {
+    inherit lib pkgs;
+    tool = stableCampaignStagingTool;
+  };
+
+  stableCampaignPacketTool = pkgs.buildGoModule {
+    pname = "kaiba-rpi5-stable-campaign-packet";
+    inherit version;
+    src = goSource;
+    subPackages = [ "cmd/kaiba-rpi5-stable-campaign-packet" ];
+    vendorHash = null;
+    env.CGO_ENABLED = 0;
+    ldflags = [
+      "-s"
+      "-w"
+    ];
+    doCheck = false;
+    passthru.kaibaRpi5StableCampaignPacket = {
+      preparationOnly = true;
+      hardwareObserved = false;
+      campaignClaimsClosed = false;
+      physicalExecutionReady = false;
+    };
+    meta = {
+      mainProgram = "kaiba-rpi5-stable-campaign-packet";
+      description = "Cross-check the exact public inputs for the first two campaign observations";
+      platforms = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
+    };
+  };
+
   stableCampaignGPTInspector = pkgs.buildGoModule {
     pname = "kaiba-rpi5-stable-campaign-gpt-inspect";
     inherit version;
@@ -2332,6 +2432,10 @@ in
     stableCampaignGPTInspector
     stableCampaignPlanTool
     stableCampaignRecoveryRequirementsTool
+    stableCampaignSandboxTool
+    stableCampaignStagingTool
+    stableCampaignPacketTool
+    mkRpi5StableCampaignStaging
     stableCampaignSigningTool
     stableVerifierTool
     suite

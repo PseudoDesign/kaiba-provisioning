@@ -283,6 +283,10 @@
           { system, ... }@args:
           packagesBySystem.${system}.mkRpi5StableVerifierCampaignRun (builtins.removeAttrs args [ "system" ]);
 
+        mkRpi5StableCampaignStaging =
+          { system, ... }@args:
+          packagesBySystem.${system}.mkRpi5StableCampaignStaging (builtins.removeAttrs args [ "system" ]);
+
         mkRpi5DelegatedReleaseSpike =
           { system, ... }@args:
           packagesBySystem.${system}.mkRpi5DelegatedReleaseSpike (builtins.removeAttrs args [ "system" ]);
@@ -460,6 +464,9 @@
           kaiba-rpi5-stable-campaign-gpt-inspect = built.stableCampaignGPTInspector;
           kaiba-rpi5-stable-campaign-plan = built.stableCampaignPlanTool;
           kaiba-rpi5-stable-campaign-recovery-requirements = built.stableCampaignRecoveryRequirementsTool;
+          kaiba-rpi5-stable-campaign-sandbox = built.stableCampaignSandboxTool;
+          kaiba-rpi5-stable-campaign-stage = built.stableCampaignStagingTool;
+          kaiba-rpi5-stable-campaign-packet = built.stableCampaignPacketTool;
           kaiba-rpi5-stable-campaign-signing = built.stableCampaignSigningTool;
           kaiba-rpi5-stable-verifier = built.stableVerifierTool;
           kaiba-rpi5-verifier-test-authority = built.verifierTestAuthority;
@@ -645,6 +652,10 @@
           stable-verifier-campaign-media = stableVerifierCampaignMediaCheck;
           stable-verifier-campaign-run = stableVerifierCampaignRunCheck;
           stable-campaign-recovery-requirements = provisioning.stableCampaignRecoveryRequirementsContract;
+          stable-campaign-sandbox = provisioning.stableCampaignSandboxContract;
+          stable-campaign-sandbox-integration = provisioning.stableCampaignSandboxIntegration;
+          stable-campaign-staging = import ./tests/campaign-staging.nix { inherit lib pkgs built; };
+          stable-campaign-packet-integration = stableVerifierCampaignRunCheck.packetIntegration;
           stable-campaign-provisioner-toolchain =
             import ./tests/rpi5-stable-campaign-provisioner-toolchain.nix
               {
@@ -1208,6 +1219,10 @@
               '';
         }
         // lib.optionalAttrs (system == "x86_64-linux") {
+          stable-campaign-staging-vm = import ./tests/campaign-staging-vm.nix {
+            inherit pkgs;
+            source = built.goSource;
+          };
           stable-campaign-provisioner-signed-boot-filesystem =
             stableCampaignProvisionerSignedBootFilesystemCheck;
           stable-campaign-signing = stableCampaignSigningCheck;

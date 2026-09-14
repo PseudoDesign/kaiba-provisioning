@@ -53,6 +53,9 @@ The canonical development posture remains
 | [Development target access](raspberry-pi-5-development-target-access.md) | Optional root-equivalent USB-gadget SSH and UART-bound recovery access |
 | [First physical verifier baseline](first-physical-baseline.md) | Preparation-only priority: close staging prerequisites, observe the approved-release boot and authority-offline refusal, then complete the existing qualification matrix |
 | [Stable-campaign recovery preparation](stable-campaign-recovery.md) | Bind both v1alpha2 GPT captures and their recovery ranges to an exact staging plan without granting physical write authority |
+| [Stable-campaign staging sandbox](stable-campaign-sandbox.md) | Rehearse durable backups, approval-bound writes, interruption handling, and independent readback on private regular-file copies |
+| [Candidate campaign device staging](stable-campaign-staging.md) | Configure one fixed device leg for durable recovery, explicit local acknowledgement, execute-once staging and separate readback; virtual-block tested, physical qualification pending |
+| [First-baseline preparation packet](stable-campaign-packet.md) | Cross-check the public bytes and contracts for runs 1 and 2 and enumerate their remaining observations |
 | [Software-only rehearsals](software-rehearsals.md) | In-memory, durable, browser, unfused, and regular-file assurance levels |
 | [Pi 5 self-kexec diagnostic](../scripts/diagnostics/rpi5-self-kexec/README.md) | Prepare-only-by-default isolation of physical legacy and file-mode kexec transitions, including the completed narrow file-handoff/SMP diagnostic; not verifier qualification |
 

@@ -483,8 +483,9 @@ deterministic build-time relationship over newly created files only. It cannot
 write a block device, contact signing hardware, perform a private-key operation,
 execute a run, observe hardware, or close a campaign claim. The original
 positive-baseline `ArtifactSet` remains immutable and mutation-free; staging and
-physical readback require separate, approval-gated capabilities that are not
-implemented in this cut.
+physical readback require the separate, explicitly acknowledged
+[per-leg staging candidate](stable-campaign-staging.md). Its virtual-block
+checks establish software behavior; physical qualification remains open.
 
 `kaiba-rpi5-stable-campaign-plan` constructs descriptive plan data from exactly
 27 named public inputs and 10 named byte-mutation targets. It rejects symlinks,
@@ -519,8 +520,12 @@ input. Separate versioned recovery-requirements contracts cross-bind exactly
 one SD envelope and one NVMe envelope to the sealed staging plan and enumerate
 every required recovery range. The v1alpha2 catalog also retains both complete
 capture envelopes and their fixed descriptive selectors. Durable backup
-capture, independent readback, live-device attachment proof, operator approval, and write authority
-remain absent or hard-false, and no campaign writer exists in this cut.
+capture, independent readback, live-device attachment proof, operator approval,
+and write authority remain absent or hard-false in these descriptive records.
+The [regular-file sandbox](stable-campaign-sandbox.md) rehearses those operations
+on synthetic copies. The separate per-leg candidate implements device capture,
+acknowledgement, writing and readback without upgrading these records or
+claiming physical qualification.
 
 The fixed pre-staging Pi-local NVMe uses a valid 1 MiB-aligned GPT usable range:
 its first usable LBA is 2048, while its reciprocal backup header remains at the

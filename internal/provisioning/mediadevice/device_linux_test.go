@@ -9,11 +9,49 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/mediacontract"
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/mediainventory"
 )
+
+func TestOpenLockedDistinguishesFlockContentionFromOtherFailures(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "contended-device-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	// Contention occurs before block-device validation, so a regular file
+	// exercises the actual kernel flock without accessing physical hardware.
+	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_SH|syscall.LOCK_NB); err != nil {
+		t.Fatal(err)
+	}
+	facts := mediainventory.TargetFacts{ResolvedPath: file.Name()}
+	for _, writable := range []bool{false, true} {
+		handle, err := OpenLocked(facts, writable)
+		if handle != nil {
+			handle.Close()
+			t.Fatal("opened a contended target")
+		}
+		if !errors.Is(err, ErrDeviceLockBusy) || !errors.Is(err, syscall.EWOULDBLOCK) {
+			t.Fatalf("writable=%t: contention lost its classification or errno: %v", writable, err)
+		}
+	}
+	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_UN); err != nil {
+		t.Fatal(err)
+	}
+	if handle, err := OpenLocked(facts, false); err == nil || errors.Is(err, ErrDeviceLockBusy) {
+		if handle != nil {
+			handle.Close()
+		}
+		t.Fatalf("regular-file validation was not a terminal non-contention failure: %v", err)
+	}
+	facts.ResolvedPath = filepath.Join(t.TempDir(), "missing")
+	if _, err := OpenLocked(facts, false); !errors.Is(err, os.ErrNotExist) || errors.Is(err, ErrDeviceLockBusy) {
+		t.Fatalf("path-open failure was misclassified: %v", err)
+	}
+}
 
 type readOnlyTestInventory struct {
 	facts       []mediainventory.TargetFacts
