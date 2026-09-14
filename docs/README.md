@@ -50,6 +50,7 @@ The canonical development posture remains
 | [Live provisioning](raspberry-pi-5-live-provisioning.md) | Authority, the seven-operation lane, execute-once evidence, and reconciliation |
 | [Station kiosk](provisioning-station-kiosk.md) | Separation between the live station and the browser-only simulation |
 | [Development target access](raspberry-pi-5-development-target-access.md) | Optional root-equivalent USB-gadget SSH and UART-bound recovery access |
+| [First physical verifier baseline](first-physical-baseline.md) | Preparation-only priority: close staging prerequisites, observe the approved-release boot and authority-offline refusal, then complete the existing qualification matrix |
 | [Software-only rehearsals](software-rehearsals.md) | In-memory, durable, browser, unfused, and regular-file assurance levels |
 | [Pi 5 self-kexec diagnostic](../scripts/diagnostics/rpi5-self-kexec/README.md) | Prepare-only-by-default isolation of physical legacy and file-mode kexec transitions, including the completed narrow file-handoff/SMP diagnostic; not verifier qualification |
 

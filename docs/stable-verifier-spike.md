@@ -419,6 +419,12 @@ reservation is unavailable or fragmented despite that sizing.
 
 ## Remaining hardware gate
 
+The immediate development priority is the
+[first physical baseline](first-physical-baseline.md): close the current
+recovery/staging prerequisites, observe run 1 end to end, then exercise the
+existing authority-offline case before the remaining matrix. This sequencing
+does not change the qualification requirements or authorize physical execution.
+
 The spike is not validated until the development-key-fused sacrificial
 `a04171` Pi completes
 the positive, delegated-key replacement, mutation, replay, one-boot-key, and
