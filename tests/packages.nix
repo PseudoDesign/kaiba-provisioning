@@ -5625,6 +5625,32 @@ let
         touch "$out/passed"
       '';
 
+  stableCampaignRecoveryRequirementsContract =
+    pkgs.runCommand "kaiba-stable-campaign-recovery-requirements-contract"
+      { nativeBuildInputs = [ pkgs.gnugrep ]; }
+      ''
+        set -euo pipefail
+        test -x ${built.stableCampaignRecoveryRequirementsTool}/bin/kaiba-rpi5-stable-campaign-recovery-requirements
+        ${built.stableCampaignRecoveryRequirementsTool}/bin/kaiba-rpi5-stable-campaign-recovery-requirements \
+          --help > "$TMPDIR/help.stdout" 2> "$TMPDIR/help.stderr"
+        test ! -s "$TMPDIR/help.stdout"
+        grep -F -- '--staging-plan' "$TMPDIR/help.stderr" > /dev/null
+        grep -F -- '--sd-envelope' "$TMPDIR/help.stderr" > /dev/null
+        grep -F -- '--nvme-envelope' "$TMPDIR/help.stderr" > /dev/null
+        ! grep -F -- '--output' "$TMPDIR/help.stderr" > /dev/null
+        test '${built.stableCampaignRecoveryRequirementsTool.kaibaRpi5StableCampaignRecoveryRequirements.schemaVersion}' = \
+          'kaiba.provisioning.rpi5-stable-verifier-recovery-backup-requirements/v1alpha2'
+        test '${builtins.toJSON built.stableCampaignRecoveryRequirementsTool.kaibaRpi5StableCampaignRecoveryRequirements.blockDeviceReadsPerformed}' = 'false'
+        test '${builtins.toJSON built.stableCampaignRecoveryRequirementsTool.kaibaRpi5StableCampaignRecoveryRequirements.blockDeviceWritesPerformed}' = 'false'
+        test '${builtins.toJSON built.stableCampaignRecoveryRequirementsTool.kaibaRpi5StableCampaignRecoveryRequirements.destructiveStagingReady}' = 'false'
+        test '${builtins.toJSON built.stableCampaignRecoveryRequirementsTool.kaibaRpi5StableCampaignRecoveryRequirements.filesystemOutputPathAuthority}' = 'false'
+        test '${builtins.toJSON built.stableCampaignRecoveryRequirementsTool.kaibaRpi5StableCampaignRecoveryRequirements.physicalExecutionReady}' = 'false'
+        test '${builtins.toJSON built.stableCampaignRecoveryRequirementsTool.kaibaRpi5StableCampaignRecoveryRequirements.productionReady}' = 'false'
+        test '${builtins.toJSON built.stableCampaignRecoveryRequirementsTool.kaibaRpi5StableCampaignRecoveryRequirements.stdoutCanonicalRequirements}' = 'true'
+        mkdir -p "$out"
+        touch "$out/passed"
+      '';
+
   provisioningTestResult =
     pkgs.runCommand "kaiba-provisioning-test-result-${pkgs.stdenv.hostPlatform.system}"
       {
@@ -6166,6 +6192,7 @@ in
     signedReleaseFinalizationContract
     signedReleaseManifestContract
     signedBootPlanContract
+    stableCampaignRecoveryRequirementsContract
     staticGoTests
     unfusedCapsuleContract
     ;

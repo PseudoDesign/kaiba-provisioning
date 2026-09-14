@@ -515,10 +515,11 @@ payload ranges means opaque bytes that happen to contain private material can
 enter the process's hashing buffer, although the tool neither interprets nor
 exports those bytes and performs no private-key operation. The envelope always
 has `destructive_staging_ready=false` and accepts no staging-plan or approval
-input. A separate path-free recovery-requirements contract now cross-binds
-exactly one SD envelope and one NVMe envelope to the sealed staging plan and
-enumerates every required recovery range. Durable backup capture, independent
-readback, live-device attachment proof, operator approval, and write authority
+input. Separate versioned recovery-requirements contracts cross-bind exactly
+one SD envelope and one NVMe envelope to the sealed staging plan and enumerate
+every required recovery range. The v1alpha2 catalog also retains both complete
+capture envelopes and their fixed descriptive selectors. Durable backup
+capture, independent readback, live-device attachment proof, operator approval, and write authority
 remain absent or hard-false, and no campaign writer exists in this cut.
 
 The fixed pre-staging Pi-local NVMe uses a valid 1 MiB-aligned GPT usable range:
@@ -558,8 +559,13 @@ v1alpha2 performs no GPT repair, chooses no migration, stores no recovery
 bytes, and keeps `destructive_staging_ready=false`; tools such as `sgdisk -e`
 or automatic partition-table repair remain outside this campaign path. The
 existing v1alpha1 recovery-requirements contract does not consume this new
-envelope; adding a v1alpha2 downstream recovery contract is a separate
-reviewed slice, so physical execution still pauses after read-only capture.
+envelope. The separate v1alpha2 downstream contract now cross-binds both
+complete envelopes, including each distinct lineage and versioned recovery
+range, to the independently supplied staging plan. The
+[`kaiba-rpi5-stable-campaign-recovery-requirements` tool](stable-campaign-recovery.md)
+emits that descriptive catalog from regular JSON files. It keeps every backup,
+approval, and write-readiness field false, so physical execution still pauses
+after read-only capture.
 
 The earlier signed-verifier attempt replaced only its 128 MiB SD boot
 partition. The running development image still has the release tree on the NVMe
