@@ -625,7 +625,8 @@
         {
           asset-api = import ./tests/assets.nix { inherit assets pkgs; };
           boot-image-hash-decoder = bootImageHashDecoderCheck;
-          unit = built.suite;
+          unit = provisioning.goUnitTests;
+          unit-static = provisioning.staticGoTests;
           development-yubikey-signing = provisioning.developmentYubiKeySigningContract;
           device-profile-schema = provisioning.deviceProfileSchema;
           rpi5-development-posture = provisioning.developmentPostureContract;

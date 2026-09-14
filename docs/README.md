@@ -28,6 +28,7 @@ The canonical development posture remains
 
 | Document | Purpose | Current basis |
 | --- | --- | --- |
+| [Development workflow](development-workflow.md) | Focused feedback, consolidated Go checks, and candidate validation | Development and CI workflow |
 | [Native-build policy](../README.md#native-build-policy) | Avoid cross-compilation; select native builders, reuse caches, and keep exceptions narrow | Development and CI policy |
 | [Architecture and trust boundaries](architecture-and-trust-boundaries.md) | Components, authority boundaries, fixed campaign, and failure behavior | Components/contracts implemented; configured composition and physical gates open |
 | [Raspberry Pi 5 secure-boot model](raspberry-pi-5-secure-boot.md) | Native boot chain, ownership boundary, supported claims, and explicit non-claims | Design and software contracts implemented; physical enforcement not evidenced |

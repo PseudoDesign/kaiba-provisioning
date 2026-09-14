@@ -41,8 +41,7 @@ and the other development tools:
 
 ```console
 nix develop
-go test ./...
-nix --accept-flake-config flake check -L
+scripts/check.sh go ./internal/provisioning/campaignmedia
 ```
 
 Build the non-persistent probe package:
@@ -187,8 +186,10 @@ assessment, and tests; prefer native coverage whenever it meets the need.
 
 The [main CI workflow](.github/workflows/ci.yml) starts formatting and
 deployment checks alongside native Nix checks for both supported
-architectures. The Nix checks run the complete Go test suite, so the fast job
-does not repeat it. Pull requests consume binary caches but do not push to
+architectures. The x86 job runs the independent Go unit check first, and its
+later Nix checks reuse that result. Static-mode contract tests share a separate
+check and compiler cache. The formatting job does not repeat either suite.
+Pull requests consume binary caches but do not push to
 them. Successful `main` pushes upload to the
 [`kaiba-provisioning` cache](https://app.cachix.org/cache/kaiba-provisioning)
 when `CACHIX_AUTH_TOKEN` grants write access; an explicit write-and-read-back
@@ -202,17 +203,20 @@ CI job to pass. Enable Pages once under **Settings > Pages** by selecting
 
 ## Development checks
 
-Run the formatter, Go unit suite, and deployment smoke test locally:
+Run focused tests while editing, then the software checks before pushing:
 
 ```console
-nix --accept-flake-config fmt -- --ci
-go test ./...
-tests/deployment/ubuntu_signing_gate_test.sh
+nix develop
+scripts/check.sh go ./internal/provisioning/campaignmedia
+scripts/check.sh fast
 ```
 
 Run the complete Nix contract suite before merging changes that affect
 packages, schemas, release inputs, or deployment boundaries:
 
 ```console
-nix --accept-flake-config flake check -L
+scripts/check.sh full
 ```
+
+The [development workflow](docs/development-workflow.md) describes focused,
+static-mode, contract, full-CI, and release-candidate validation.
