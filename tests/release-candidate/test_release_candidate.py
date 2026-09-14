@@ -120,6 +120,8 @@ class CandidateTests(unittest.TestCase):
             if args == ("nix", "--version"):
                 return "nix (test fixture)"
             if args[:3] == ("nix", "--accept-flake-config", "build"):
+                self.assertIn("--no-update-lock-file", args)
+                self.assertIn("--no-write-lock-file", args)
                 self.assertIn(f"?rev={self.head}#packages.aarch64-linux.", args[-1])
                 path = unsigned if args[-1].endswith("-unsigned") else plan
                 return json.dumps([{"outputs": {"out": str(path)}}])

@@ -34,6 +34,8 @@ Both checkouts use the same selected source SHA. Reporting tools stay pinned to
 the workflow's own SHA, which is recorded separately. The ARM export checks
 that the unsigned manifest and signing intent name the selected source and
 that the intent binds that exact unsigned manifest and artifact set.
+Builds reject any required lock-file update, including an update only in memory,
+so the selected commit's dependency pins remain part of the candidate identity.
 
 ## Retain and reuse the outputs
 

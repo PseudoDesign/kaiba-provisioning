@@ -113,7 +113,7 @@ def build(args):
     for role, package in OUTPUTS[args.system].items():
         attribute = f"packages.{args.system}.{package}"
         result = json.loads(run(
-            "nix", "--accept-flake-config", "build", "--no-write-lock-file",
+            "nix", "--accept-flake-config", "build", "--no-update-lock-file", "--no-write-lock-file",
             "--no-link", "--json", "-L", f"{flake}#{attribute}",
         ))
         if len(result) != 1 or set(result[0]["outputs"]) != {"out"}:
