@@ -279,6 +279,41 @@ let
     };
   };
 
+  stableCampaignSandboxTool = pkgs.buildGoModule {
+    pname = "kaiba-rpi5-stable-campaign-sandbox";
+    inherit version;
+    src = goSource;
+    subPackages = [ "cmd/kaiba-rpi5-stable-campaign-sandbox" ];
+    vendorHash = null;
+    env.CGO_ENABLED = 0;
+    ldflags = [
+      "-s"
+      "-w"
+    ];
+    # checks.unit runs the fast suite; a separate check exercises the complete
+    # fixed-geometry sparse-file workflow through its public API.
+    doCheck = false;
+    passthru.kaibaRpi5StableCampaignSandbox = {
+      approvalScope = "synthetic-regular-files-only";
+      blockDeviceReadsPerformed = false;
+      blockDeviceWritesPerformed = false;
+      destructiveStagingReady = false;
+      hardwareObserved = false;
+      mutationScope = "new-sandbox-regular-file-copies";
+      productionReady = false;
+      recoveryScope = "captured-ranges-only-not-whole-disk";
+      retryAfterStartedExecution = false;
+    };
+    meta = {
+      mainProgram = "kaiba-rpi5-stable-campaign-sandbox";
+      description = "Rehearse Pi 5 campaign recovery and staging on private regular-file copies";
+      platforms = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
+    };
+  };
+
   stableCampaignGPTInspector = pkgs.buildGoModule {
     pname = "kaiba-rpi5-stable-campaign-gpt-inspect";
     inherit version;
@@ -2332,6 +2367,7 @@ in
     stableCampaignGPTInspector
     stableCampaignPlanTool
     stableCampaignRecoveryRequirementsTool
+    stableCampaignSandboxTool
     stableCampaignSigningTool
     stableVerifierTool
     suite

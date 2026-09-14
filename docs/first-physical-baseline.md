@@ -20,10 +20,14 @@ identifies the immediate implementation work:
   supplied staging plan using the [v1alpha2 recovery-requirements
   tool](stable-campaign-recovery.md). Its descriptive catalog retains both
   GPT lineages and every recovery range; it does not capture recovery bytes.
-- Durable recovery-byte capture, independent attachment/readback evidence,
-  operator approval and a campaign-specific writer remain missing. Nix media
+- Physical recovery-byte capture, independent attachment/readback evidence,
+  operator approval and a qualified campaign-specific writer remain missing. Nix media
   materializers and the GPT inspector cannot substitute for that boundary.
   Keep `destructive_staging_ready=false`; do not repair GPTs to bypass it.
+- The [regular-file sandbox](stable-campaign-sandbox.md) rehearses those
+  recovery and staging operations with synthetic copies. Its tested software
+  behavior does not close the physical capture, attachment, approval, or
+  writer-qualification requirements above.
 - The separate development provisioner also lacks a writer. Its inner
   `boot.img` is not an SD partition image. Follow the
   [post-sign outer-boot boundary](raspberry-pi-5-development-target-access.md#compose-a-development-image)
