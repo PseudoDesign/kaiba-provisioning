@@ -12,7 +12,17 @@ let
   unsignedName = "kaiba-rpi5-stable-campaign-provisioner-unsigned";
   planName = "kaiba-rpi5-stable-campaign-provisioner-signing-plan";
   runtimeName = "kaiba-rpi5-stable-campaign-development-signing";
+  hardwareCheckName = "stable-campaign-provisioner-rpi5-hardware-eval";
+  armHardwareCommand = self.checks.aarch64-linux.${hardwareCheckName}.buildCommand;
+  x86HardwareCommand = self.checks.x86_64-linux.${hardwareCheckName}.buildCommand;
   checks = {
+    # Metadata comparisons must not accidentally realize a cross-built
+    # target closure through an interpolated store path.
+    x86HardwareCheckIsEvaluationOnly = builtins.getContext x86HardwareCommand == { };
+    armHardwareCheckInspectsBootEvidence =
+      lib.hasInfix "grep -aF '/bin/kaiba-rpi5-boot-image-hash-decode'" armHardwareCommand
+      # This is only a text-match pattern, not a builder input.
+      && lib.hasInfix (builtins.unsafeDiscardStringContext nativeProvisioner.nixosSystem.config.systemd.services.kaiba-secure-boot-evidence.serviceConfig.ExecStart) armHardwareCommand;
     defaultBuildIsNativeARM = lib.all (system: system == "aarch64-linux") [
       nativeProvisioner.nixosSystem.pkgs.stdenv.buildPlatform.system
       nativeProvisioner.nixosSystem.pkgs.stdenv.hostPlatform.system

@@ -751,9 +751,14 @@
                 } = true
                 test ${lib.escapeShellArg stableCampaignProvisioner.unsignedArtifacts.kaibaUnsignedArtifacts.signingStatus} = unsigned
                 test ${builtins.toJSON stableCampaignProvisioner.unsignedArtifacts.kaibaUnsignedArtifacts.mutationCapable} = false
-                grep -aF '/bin/kaiba-rpi5-boot-image-hash-decode' \
-                  ${lib.escapeShellArg stableCampaignProvisioner.nixosSystem.config.systemd.services.kaiba-secure-boot-evidence.serviceConfig.ExecStart} \
-                  > /dev/null
+                # Reading the rendered script realizes its runtime closure.
+                # Exclude the reference during Nix evaluation on x86, rather
+                # than using a shell conditional that still pulls in ARM tools.
+                ${lib.optionalString (system == "aarch64-linux") ''
+                  grep -aF '/bin/kaiba-rpi5-boot-image-hash-decode' \
+                    ${lib.escapeShellArg stableCampaignProvisioner.nixosSystem.config.systemd.services.kaiba-secure-boot-evidence.serviceConfig.ExecStart} \
+                    > /dev/null
+                ''}
                 test ${
                   if
                     builtins.elem "kaiba-secure-boot-evidence.service" stableCampaignProvisioner.nixosSystem.config.systemd.services.sshd.requires
