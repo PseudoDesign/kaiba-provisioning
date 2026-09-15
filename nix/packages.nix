@@ -7,10 +7,15 @@
 let
   version = "0.1.0";
   stableVerifierSpike = import ./stable-verifier-spike.nix {
-    inherit lib pkgs rpi5KexecInputValidator;
+    inherit
+      lib
+      pkgs
+      rpi5KexecInputValidator
+      publicInputKeyScan
+      ;
   };
   mkRpi5StableVerifierCampaignMedia = import ./stable-verifier-campaign-media.nix {
-    inherit lib pkgs;
+    inherit lib pkgs publicInputKeyScan;
   };
   mkRpi5StableVerifierCampaignRun = import ./stable-verifier-campaign-run.nix {
     inherit lib pkgs;
@@ -207,6 +212,22 @@ let
         "aarch64-linux"
       ];
     };
+  };
+
+  publicInputKeyScan = pkgs.buildGoModule {
+    pname = "kaiba-public-input-key-scan";
+    inherit version;
+    src = scopedSource "publicInputKeyScan";
+    subPackages = [ "cmd/kaiba-public-input-key-scan" ];
+    vendorHash = null;
+    env.CGO_ENABLED = 0;
+    ldflags = [
+      "-s"
+      "-w"
+    ];
+    # checks.unit covers the scanner and CLI boundary tests.
+    doCheck = false;
+    meta.mainProgram = "kaiba-public-input-key-scan";
   };
 
   stableCampaignPlanTool = pkgs.buildGoModule {
@@ -2541,6 +2562,7 @@ in
     signedReleaseTool
     stableCampaignGPTInspector
     stableCampaignPlanTool
+    publicInputKeyScan
     stableCampaignMutationsTool
     stableCampaignStagingPlanTool
     stableCampaignRecoveryRequirementsTool

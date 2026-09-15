@@ -115,15 +115,22 @@ handoff.
 | `mkRpi5ReleasePayloadQemuVirt` | Runs the exact manifest-bound release kernel and initramfs on generic AArch64 QEMU `virt`, with a QEMU-generated DTB and a QMP shutdown witness; this is a diagnostic constructor, not Pi 5 emulation |
 | `mkRpi5KernelQemuVirtBeacon` | Reuses the exact manifest-bound release kernel with a generated static-BusyBox beacon initramfs under generic AArch64 QEMU `virt`, isolating kernel/machine compatibility from release userspace |
 | `packages.*.kaiba-rpi5-kexec-input-validate` | Checks the resolved Pi 5 DTB and command-line contract used by the delegated-release builder |
+| `packages.*.kaiba-public-input-key-scan` | Scans a regular public file for private-key PEM markers; strict by default, with a fixed reviewed-literal mode for root payload assembly |
 | `packages.aarch64-linux.kaiba-rpi5-self-kexec-diagnostic` | Prepares, and only after a separate explicit confirmation executes, the development Pi 5 self-kexec isolation experiment described in its runbook |
 
 The boot and release assembly constructors are authority-free. They reject
 symlinks and unexpected paths, scan inputs for recognizable PEM/OpenSSH private
-keys, and publish negative capability metadata such as
+key markers, and publish negative capability metadata such as
 `hardwareObserved = false` and `productionReady = false`. The test-SD output is
 a FAT filesystem image, not a whole-device image or permission to write an SD
 card. The QEMU and self-kexec interfaces are diagnostics and perform no signing
 or authorization operation.
+
+Root payloads can contain public parser strings and upstream cryptographic
+self-test constants that match those markers. Only the release `root.img` and
+media root-data roles admit the exact, compiled fingerprints in the
+[public root literal catalog](public-root-key-markers.md). Unknown markers
+remain errors; all other input roles retain strict scanning.
 
 The stable policy contains its release-policy-root signature inline. `boot.sig`
 is a distinct Raspberry Pi signature over the complete `boot.img`; it must be
@@ -503,7 +510,10 @@ the supplied bytes came from the reviewed release tree, artifact set, media,
 or hardware, and its output does not authorize signing, staging, physical
 execution, or claim closure. Its private-key PEM marker check is scoped
 defense-in-depth, not proof that opaque caller files contain no private
-material. `kaiba-rpi5-stable-campaign-gpt-inspect` is a
+material. It uses the same fixed root-literal catalog as the release and media
+constructors, selecting that mode only from its closed release-root and
+media-root-data roles. Original and mutated bytes still contribute to their
+complete digests. `kaiba-rpi5-stable-campaign-gpt-inspect` is a
 separate read-only prerequisite. It requires the leg's fixed hostname string,
 but that string comparison is not host authentication. It resolves only the
 leg's fixed selector, requires a whole and inactive attachment with the exact

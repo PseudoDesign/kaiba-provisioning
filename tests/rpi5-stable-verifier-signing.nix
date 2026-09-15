@@ -187,6 +187,7 @@ let
   verifierCampaign =
     (import ../nix/stable-verifier-campaign-media.nix {
       inherit lib pkgs;
+      publicInputKeyScan = built.publicInputKeyScan;
       signerIndependentReview = fixtureSignerReview;
       expectedCustomerKeyHash = fixtureCustomerKeyHash;
       expectedPublicKeyFileSHA256 = lib.removePrefix "sha256:" fixturePublicKeyFileDigest;

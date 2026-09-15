@@ -72,6 +72,16 @@ in
       "internal/provisioning/verifierevents"
     ]
   );
+  publicInputKeyScan = source (
+    lib.fileset.unions [
+      (root + "/go.mod")
+      (root + "/internal/provisioning/pemmarkers/reviewed_literals.json")
+      (runtimeFiles [
+        "cmd/kaiba-public-input-key-scan"
+        "internal/provisioning/pemmarkers"
+      ])
+    ]
+  );
   kexecInputValidator = runtimeSource [
     "cmd/kaiba-rpi5-kexec-input-validate"
     "internal/provisioning/rpi5kexecinput"
