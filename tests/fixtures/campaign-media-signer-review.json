@@ -1,0 +1,13 @@
+{
+  "schema_version": "kaiba.provisioning.signer-independent-review/v1alpha1",
+  "status": "passed",
+  "scope": "development-sacrificial-signer",
+  "public_bindings": {
+    "public_key_file_sha256": "874984cc3d5e7348bffcb4ba0c0b703062510f21a142accfee1a3b2d37d36faa",
+    "public_key_fingerprint": "sha256:56d73a770a7f8f38bbd5aeec970a32d0c94cd257594749469b946d811a0db526",
+    "customer_key_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "signer_policy_digest": "sha256:68498f57aa811b8a714260a4ac4390118c78efdb2af416cc64bfbd8eac4c42e3"
+  },
+  "signing_authorized": false,
+  "production_approved": false
+}

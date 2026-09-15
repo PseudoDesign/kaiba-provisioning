@@ -10,21 +10,9 @@ let
   fixturePublicKeyFingerprint = "sha256:56d73a770a7f8f38bbd5aeec970a32d0c94cd257594749469b946d811a0db526";
   fixtureCustomerKeyHash = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
   fixtureSignerPolicyDigest = "sha256:68498f57aa811b8a714260a4ac4390118c78efdb2af416cc64bfbd8eac4c42e3";
-  fixtureSignerReview = pkgs.writeText "kaiba-campaign-media-fixture-signer-review.json" (
-    builtins.toJSON {
-      schema_version = "kaiba.provisioning.signer-independent-review/v1alpha1";
-      status = "passed";
-      scope = "development-sacrificial-signer";
-      public_bindings = {
-        public_key_file_sha256 = fixturePublicKeyFileSHA256;
-        public_key_fingerprint = fixturePublicKeyFingerprint;
-        customer_key_hash = fixtureCustomerKeyHash;
-        signer_policy_digest = fixtureSignerPolicyDigest;
-      };
-      signing_authorized = false;
-      production_approved = false;
-    }
-  );
+  # Use a repository path: writeText derivations already carry context and
+  # previously masked the production source-file dependency loss.
+  fixtureSignerReview = ./fixtures/campaign-media-signer-review.json;
   campaignMediaBuilder = import ../nix/stable-verifier-campaign-media.nix {
     inherit lib pkgs;
     publicInputKeyScan = built.publicInputKeyScan;
@@ -807,6 +795,9 @@ let
   campaignMediaA = mkCampaignMedia "kaiba-campaign-media-test-a";
   campaignMediaB = mkCampaignMedia "kaiba-campaign-media-test-b";
   contract = campaignMediaA.kaibaRpi5StableVerifierCampaignMedia;
+  inputValidatorClosure = pkgs.closureInfo {
+    rootPaths = [ contract.inputValidationTool ];
+  };
 
   mkRawTamperedRelease =
     name: mutation:
@@ -1057,6 +1048,8 @@ pkgs.runCommand "kaiba-stable-verifier-campaign-media-test"
     forgedLineageSignedBootInput = forgedLineageSignedBoot;
     forgedSignedBootInput = forgedSignedBoot;
     inputValidationToolInput = contract.inputValidationTool;
+    inputValidatorClosureInput = inputValidatorClosure;
+    fixtureSignerReviewInput = fixtureSignerReview;
     oldBootCampaignPlanInput = oldBootCampaignPlan;
     privatePEMReleaseInput = privatePEMRelease;
     reviewedLiteralKernelReleaseInput = reviewedLiteralKernelRelease;
@@ -1089,6 +1082,10 @@ pkgs.runCommand "kaiba-stable-verifier-campaign-media-test"
     set -euo pipefail
     export LC_ALL=C
     export TZ=UTC
+
+    # The validator must retain its public review without relying on another
+    # derivation coincidentally making the repository source sandbox-visible.
+    grep -Fx "$fixtureSignerReviewInput" "$inputValidatorClosureInput/store-paths" > /dev/null
 
     readonly media_a="$campaignMediaAInput"
     readonly media_b="$campaignMediaBInput"
