@@ -58,6 +58,7 @@
           signerIndependentReviewV1Alpha1 = ./schemas/signer-independent-review-v1alpha1.schema.json;
           stableVerifierEventV1Alpha1 = ./schemas/rpi5-stable-verifier-event-v1alpha1.schema.json;
           stableVerifierPolicyV1Alpha1 = ./schemas/rpi5-stable-verifier-policy-v1alpha1.schema.json;
+          stableVerifierCandidateV1Alpha1 = ./schemas/rpi5-stable-verifier-candidate-v1alpha1.schema.json;
           stableVerifierSpikeEvidenceV1Alpha1 = ./schemas/rpi5-stable-verifier-spike-evidence-v1alpha1.schema.json;
           stableVerifierSigningIntentV1Alpha1 = ./schemas/rpi5-stable-campaign-verifier-signing-intent-v1alpha1.schema.json;
           stableVerifierSigningApprovalV1Alpha1 = ./schemas/rpi5-stable-campaign-verifier-signing-approval-v1alpha1.schema.json;
@@ -271,6 +272,20 @@
             builtins.removeAttrs args [ "system" ]
           );
 
+        mkRpi5StableVerifierCandidate = import ./nix/stable-verifier-candidate.nix {
+          inherit lib;
+          pkgs = import nixpkgs { system = "aarch64-linux"; };
+          mkHardware = self.lib.mkRpi5StableVerifierFileLiveFDTHardwareSystem;
+          mkUnsignedBoot = packagesBySystem.aarch64-linux.mkRpi5StableVerifierUnsignedBoot;
+          mkSigningPlan = packagesBySystem.aarch64-linux.mkRpi5StableVerifierSigningPlan;
+        };
+
+        mkRpi5StableVerifierCampaignPreparation =
+          { system, ... }@args:
+          packagesBySystem.${system}.mkRpi5StableVerifierCampaignPreparation (
+            builtins.removeAttrs args [ "system" ]
+          );
+
         mkRpi5StableVerifierTestSD =
           { system, ... }@args:
           packagesBySystem.${system}.mkRpi5StableVerifierTestSD (builtins.removeAttrs args [ "system" ]);
@@ -475,6 +490,8 @@
           kaiba-rpi5-one-boot-prove = built.oneBootProveTool;
           kaiba-rpi5-stable-campaign-gpt-inspect = built.stableCampaignGPTInspector;
           kaiba-rpi5-stable-campaign-plan = built.stableCampaignPlanTool;
+          kaiba-rpi5-stable-campaign-mutations = built.stableCampaignMutationsTool;
+          kaiba-rpi5-stable-campaign-staging-plan = built.stableCampaignStagingPlanTool;
           kaiba-rpi5-stable-campaign-recovery-requirements = built.stableCampaignRecoveryRequirementsTool;
           kaiba-rpi5-stable-campaign-sandbox = built.stableCampaignSandboxTool;
           kaiba-rpi5-stable-campaign-stage = built.stableCampaignStagingTool;
@@ -679,6 +696,10 @@
             verifierPackage = built.stableVerifierTool;
           };
           stable-verifier-campaign-media = stableVerifierCampaignMediaCheck;
+          stable-campaign-preparation = import ./tests/campaign-preparation.nix {
+            inherit lib pkgs built;
+            mediaFixture = stableVerifierCampaignMediaCheck;
+          };
           stable-verifier-campaign-run = stableVerifierCampaignRunCheck;
           stable-campaign-recovery-requirements = provisioning.stableCampaignRecoveryRequirementsContract;
           stable-campaign-sandbox = provisioning.stableCampaignSandboxContract;

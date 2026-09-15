@@ -15,6 +15,16 @@ let
   mkRpi5StableVerifierCampaignRun = import ./stable-verifier-campaign-run.nix {
     inherit lib pkgs;
   };
+  mkRpi5StableVerifierCampaignPreparation = import ./campaign-preparation.nix {
+    inherit lib pkgs;
+    mutationsTool = stableCampaignMutationsTool;
+    planTool = stableCampaignPlanTool;
+    stagingPlanTool = stableCampaignStagingPlanTool;
+    recoveryTool = stableCampaignRecoveryRequirementsTool;
+    packetTool = stableCampaignPacketTool;
+    mkMedia = mkRpi5StableVerifierCampaignMedia;
+    mkRun = mkRpi5StableVerifierCampaignRun;
+  };
   sources = import ./go-sources.nix { inherit lib; };
   # Preserve explicit caller sources without filtering them a second time.
   # Default hardware binaries use only their runtime imports, while tests and
@@ -242,6 +252,28 @@ let
         "aarch64-linux"
       ];
     };
+  };
+
+  stableCampaignMutationsTool = pkgs.buildGoModule {
+    pname = "kaiba-rpi5-stable-campaign-mutations";
+    inherit version;
+    src = goSource;
+    subPackages = [ "cmd/kaiba-rpi5-stable-campaign-mutations" ];
+    vendorHash = null;
+    env.CGO_ENABLED = 0;
+    doCheck = false;
+    meta.mainProgram = "kaiba-rpi5-stable-campaign-mutations";
+  };
+
+  stableCampaignStagingPlanTool = pkgs.buildGoModule {
+    pname = "kaiba-rpi5-stable-campaign-staging-plan";
+    inherit version;
+    src = goSource;
+    subPackages = [ "cmd/kaiba-rpi5-stable-campaign-staging-plan" ];
+    vendorHash = null;
+    env.CGO_ENABLED = 0;
+    doCheck = false;
+    meta.mainProgram = "kaiba-rpi5-stable-campaign-staging-plan";
   };
 
   stableCampaignRecoveryRequirementsTool = pkgs.buildGoModule {
@@ -2459,6 +2491,7 @@ in
     mkRpi5EEPROMSigningPlan
     mkRpi5StableVerifierCampaignMedia
     mkRpi5StableVerifierCampaignRun
+    mkRpi5StableVerifierCampaignPreparation
     mkRpi5StableCampaignProvisionerSigningPlan
     mkRpi5StableVerifierSigningPlan
     mkRpi5PhysicalLaneGuard
@@ -2508,6 +2541,8 @@ in
     signedReleaseTool
     stableCampaignGPTInspector
     stableCampaignPlanTool
+    stableCampaignMutationsTool
+    stableCampaignStagingPlanTool
     stableCampaignRecoveryRequirementsTool
     stableCampaignSandboxTool
     stableCampaignStagingTool

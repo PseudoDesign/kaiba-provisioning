@@ -38,6 +38,22 @@ func FinalGPTWrites(device DevicePlan) ([]FinalGPTWrite, error) {
 	if err := device.Validate(); err != nil {
 		return nil, err
 	}
+	writes, err := renderFinalGPTWrites(device)
+	if err != nil {
+		return nil, err
+	}
+	for _, write := range writes {
+		if write.Range != *finalGPTRange(&device.GPT, write.Role) {
+			return nil, fmt.Errorf("final GPT %s bytes differ from staging plan", write.Role)
+		}
+	}
+	return writes, nil
+}
+
+// renderFinalGPTWrites computes the real byte digests while authoring a plan.
+// The public verifier above still requires a completely validated device and
+// exact equality with every declared digest before returning any bytes.
+func renderFinalGPTWrites(device DevicePlan) ([]FinalGPTWrite, error) {
 	entries := make([]byte, 128*128)
 	for _, p := range device.Partitions {
 		if p.Number == 0 || p.Number > 128 || p.CapacityBytes == 0 || p.ByteStart%512 != 0 || p.CapacityBytes%512 != 0 {
@@ -108,10 +124,28 @@ func FinalGPTWrites(device DevicePlan) ([]FinalGPTWrite, error) {
 	}
 	var result []FinalGPTWrite
 	for _, x := range items {
-		if uint64(len(x.data)) != x.span.SizeBytes || bundle.Sum(x.data) != x.span.SHA256 {
+		if uint64(len(x.data)) != x.span.SizeBytes {
 			return nil, fmt.Errorf("final GPT %s bytes differ from staging plan", x.role)
 		}
+		x.span.SHA256 = bundle.Sum(x.data)
 		result = append(result, FinalGPTWrite{Role: GPTRegionRole(x.role), Range: x.span, Data: append([]byte(nil), x.data...)})
 	}
 	return result, nil
+}
+
+func finalGPTRange(metadata *GPTMetadata, role GPTRegionRole) *ByteRangeDigest {
+	switch role {
+	case GPTProtectiveMBR:
+		return &metadata.ProtectiveMBR
+	case GPTPrimaryHeader:
+		return &metadata.PrimaryHeader
+	case GPTPrimaryEntryArray:
+		return &metadata.PrimaryEntryArray
+	case GPTBackupEntryArray:
+		return &metadata.BackupEntryArray
+	case GPTBackupHeader:
+		return &metadata.BackupHeader
+	default:
+		panic("unknown fixed final GPT role")
+	}
 }

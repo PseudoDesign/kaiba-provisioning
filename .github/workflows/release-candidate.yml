@@ -1,5 +1,5 @@
 name: Release candidate artifacts
-run-name: Release candidate ${{ inputs.source_sha }}
+run-name: Release candidate ${{ inputs.profile || 'provisioner' }} ${{ inputs.source_sha }}
 
 on:
   workflow_dispatch:
@@ -7,6 +7,19 @@ on:
       source_sha:
         description: Full lowercase 40-character commit SHA already on main
         required: true
+        type: string
+      profile:
+        description: Public artifact profile to prepare
+        required: true
+        default: provisioner
+        type: choice
+        options:
+          - provisioner
+          - verifier
+      public_inputs:
+        description: Verifier only - relative directory of four reviewed public files in source_sha
+        required: false
+        default: ''
         type: string
 
 permissions:
@@ -84,19 +97,22 @@ jobs:
         env:
           CANDIDATE_SHA: ${{ needs.source.outputs.sha }}
           CANDIDATE_SYSTEM: ${{ matrix.system }}
+          CANDIDATE_PROFILE: ${{ inputs.profile || 'provisioner' }}
+          CANDIDATE_PUBLIC_INPUTS: ${{ inputs.public_inputs }}
           DISPATCH_MAIN_SHA: ${{ github.sha }}
           WORKFLOW_SHA: ${{ github.workflow_sha }}
         run: |
           python3 workflow/.github/scripts/release_candidate.py build \
             --repository candidate --source-sha "$CANDIDATE_SHA" \
             --main-sha "$DISPATCH_MAIN_SHA" --workflow-sha "$WORKFLOW_SHA" \
+            --profile "$CANDIDATE_PROFILE" --public-inputs "$CANDIDATE_PUBLIC_INPUTS" \
             --system "$CANDIDATE_SYSTEM" --output "$RUNNER_TEMP/candidate-artifacts"
           cat "$RUNNER_TEMP/candidate-artifacts/SUMMARY.md" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload public outputs and provenance
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: candidate-${{ needs.source.outputs.sha }}-${{ matrix.system }}
+          name: candidate-${{ inputs.profile == 'verifier' && 'verifier-' || '' }}${{ needs.source.outputs.sha }}-${{ matrix.system }}
           path: ${{ runner.temp }}/candidate-artifacts/
           if-no-files-found: error
           compression-level: 0

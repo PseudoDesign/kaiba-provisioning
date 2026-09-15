@@ -1,6 +1,8 @@
 {
   lib,
   pkgs,
+  publicPreparationFixture ? null,
+  preparedReleaseTree ? null,
 }:
 
 let
@@ -63,9 +65,13 @@ let
     lib.concatStringsSep "\n" releaseAllowlist + "\n"
   );
 
-  verifierTrustFixture = import ./stable-verifier-vm-fixture.nix {
-    inherit pkgs;
-  };
+  verifierTrustFixture =
+    if publicPreparationFixture != null then
+      publicPreparationFixture
+    else
+      import ./stable-verifier-vm-fixture.nix {
+        inherit pkgs;
+      };
   fixtureSigningKey =
     pkgs.runCommand "kaiba-campaign-media-signing-public-key"
       {
@@ -398,9 +404,13 @@ let
         find "$out" -type f -exec chmod 0444 '{}' +
         find "$out" -exec touch --date=@315532800 '{}' +
       '';
-  releaseTree = mkReleaseTree {
-    name = "kaiba-campaign-media-test-release-tree";
-  };
+  releaseTree =
+    if preparedReleaseTree != null then
+      preparedReleaseTree
+    else
+      mkReleaseTree {
+        name = "kaiba-campaign-media-test-release-tree";
+      };
   delegatedRelease = stableVerifierSpikeBuilders.mkRpi5DelegatedReleaseSpike {
     inherit releaseAllowlist releaseTree sourceRevision;
     releaseID = "campaign-media-fixture";
@@ -1017,6 +1027,9 @@ assert lib.assertMsg (evaluationRejected {
 pkgs.runCommand "kaiba-stable-verifier-campaign-media-test"
   {
     passthru.fixtureBaselineMedia = campaignMediaA;
+    passthru.fixtureSignedBoot = verifiedSignedBoot;
+    passthru.fixtureDelegatedRelease = delegatedRelease;
+    passthru.fixtureMediaBuilder = campaignMediaBuilder;
     campaignMediaAInput = campaignMediaA;
     campaignMediaBInput = campaignMediaB;
     campaignMutationInputsInput = campaignMutationInputs;

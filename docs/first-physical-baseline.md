@@ -13,6 +13,10 @@ changes. The current campaign remains paused after read-only capture.
 
 ## Close the staging prerequisites first
 
+Use the [public campaign preparation constructors](stable-campaign-preparation.md)
+to assemble the native unsigned verifier and, after signing, the complete
+campaign and staging packet from the reviewed inputs.
+
 The [remaining hardware gate](stable-verifier-spike.md#remaining-hardware-gate)
 identifies the immediate implementation work:
 
