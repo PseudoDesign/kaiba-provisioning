@@ -304,6 +304,24 @@
           { system, ... }@args:
           packagesBySystem.${system}.mkRpi5StableCampaignStaging (builtins.removeAttrs args [ "system" ]);
 
+        mkRpi5StableCampaignStagingDescriptor =
+          { system, ... }@args:
+          packagesBySystem.${system}.mkRpi5StableCampaignStagingDescriptor (
+            builtins.removeAttrs args [ "system" ]
+          );
+
+        mkRpi5StableCampaignStagingNativeComponent =
+          { system, ... }@args:
+          packagesBySystem.${system}.mkRpi5StableCampaignStagingNativeComponent (
+            builtins.removeAttrs args [ "system" ]
+          );
+
+        mkRpi5StableCampaignStagingAssembly =
+          { system, ... }@args:
+          packagesBySystem.${system}.mkRpi5StableCampaignStagingAssembly (
+            builtins.removeAttrs args [ "system" ]
+          );
+
         mkRpi5DelegatedReleaseSpike =
           { system, ... }@args:
           packagesBySystem.${system}.mkRpi5DelegatedReleaseSpike (builtins.removeAttrs args [ "system" ]);
@@ -493,6 +511,7 @@
           kaiba-public-input-key-scan = built.publicInputKeyScan;
           kaiba-rpi5-stable-campaign-mutations = built.stableCampaignMutationsTool;
           kaiba-rpi5-stable-campaign-staging-plan = built.stableCampaignStagingPlanTool;
+          kaiba-rpi5-stable-campaign-staging-plan-check = built.stableCampaignStagingPlanCheck;
           kaiba-rpi5-stable-campaign-recovery-requirements = built.stableCampaignRecoveryRequirementsTool;
           kaiba-rpi5-stable-campaign-sandbox = built.stableCampaignSandboxTool;
           kaiba-rpi5-stable-campaign-stage = built.stableCampaignStagingTool;
@@ -707,6 +726,9 @@
           stable-campaign-sandbox = provisioning.stableCampaignSandboxContract;
           stable-campaign-sandbox-integration = provisioning.stableCampaignSandboxIntegration;
           stable-campaign-staging = import ./tests/campaign-staging.nix { inherit lib pkgs built; };
+          stable-campaign-staging-split = import ./tests/campaign-staging-split.nix {
+            inherit lib pkgs built;
+          };
           stable-campaign-packet-integration = stableVerifierCampaignRunCheck.packetIntegration;
           stable-campaign-provisioner-toolchain =
             import ./tests/rpi5-stable-campaign-provisioner-toolchain.nix
