@@ -1,0 +1,11 @@
+{
+  "schema_version": "kaiba.provisioning.rpi5-stable-verifier-candidate/v1alpha1",
+  "verifier_version": 1,
+  "cohort_id": "development-pi5",
+  "slot_id": "a",
+  "minimum_security_epoch": 1,
+  "authority_url": "https://192.168.8.249:8443",
+  "authority_key_id": "development-authority-20260908",
+  "audience": "stable-verifier-hardware-spike",
+  "logical_identity": "development-pi5"
+}
