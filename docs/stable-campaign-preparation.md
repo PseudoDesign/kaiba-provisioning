@@ -96,6 +96,12 @@ public file, not a credential or evidence directory. The caller must provide
 truthful source/build provenance for the released OS; selecting a tooling
 revision does not relabel older OS components.
 
+Release packaging, plan input inspection, and media construction share the
+[public root literal scan](public-root-key-markers.md). Its fixed exceptions
+apply only to the release root and media root-data roles. They account for
+exact public library constants without changing the root bytes or their signed
+manifest digests; all other roles retain strict PEM marker rejection.
+
 The consumer extracts the public trust files from the signed verifier and
 derives the exact 27 public inputs and 10 mutation targets from the release and
 real first overlay. Each role gets a separate regular file. It computes the

@@ -5801,6 +5801,21 @@ let
           "$TMPDIR/stable-campaign-gpt-inspect-help.stderr" > /dev/null
         ! grep -F -- '--output' "$TMPDIR/stable-campaign-gpt-inspect-help.stderr" > /dev/null
         ! grep -F -- '--capture-id' "$TMPDIR/stable-campaign-gpt-inspect-help.stderr" > /dev/null
+        test -x ${built.publicInputKeyScan}/bin/kaiba-public-input-key-scan
+        printf '%s\0' '-----BEGIN PRIVATE KEY-----' > "$TMPDIR/public-parser-literal"
+        if ${built.publicInputKeyScan}/bin/kaiba-public-input-key-scan \
+          --input "$TMPDIR/public-parser-literal" > "$TMPDIR/default-scan.json" 2> "$TMPDIR/default-scan.stderr"
+        then
+          echo 'public input scanner did not default to strict rejection' >&2
+          exit 1
+        fi
+        test ! -s "$TMPDIR/default-scan.json"
+        ${built.publicInputKeyScan}/bin/kaiba-public-input-key-scan \
+          --input "$TMPDIR/public-parser-literal" --mode reviewed-root-literals > "$TMPDIR/root-scan.json"
+        jq -e '.status == "passed" and .mode == "reviewed-root-literals"
+          and .proof_of_private_material_absence == false
+          and .private_key_operation_performed == false
+          and ([.public_literal_matches[].occurrences] | add) == 1' "$TMPDIR/root-scan.json" > /dev/null
         test -x ${built.stableCampaignPlanTool}/bin/kaiba-rpi5-stable-campaign-plan
         test -x ${built.verifierTestAuthority}/bin/kaiba-rpi5-verifier-test-authority
         test -x ${built.oneBootProveTool}/bin/kaiba-rpi5-one-boot-prove

@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/bundle"
+	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/pemmarkers"
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/stablecampaign"
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/stableverifier"
 )
@@ -327,7 +328,7 @@ func TestInspectSourceStreamsBoundedReadsAndComputesXORWithoutMutation(t *testin
 	reader := &guardReaderAt{contents: contents}
 	before, after, err := inspectSource(stablecampaign.PublicArtifactSource{
 		SizeBytes: uint64(len(contents)), ReaderAt: reader,
-	}, true)
+	}, true, pemmarkers.Strict)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -345,7 +346,7 @@ func TestInspectSourceStreamsBoundedReadsAndComputesXORWithoutMutation(t *testin
 }
 
 func TestInspectSourceRejectsPrivateKeyPEMMarkersAcrossChunkBoundaries(t *testing.T) {
-	markers := append([][]byte(nil), privateKeyPEMMarkers...)
+	markers := [][]byte{[]byte("-----BEGIN PRIVATE KEY-----"), []byte("-----BEGIN ENCRYPTED PRIVATE KEY-----"), []byte("-----BEGIN RSA PRIVATE KEY-----"), []byte("-----BEGIN EC PRIVATE KEY-----"), []byte("-----BEGIN DSA PRIVATE KEY-----"), []byte("-----BEGIN OPENSSH PRIVATE KEY-----")}
 	markers = append(markers, []byte("-----BEGIN ML-DSA PRIVATE KEY-----"))
 	for _, marker := range markers {
 		t.Run(string(marker), func(t *testing.T) {
@@ -354,11 +355,64 @@ func TestInspectSourceRejectsPrivateKeyPEMMarkersAcrossChunkBoundaries(t *testin
 			contents = append(contents, 'x')
 			_, _, err := inspectSource(stablecampaign.PublicArtifactSource{
 				SizeBytes: uint64(len(contents)), ReaderAt: bytes.NewReader(contents),
-			}, false)
+			}, false, pemmarkers.Strict)
 			if err == nil || !strings.Contains(err.Error(), "scoped defense in depth") {
 				t.Fatalf("marker was accepted: %v", err)
 			}
 		})
+	}
+}
+
+func TestReviewedLiteralSelectionUsesOnlyClosedRootTargets(t *testing.T) {
+	literal := []byte("-----BEGIN PRIVATE KEY-----\x00")
+	for _, target := range []string{"release/root.img", "media/root-data", "release/kernel", "release/initramfs", "release/device-tree.dtb", "release/cmdline.txt", "release/dm-verity.json", "release/slot.txt", "release/overlays/root.img.dtbo", "media/root-hash", "root.img", "media/root-data.img"} {
+		t.Run(target, func(t *testing.T) {
+			source := stablecampaign.PublicArtifactSource{SizeBytes: uint64(len(literal)), ReaderAt: bytes.NewReader(literal)}
+			before, after, err := inspectSource(source, true, markerModeForTarget(target))
+			allowed := target == "release/root.img" || target == "media/root-data"
+			if !allowed {
+				if err == nil {
+					t.Fatal("reviewed literal accepted outside a closed root role")
+				}
+				return
+			}
+			mutated := append([]byte(nil), literal...)
+			mutated[0] ^= 1
+			if err != nil || before != bundle.Sum(literal) || after != bundle.Sum(mutated) {
+				t.Fatalf("root literal digest result: %q %q %v", before, after, err)
+			}
+		})
+	}
+}
+
+func TestRunAcceptsReviewedRootLiteralsAndRejectsUnreviewedRootContent(t *testing.T) {
+	for _, target := range []string{"release/root.img", "media/root-data"} {
+		for _, testCase := range []struct {
+			name     string
+			contents []byte
+			accepted bool
+		}{
+			{"reviewed", []byte("prefix-----BEGIN PRIVATE KEY-----\x00suffix"), true},
+			{"changed", []byte("prefix-----BEGIN PRIVATE KEY-----X\x00suffix"), false},
+			{"unterminated", []byte("prefix-----BEGIN PRIVATE KEY-----"), false},
+			{"unknown", []byte("prefix-----BEGIN ML-DSA PRIVATE KEY-----\x00"), false},
+		} {
+			t.Run(target+"/"+testCase.name, func(t *testing.T) {
+				fixture := newCLIFixtureWithTargets(t, map[string][]byte{target: testCase.contents})
+				var stdout, stderr bytes.Buffer
+				result := run(fixture.arguments(false), &stdout, &stderr)
+				if testCase.accepted {
+					if result != exitOK {
+						t.Fatalf("reviewed root rejected: %s", stderr.String())
+					}
+					if _, err := stablecampaign.ParsePlan(stdout.Bytes()); err != nil {
+						t.Fatal(err)
+					}
+				} else if result != exitInvalid || stdout.Len() != 0 || !strings.Contains(stderr.String(), "scoped defense in depth") {
+					t.Fatalf("invalid root result %d stdout=%q stderr=%q", result, stdout.String(), stderr.String())
+				}
+			})
+		}
 	}
 }
 
@@ -382,8 +436,8 @@ func TestRunRejectsPrivateKeyPEMMarkerInAnySuppliedFileClass(t *testing.T) {
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			fixture := newCLIFixture(t)
-			path := filepath.Join(fixture.root, "private-marker")
-			if err := os.WriteFile(path, []byte("-----BEGIN PRIVATE KEY-----\npublic-test-fixture"), 0o600); err != nil {
+			path := filepath.Join(fixture.root, "root.img")
+			if err := os.WriteFile(path, []byte("-----BEGIN PRIVATE KEY-----\x00"), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			testCase.set(&fixture, path)
@@ -422,6 +476,11 @@ type cliFixture struct {
 
 func newCLIFixture(t *testing.T) cliFixture {
 	t.Helper()
+	return newCLIFixtureWithTargets(t, nil)
+}
+
+func newCLIFixtureWithTargets(t *testing.T, overrides map[string][]byte) cliFixture {
+	t.Helper()
 	root := t.TempDir()
 	publicDirectory := filepath.Join(root, "public")
 	targetDirectory := filepath.Join(root, "targets")
@@ -443,6 +502,9 @@ func newCLIFixture(t *testing.T) cliFixture {
 		if target == "release/cmdline.txt" {
 			contents = []byte("console=ttyAMA10,115200n8 ro\n")
 		}
+		targetBytes[target] = contents
+	}
+	for target, contents := range overrides {
 		targetBytes[target] = contents
 	}
 	policy := validPolicy(t)

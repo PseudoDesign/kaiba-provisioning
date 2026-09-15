@@ -5,7 +5,6 @@
 package main
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -23,6 +22,7 @@ import (
 
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/bundle"
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/evidencefile"
+	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/pemmarkers"
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/stablecampaign"
 )
 
@@ -33,16 +33,6 @@ const (
 	readChunkSize = 128 * 1024
 )
 
-var privateKeyPEMMarkers = [][]byte{
-	[]byte("-----BEGIN PRIVATE KEY-----"),
-	[]byte("-----BEGIN ENCRYPTED PRIVATE KEY-----"),
-	[]byte("-----BEGIN RSA PRIVATE KEY-----"),
-	[]byte("-----BEGIN EC PRIVATE KEY-----"),
-	[]byte("-----BEGIN DSA PRIVATE KEY-----"),
-	[]byte("-----BEGIN OPENSSH PRIVATE KEY-----"),
-}
-
-var privateKeyPEMMarkerPattern = regexp.MustCompile(`-----BEGIN [A-Z0-9 -]{0,64}PRIVATE KEY-----`)
 var campaignIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{0,127}$`)
 
 var publishCanonicalNew = evidencefile.WriteCanonicalNew
@@ -213,7 +203,7 @@ func constructPlan(
 	publicBindings := make([]stablecampaign.ArtifactBinding, 0, len(publicPaths))
 	bindingsByName := make(map[string]stablecampaign.ArtifactBinding, len(publicPaths))
 	for _, name := range stablecampaign.RequiredPublicInputNames() {
-		inspected, err := openAndInspect(publicPaths[name], false)
+		inspected, err := openAndInspect(publicPaths[name], false, pemmarkers.Strict)
 		if err != nil {
 			return stablecampaign.Plan{}, opened, fmt.Errorf("public input %q: %w", name, err)
 		}
@@ -232,7 +222,7 @@ func constructPlan(
 	byteSources := make(map[string]stablecampaign.PublicArtifactSource, len(targetPaths))
 	byteRecipes := make([]stablecampaign.ByteXORMutationRecipe, 0, len(byteSpecs))
 	for _, spec := range byteSpecs {
-		inspected, err := openAndInspect(targetPaths[spec.target], true)
+		inspected, err := openAndInspect(targetPaths[spec.target], true, markerModeForTarget(spec.target))
 		if err != nil {
 			return stablecampaign.Plan{}, opened, fmt.Errorf("byte mutation target %q: %w", spec.target, err)
 		}
@@ -297,7 +287,7 @@ func registerOpenedRole(registry map[openedFileIdentity]string, role string, ide
 	return nil
 }
 
-func openAndInspect(path string, xor bool) (*inspectedFile, error) {
+func openAndInspect(path string, xor bool, mode pemmarkers.Mode) (*inspectedFile, error) {
 	file, before, err := openAbsoluteRegular(path)
 	if err != nil {
 		return nil, err
@@ -307,7 +297,7 @@ func openAndInspect(path string, xor bool) (*inspectedFile, error) {
 		return nil, errors.New("input must be nonempty")
 	}
 	source := stablecampaign.PublicArtifactSource{SizeBytes: uint64(before.size), ReaderAt: file}
-	beforeDigest, afterDigest, err := inspectSource(source, xor)
+	beforeDigest, afterDigest, err := inspectSource(source, xor, mode)
 	if err != nil {
 		_ = file.Close()
 		return nil, err
@@ -322,7 +312,7 @@ func openAndInspect(path string, xor bool) (*inspectedFile, error) {
 	}, nil
 }
 
-func inspectSource(source stablecampaign.PublicArtifactSource, xor bool) (bundle.Digest, bundle.Digest, error) {
+func inspectSource(source stablecampaign.PublicArtifactSource, xor bool, mode pemmarkers.Mode) (bundle.Digest, bundle.Digest, error) {
 	if source.SizeBytes == 0 {
 		return "", "", errors.New("source must be nonempty")
 	}
@@ -331,7 +321,10 @@ func inspectSource(source stablecampaign.PublicArtifactSource, xor bool) (bundle
 	if xor {
 		afterHash = sha256.New()
 	}
-	scanner := newMarkerScanner()
+	scanner, err := pemmarkers.New(mode)
+	if err != nil {
+		return "", "", err
+	}
 	buffer := make([]byte, readChunkSize)
 	for offset := uint64(0); offset < source.SizeBytes; {
 		remaining := source.SizeBytes - offset
@@ -356,10 +349,13 @@ func inspectSource(source stablecampaign.PublicArtifactSource, xor bool) (bundle
 				_, _ = afterHash.Write(chunk)
 			}
 		}
-		if scanner.Consume(chunk) {
-			return "", "", errors.New("input contains a private-key PEM marker (scoped defense in depth; this is not a proof that other inputs lack private material)")
+		if err := scanner.Consume(chunk); err != nil {
+			return "", "", fmt.Errorf("input PEM marker scan failed (scoped defense in depth; no private-material absence claim): %w", err)
 		}
 		offset += uint64(n)
+	}
+	if _, err := scanner.Finish(); err != nil {
+		return "", "", fmt.Errorf("input PEM marker scan failed (scoped defense in depth; no private-material absence claim): %w", err)
 	}
 	before := digestFromHash(beforeHash)
 	if !xor {
@@ -372,39 +368,15 @@ func digestFromHash(value hash.Hash) bundle.Digest {
 	return bundle.Digest("sha256:" + hex.EncodeToString(value.Sum(nil)))
 }
 
-type markerScanner struct {
-	tail []byte
-	keep int
-}
-
-func newMarkerScanner() *markerScanner {
-	maximum := 128
-	for _, marker := range privateKeyPEMMarkers {
-		if len(marker) > maximum {
-			maximum = len(marker)
-		}
+// Only the closed recipe target names select reviewed literal handling.
+// Caller filenames, extensions and public-input labels do not grant it.
+func markerModeForTarget(target string) pemmarkers.Mode {
+	switch target {
+	case "release/root.img", "media/root-data":
+		return pemmarkers.ReviewedRootLiterals
+	default:
+		return pemmarkers.Strict
 	}
-	return &markerScanner{keep: maximum - 1}
-}
-
-func (scanner *markerScanner) Consume(chunk []byte) bool {
-	window := make([]byte, 0, len(scanner.tail)+len(chunk))
-	window = append(window, scanner.tail...)
-	window = append(window, chunk...)
-	for _, marker := range privateKeyPEMMarkers {
-		if bytes.Contains(window, marker) {
-			return true
-		}
-	}
-	if privateKeyPEMMarkerPattern.Match(window) {
-		return true
-	}
-	keep := scanner.keep
-	if keep > len(window) {
-		keep = len(window)
-	}
-	scanner.tail = append(scanner.tail[:0], window[len(window)-keep:]...)
-	return false
 }
 
 func requireExactPublicInputNames(supplied map[string]string) error {

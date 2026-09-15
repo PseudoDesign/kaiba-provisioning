@@ -490,6 +490,7 @@
           kaiba-rpi5-one-boot-prove = built.oneBootProveTool;
           kaiba-rpi5-stable-campaign-gpt-inspect = built.stableCampaignGPTInspector;
           kaiba-rpi5-stable-campaign-plan = built.stableCampaignPlanTool;
+          kaiba-public-input-key-scan = built.publicInputKeyScan;
           kaiba-rpi5-stable-campaign-mutations = built.stableCampaignMutationsTool;
           kaiba-rpi5-stable-campaign-staging-plan = built.stableCampaignStagingPlanTool;
           kaiba-rpi5-stable-campaign-recovery-requirements = built.stableCampaignRecoveryRequirementsTool;
@@ -677,6 +678,7 @@
         {
           asset-api = import ./tests/assets.nix { inherit assets pkgs; };
           boot-image-hash-decoder = bootImageHashDecoderCheck;
+          public-input-key-scan = import ./tests/public-input-key-scan.nix { inherit lib pkgs; };
           unit = provisioning.goUnitTests;
           unit-static = provisioning.staticGoTests;
           development-yubikey-signing = provisioning.developmentYubiKeySigningContract;

@@ -2,6 +2,7 @@
   lib,
   pkgs,
   rpi5KexecInputValidator,
+  publicInputKeyScan,
 }:
 
 let
@@ -79,6 +80,20 @@ let
       cat "$TMPDIR/private-material-paths" >&2
       exit 1
     fi
+  '';
+
+  # The fixed release root.img role alone may contain source-reviewed public
+  # parser/self-test literals. Boot inputs always retain the strict profile.
+  delegatedReleaseMaterialScan = root: ''
+    find ${root} -type f -print0 > "$TMPDIR/pem-scan-files"
+    while IFS= read -r -d $'\0' input; do
+      scan_mode=strict
+      if test "$input" = ${root}/root.img; then
+        scan_mode=reviewed-root-literals
+      fi
+      ${publicInputKeyScan}/bin/kaiba-public-input-key-scan \
+        --input "$input" --mode "$scan_mode" > /dev/null
+    done < "$TMPDIR/pem-scan-files"
   '';
 
   mkRpi5StableVerifierUnsignedBoot =
@@ -536,7 +551,7 @@ let
           echo "delegated release tree differs from releaseAllowlist" >&2
           exit 1
         fi
-        ${sensitiveMaterialScan ''"$releaseTreeInput"''}
+        ${delegatedReleaseMaterialScan ''"$releaseTreeInput"''}
 
         kaiba-rpi5-kexec-input-validate \
           --device-tree "$releaseTreeInput/device-tree.dtb" \

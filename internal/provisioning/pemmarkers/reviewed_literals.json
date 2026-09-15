@@ -1,0 +1,757 @@
+{
+  "schema_version": "kaiba.public-root-pem-literals/v1alpha1",
+  "digest_definition": "Exact bytes from recognized marker start through first NUL, inclusive.",
+  "records": [
+    {
+      "id": "public-literal-b5d9cded34f2c566",
+      "marker_type": "dsa_private_key",
+      "marker": "-----BEGIN DSA PRIVATE KEY-----",
+      "length_including_nul": 1213,
+      "sha256_including_nul": "b5d9cded34f2c566afc8759ba2d5af8a179efa2e9d47aaa813edbb2ba4d3f439",
+      "classification": "public_gnutls_selftest_constant",
+      "public_file_proofs": [
+        {
+          "path": "/nix/store/m3kyipkhsz25x32l8x6vbiqb6yg9k253-gnutls-3.8.13/lib/libgnutls.so.30.42.0",
+          "file_sha256": "efbf0d3587e4cd2728e2e07d61ed87ec2c6506b9e9a36c0a5b589d1228f6d1e0",
+          "file_size_bytes": 2856520,
+          "format": "ELF",
+          "literal_offsets": [
+            1851056
+          ]
+        }
+      ],
+      "upstream_source_proof": {
+        "archive": "/nix/store/q86aljpcbksyzwpgn8ppr9ar8rhcjgz0-gnutls-3.8.13.tar.xz",
+        "archive_sha256": "ffed8ec1bf09c2426d4f14aae377de4753b53e537d685e604e99a8b16ca9c97e",
+        "member": "gnutls-3.8.13/lib/crypto-selftests-pk.c",
+        "member_sha256": "6e596be00754107fd7f7d1f132c2dc8cd0ff12bbdfc6de08c162a1dd5eedc7e8",
+        "constant": "dsa_2048_privkey",
+        "declaration_line": 110,
+        "selftest_use_lines": [
+          427,
+          428,
+          1098
+        ]
+      }
+    },
+    {
+      "id": "public-literal-30437b0960801685",
+      "marker_type": "ec_private_key",
+      "marker": "-----BEGIN EC PRIVATE KEY-----",
+      "length_including_nul": 31,
+      "sha256_including_nul": "30437b09608016857f93419f773937ba95f611f497af24679b18ebfdf807e4cb",
+      "classification": "public_marker_only_nul_literal",
+      "public_file_proofs": [
+        {
+          "path": "/nix/store/bhzcfhg8yv8mn57ycghiagk1yq9qqk9r-tpm2-tss-4.2.0/lib/libtss2-fapi.so.1.0.0",
+          "file_sha256": "0aa9e13f525dfb5c82febe40f22d3276dcd9355da4eaa6a7813bf35630148c51",
+          "file_size_bytes": 1225688,
+          "format": "ELF",
+          "literal_offsets": [
+            821584
+          ]
+        }
+      ],
+      "upstream_source_proof": null
+    },
+    {
+      "id": "public-literal-ec5bf5d793ae50d2",
+      "marker_type": "ec_private_key",
+      "marker": "-----BEGIN EC PRIVATE KEY-----",
+      "length_including_nul": 191,
+      "sha256_including_nul": "ec5bf5d793ae50d290264928a8011d9f6bf3448e6cc3c4deb06591bc181d2865",
+      "classification": "public_gnutls_selftest_constant",
+      "public_file_proofs": [
+        {
+          "path": "/nix/store/m3kyipkhsz25x32l8x6vbiqb6yg9k253-gnutls-3.8.13/lib/libgnutls.so.30.42.0",
+          "file_sha256": "efbf0d3587e4cd2728e2e07d61ed87ec2c6506b9e9a36c0a5b589d1228f6d1e0",
+          "file_size_bytes": 2856520,
+          "format": "ELF",
+          "literal_offsets": [
+            1848064
+          ]
+        }
+      ],
+      "upstream_source_proof": {
+        "archive": "/nix/store/q86aljpcbksyzwpgn8ppr9ar8rhcjgz0-gnutls-3.8.13.tar.xz",
+        "archive_sha256": "ffed8ec1bf09c2426d4f14aae377de4753b53e537d685e604e99a8b16ca9c97e",
+        "member": "gnutls-3.8.13/lib/crypto-selftests-pk.c",
+        "member_sha256": "6e596be00754107fd7f7d1f132c2dc8cd0ff12bbdfc6de08c162a1dd5eedc7e8",
+        "constant": "ecdsa_secp192r1_privkey",
+        "declaration_line": 156,
+        "selftest_use_lines": [
+          436,
+          437,
+          1173
+        ]
+      }
+    },
+    {
+      "id": "public-literal-0d1d63224490a75c",
+      "marker_type": "ec_private_key",
+      "marker": "-----BEGIN EC PRIVATE KEY-----",
+      "length_including_nul": 203,
+      "sha256_including_nul": "0d1d63224490a75c2df08e082951f07d5404e4315a7d7682a8efd86f8ac0284e",
+      "classification": "public_gnutls_selftest_constant",
+      "public_file_proofs": [
+        {
+          "path": "/nix/store/m3kyipkhsz25x32l8x6vbiqb6yg9k253-gnutls-3.8.13/lib/libgnutls.so.30.42.0",
+          "file_sha256": "efbf0d3587e4cd2728e2e07d61ed87ec2c6506b9e9a36c0a5b589d1228f6d1e0",
+          "file_size_bytes": 2856520,
+          "format": "ELF",
+          "literal_offsets": [
+            1848256
+          ]
+        }
+      ],
+      "upstream_source_proof": {
+        "archive": "/nix/store/q86aljpcbksyzwpgn8ppr9ar8rhcjgz0-gnutls-3.8.13.tar.xz",
+        "archive_sha256": "ffed8ec1bf09c2426d4f14aae377de4753b53e537d685e604e99a8b16ca9c97e",
+        "member": "gnutls-3.8.13/lib/crypto-selftests-pk.c",
+        "member_sha256": "6e596be00754107fd7f7d1f132c2dc8cd0ff12bbdfc6de08c162a1dd5eedc7e8",
+        "constant": "ecdsa_secp224r1_privkey",
+        "declaration_line": 170,
+        "selftest_use_lines": [
+          440,
+          441,
+          1188
+        ]
+      }
+    },
+    {
+      "id": "public-literal-250f9ef4a0952e1c",
+      "marker_type": "ec_private_key",
+      "marker": "-----BEGIN EC PRIVATE KEY-----",
+      "length_including_nul": 228,
+      "sha256_including_nul": "250f9ef4a0952e1cf5c6266b0778038789194133d1b4c42c7ea7efcd05fe549b",
+      "classification": "public_gnutls_selftest_constant",
+      "public_file_proofs": [
+        {
+          "path": "/nix/store/m3kyipkhsz25x32l8x6vbiqb6yg9k253-gnutls-3.8.13/lib/libgnutls.so.30.42.0",
+          "file_sha256": "efbf0d3587e4cd2728e2e07d61ed87ec2c6506b9e9a36c0a5b589d1228f6d1e0",
+          "file_size_bytes": 2856520,
+          "format": "ELF",
+          "literal_offsets": [
+            1848464
+          ]
+        }
+      ],
+      "upstream_source_proof": {
+        "archive": "/nix/store/q86aljpcbksyzwpgn8ppr9ar8rhcjgz0-gnutls-3.8.13.tar.xz",
+        "archive_sha256": "ffed8ec1bf09c2426d4f14aae377de4753b53e537d685e604e99a8b16ca9c97e",
+        "member": "gnutls-3.8.13/lib/crypto-selftests-pk.c",
+        "member_sha256": "6e596be00754107fd7f7d1f132c2dc8cd0ff12bbdfc6de08c162a1dd5eedc7e8",
+        "constant": "ecdsa_secp256r1_privkey",
+        "declaration_line": 140,
+        "selftest_use_lines": [
+          445,
+          446,
+          1124
+        ]
+      }
+    },
+    {
+      "id": "public-literal-21df662d14f75338",
+      "marker_type": "ec_private_key",
+      "marker": "-----BEGIN EC PRIVATE KEY-----",
+      "length_including_nul": 283,
+      "sha256_including_nul": "21df662d14f75338e09959415c7c1642e582399b980b5816fb15634b0f246ea8",
+      "classification": "public_gnutls_selftest_constant",
+      "public_file_proofs": [
+        {
+          "path": "/nix/store/m3kyipkhsz25x32l8x6vbiqb6yg9k253-gnutls-3.8.13/lib/libgnutls.so.30.42.0",
+          "file_sha256": "efbf0d3587e4cd2728e2e07d61ed87ec2c6506b9e9a36c0a5b589d1228f6d1e0",
+          "file_size_bytes": 2856520,
+          "format": "ELF",
+          "literal_offsets": [
+            1848704
+          ]
+        }
+      ],
+      "upstream_source_proof": {
+        "archive": "/nix/store/q86aljpcbksyzwpgn8ppr9ar8rhcjgz0-gnutls-3.8.13.tar.xz",
+        "archive_sha256": "ffed8ec1bf09c2426d4f14aae377de4753b53e537d685e604e99a8b16ca9c97e",
+        "member": "gnutls-3.8.13/lib/crypto-selftests-pk.c",
+        "member_sha256": "6e596be00754107fd7f7d1f132c2dc8cd0ff12bbdfc6de08c162a1dd5eedc7e8",
+        "constant": "ecdsa_secp384r1_privkey",
+        "declaration_line": 185,
+        "selftest_use_lines": [
+          449,
+          450,
+          1142
+        ]
+      }
+    },
+    {
+      "id": "public-literal-c84f5e6c5a9b85a1",
+      "marker_type": "ec_private_key",
+      "marker": "-----BEGIN EC PRIVATE KEY-----",
+      "length_including_nul": 355,
+      "sha256_including_nul": "c84f5e6c5a9b85a1224a42def3e34f964a7152c0c5fe9b965735d85920de6d0f",
+      "classification": "public_gnutls_selftest_constant",
+      "public_file_proofs": [
+        {
+          "path": "/nix/store/m3kyipkhsz25x32l8x6vbiqb6yg9k253-gnutls-3.8.13/lib/libgnutls.so.30.42.0",
+          "file_sha256": "efbf0d3587e4cd2728e2e07d61ed87ec2c6506b9e9a36c0a5b589d1228f6d1e0",
+          "file_size_bytes": 2856520,
+          "format": "ELF",
+          "literal_offsets": [
+            1848992
+          ]
+        }
+      ],
+      "upstream_source_proof": {
+        "archive": "/nix/store/q86aljpcbksyzwpgn8ppr9ar8rhcjgz0-gnutls-3.8.13.tar.xz",
+        "archive_sha256": "ffed8ec1bf09c2426d4f14aae377de4753b53e537d685e604e99a8b16ca9c97e",
+        "member": "gnutls-3.8.13/lib/crypto-selftests-pk.c",
+        "member_sha256": "6e596be00754107fd7f7d1f132c2dc8cd0ff12bbdfc6de08c162a1dd5eedc7e8",
+        "constant": "ecdsa_secp521r1_privkey",
+        "declaration_line": 203,
+        "selftest_use_lines": [
+          453,
+          454,
+          1157
+        ]
+      }
+    },
+    {
+      "id": "public-literal-a7b6974f244d89d4",
+      "marker_type": "encrypted_private_key",
+      "marker": "-----BEGIN ENCRYPTED PRIVATE KEY-----",
+      "length_including_nul": 38,
+      "sha256_including_nul": "a7b6974f244d89d4c25cd3366ff76e823f38bbb6dc3d24d1568eda5bdc3ae8b9",
+      "classification": "public_marker_only_nul_literal",
+      "public_file_proofs": [
+        {
+          "path": "/nix/store/2ppj90rlkxyi9pa7j8wn3lzv8csj266n-file-5.47/share/misc/magic.mgc",
+          "file_sha256": "ca0d3f3bf83c2db30b163e9138bcce31f306ffc34c3ff4482b0bdf213f879281",
+          "file_size_bytes": 10658304,
+          "format": "file_magic_database",
+          "literal_offsets": [
+            11696
+          ]
+        },
+        {
+          "path": "/nix/store/8fcxd3p2di16arah3r8bsb2p5a5libkp-glib-2.88.1/lib/libgio-2.0.so.0.8800.1",
+          "file_sha256": "e194f7016de09512c90a5942d095f05d9687eebdcdd82f7787a406a81290d190",
+          "file_size_bytes": 2876552,
+          "format": "ELF",
+          "literal_offsets": [
+            1792368
+          ]
+        }
+      ],
+      "upstream_source_proof": null
+    },
+    {
+      "id": "public-literal-08512b019c9d3b55",
+      "marker_type": "openssh_private_key",
+      "marker": "-----BEGIN OPENSSH PRIVATE KEY-----",
+      "length_including_nul": 36,
+      "sha256_including_nul": "08512b019c9d3b555e1e0ac5d57fa8cc61e42b577313857cfafd9d22f2686e5b",
+      "classification": "public_marker_only_nul_literal",
+      "public_file_proofs": [
+        {
+          "path": "/nix/store/2jp76x44n4i0h0b59zmvi9jjvivdax5d-libssh2-1.11.1/lib/libssh2.so.1.0.1",
+          "file_sha256": "235aa1227bce36e15501302e284b46f9c01ec1c1e56ac266f1866489e11abfae",
+          "file_size_bytes": 367888,
+          "format": "ELF",
+          "literal_offsets": [
+            238656
+          ]
+        },
+        {
+          "path": "/nix/store/2ppj90rlkxyi9pa7j8wn3lzv8csj266n-file-5.47/share/misc/magic.mgc",
+          "file_sha256": "ca0d3f3bf83c2db30b163e9138bcce31f306ffc34c3ff4482b0bdf213f879281",
+          "file_size_bytes": 10658304,
+          "format": "file_magic_database",
+          "literal_offsets": [
+            12560
+          ]
+        }
+      ],
+      "upstream_source_proof": null
+    },
+    {
+      "id": "public-literal-c3afeac69efce5f3",
+      "marker_type": "openssh_private_key",
+      "marker": "-----BEGIN OPENSSH PRIVATE KEY-----",
+      "length_including_nul": 37,
+      "sha256_including_nul": "c3afeac69efce5f36f0bdbdd38d0e9205267d45de163ab00a75361e5796e18e5",
+      "classification": "public_marker_lf_nul_literal",
+      "public_file_proofs": [
+        {
+          "path": "/nix/store/95gh7dw6nqakffsgdzd1cbqkc4qw26ih-openssh-10.4p1/bin/ssh",
+          "file_sha256": "b812648aaca2501a356aab396800b350d2eea09915549056357ebb7c61cf62e5",
+          "file_size_bytes": 1092304,
+          "format": "ELF",
+          "literal_offsets": [
+            747832
+          ]
+        },
+        {
+          "path": "/nix/store/95gh7dw6nqakffsgdzd1cbqkc4qw26ih-openssh-10.4p1/bin/ssh-add",
+          "file_sha256": "d904e400925fc93e6212bbd2ec55b6d7d4c932879afacf1a751750a494267baf",
+          "file_size_bytes": 520648,
+          "format": "ELF",
+          "literal_offsets": [
+            340360
+          ]
+        },
+        {
+          "path": "/nix/store/95gh7dw6nqakffsgdzd1cbqkc4qw26ih-openssh-10.4p1/bin/ssh-agent",
+          "file_sha256": "a30af310c92ca460dac696c152f185d2ce312cb61b2c7192795a8670eae483cf",
+          "file_size_bytes": 517208,
+          "format": "ELF",
+          "literal_offsets": [
+            319160
+          ]
+        },
+        {
+          "path": "/nix/store/95gh7dw6nqakffsgdzd1cbqkc4qw26ih-openssh-10.4p1/bin/ssh-keygen",
+          "file_sha256": "ba7c88a4902993e9c2b88c351144cdc94092cb4d2c914c1ab041622127d00a28",
+          "file_size_bytes": 662888,
+          "format": "ELF",
+          "literal_offsets": [
+            434200
+          ]
+        },
+        {
+          "path": "/nix/store/95gh7dw6nqakffsgdzd1cbqkc4qw26ih-openssh-10.4p1/bin/ssh-keyscan",
+          "file_sha256": "3bddc00e2158383b44e19c7cf0473300cc1475a654350524c43e1d78b85b089f",
+          "file_size_bytes": 600464,
+          "format": "ELF",
+          "literal_offsets": [
+            408144
+          ]
+        },
+        {
+          "path": "/nix/store/95gh7dw6nqakffsgdzd1cbqkc4qw26ih-openssh-10.4p1/bin/sshd",
+          "file_sha256": "e94827cbb977d41665282020df734fdc759bdb26c3a5bc84c5d65009e9fdbea7",
+          "file_size_bytes": 665144,
+          "format": "ELF",
+          "literal_offsets": [
+            468256
+          ]
+        },
+        {
+          "path": "/nix/store/95gh7dw6nqakffsgdzd1cbqkc4qw26ih-openssh-10.4p1/libexec/ssh-keysign",
+          "file_sha256": "d707fb1fa3361ffb93e3375c2d21c0cb973aa60c4a84cc1b03ba777b1a12308c",
+          "file_size_bytes": 589416,
+          "format": "ELF",
+          "literal_offsets": [
+            386992
+          ]
+        },
+        {
+          "path": "/nix/store/95gh7dw6nqakffsgdzd1cbqkc4qw26ih-openssh-10.4p1/libexec/ssh-pkcs11-helper",
+          "file_sha256": "7c85957cfb4aea933a6a979f7e9457135a25375dc324e6ebf909dc503219e6a6",
+          "file_size_bytes": 449384,
+          "format": "ELF",
+          "literal_offsets": [
+            298952
+          ]
+        },
+        {
+          "path": "/nix/store/95gh7dw6nqakffsgdzd1cbqkc4qw26ih-openssh-10.4p1/libexec/ssh-sk-helper",
+          "file_sha256": "5bcb078d558eba21446bf9465bd9b4c76c5aa81e1a204d686e4ae4b7ec67baeb",
+          "file_size_bytes": 449696,
+          "format": "ELF",
+          "literal_offsets": [
+            294544
+          ]
+        },
+        {
+          "path": "/nix/store/95gh7dw6nqakffsgdzd1cbqkc4qw26ih-openssh-10.4p1/libexec/sshd-auth",
+          "file_sha256": "1261f7c37ddd6f94bbd97d70ac9f939da71cde1e1208185bd0922b3b9438f62d",
+          "file_size_bytes": 1106360,
+          "format": "ELF",
+          "literal_offsets": [
+            788992
+          ]
+        },
+        {
+          "path": "/nix/store/95gh7dw6nqakffsgdzd1cbqkc4qw26ih-openssh-10.4p1/libexec/sshd-session",
+          "file_sha256": "cb96227771f853fb78bc3e69156211840e8aecf5296736f28def2a4c2604abc7",
+          "file_size_bytes": 1176632,
+          "format": "ELF",
+          "literal_offsets": [
+            823208
+          ]
+        }
+      ],
+      "upstream_source_proof": null
+    },
+    {
+      "id": "public-literal-3e0d19095007b386",
+      "marker_type": "openssh_private_key",
+      "marker": "-----BEGIN OPENSSH PRIVATE KEY-----",
+      "length_including_nul": 66,
+      "sha256_including_nul": "3e0d19095007b38694645dba351d7252e9e961a8c18e56e8b0a39899f0c620e1",
+      "classification": "public_marker_suffix_nul_literal",
+      "public_file_proofs": [
+        {
+          "path": "/nix/store/95gh7dw6nqakffsgdzd1cbqkc4qw26ih-openssh-10.4p1/bin/ssh-keygen",
+          "file_sha256": "ba7c88a4902993e9c2b88c351144cdc94092cb4d2c914c1ab041622127d00a28",
+          "file_size_bytes": 662888,
+          "format": "ELF",
+          "literal_offsets": [
+            450528
+          ]
+        }
+      ],
+      "upstream_source_proof": null
+    },
+    {
+      "id": "public-literal-566ff62e1219309c",
+      "marker_type": "openssh_private_key",
+      "marker": "-----BEGIN OPENSSH PRIVATE KEY-----",
+      "length_including_nul": 73,
+      "sha256_including_nul": "566ff62e1219309cdd0a1d913c2764316740ad9e1f8a9a3a9702399519f0003e",
+      "classification": "public_marker_suffix_nul_literal",
+      "public_file_proofs": [
+        {
+          "path": "/nix/store/95gh7dw6nqakffsgdzd1cbqkc4qw26ih-openssh-10.4p1/bin/ssh-agent",
+          "file_sha256": "a30af310c92ca460dac696c152f185d2ce312cb61b2c7192795a8670eae483cf",
+          "file_size_bytes": 517208,
+          "format": "ELF",
+          "literal_offsets": [
+            329984
+          ]
+        },
+        {
+          "path": "/nix/store/95gh7dw6nqakffsgdzd1cbqkc4qw26ih-openssh-10.4p1/bin/sshd",
+          "file_sha256": "e94827cbb977d41665282020df734fdc759bdb26c3a5bc84c5d65009e9fdbea7",
+          "file_size_bytes": 665144,
+          "format": "ELF",
+          "literal_offsets": [
+            482656
+          ]
+        },
+        {
+          "path": "/nix/store/95gh7dw6nqakffsgdzd1cbqkc4qw26ih-openssh-10.4p1/libexec/ssh-keysign",
+          "file_sha256": "d707fb1fa3361ffb93e3375c2d21c0cb973aa60c4a84cc1b03ba777b1a12308c",
+          "file_size_bytes": 589416,
+          "format": "ELF",
+          "literal_offsets": [
+            399120
+          ]
+        },
+        {
+          "path": "/nix/store/95gh7dw6nqakffsgdzd1cbqkc4qw26ih-openssh-10.4p1/libexec/ssh-pkcs11-helper",
+          "file_sha256": "7c85957cfb4aea933a6a979f7e9457135a25375dc324e6ebf909dc503219e6a6",
+          "file_size_bytes": 449384,
+          "format": "ELF",
+          "literal_offsets": [
+            308064
+          ]
+        },
+        {
+          "path": "/nix/store/95gh7dw6nqakffsgdzd1cbqkc4qw26ih-openssh-10.4p1/libexec/ssh-sk-helper",
+          "file_sha256": "5bcb078d558eba21446bf9465bd9b4c76c5aa81e1a204d686e4ae4b7ec67baeb",
+          "file_size_bytes": 449696,
+          "format": "ELF",
+          "literal_offsets": [
+            303264
+          ]
+        }
+      ],
+      "upstream_source_proof": null
+    },
+    {
+      "id": "public-literal-a03f5e5657f386b1",
+      "marker_type": "openssh_private_key",
+      "marker": "-----BEGIN OPENSSH PRIVATE KEY-----",
+      "length_including_nul": 80,
+      "sha256_including_nul": "a03f5e5657f386b1de17f91bdc41be3677f00597644e62744495821bd31b8574",
+      "classification": "public_marker_suffix_nul_literal",
+      "public_file_proofs": [
+        {
+          "path": "/nix/store/95gh7dw6nqakffsgdzd1cbqkc4qw26ih-openssh-10.4p1/bin/ssh",
+          "file_sha256": "b812648aaca2501a356aab396800b350d2eea09915549056357ebb7c61cf62e5",
+          "file_size_bytes": 1092304,
+          "format": "ELF",
+          "literal_offsets": [
+            787680
+          ]
+        },
+        {
+          "path": "/nix/store/95gh7dw6nqakffsgdzd1cbqkc4qw26ih-openssh-10.4p1/bin/ssh-add",
+          "file_sha256": "d904e400925fc93e6212bbd2ec55b6d7d4c932879afacf1a751750a494267baf",
+          "file_size_bytes": 520648,
+          "format": "ELF",
+          "literal_offsets": [
+            353504
+          ]
+        },
+        {
+          "path": "/nix/store/95gh7dw6nqakffsgdzd1cbqkc4qw26ih-openssh-10.4p1/bin/ssh-keyscan",
+          "file_sha256": "3bddc00e2158383b44e19c7cf0473300cc1475a654350524c43e1d78b85b089f",
+          "file_size_bytes": 600464,
+          "format": "ELF",
+          "literal_offsets": [
+            433296
+          ]
+        },
+        {
+          "path": "/nix/store/95gh7dw6nqakffsgdzd1cbqkc4qw26ih-openssh-10.4p1/libexec/sshd-auth",
+          "file_sha256": "1261f7c37ddd6f94bbd97d70ac9f939da71cde1e1208185bd0922b3b9438f62d",
+          "file_size_bytes": 1106360,
+          "format": "ELF",
+          "literal_offsets": [
+            832736
+          ]
+        },
+        {
+          "path": "/nix/store/95gh7dw6nqakffsgdzd1cbqkc4qw26ih-openssh-10.4p1/libexec/sshd-session",
+          "file_sha256": "cb96227771f853fb78bc3e69156211840e8aecf5296736f28def2a4c2604abc7",
+          "file_size_bytes": 1176632,
+          "format": "ELF",
+          "literal_offsets": [
+            869888
+          ]
+        }
+      ],
+      "upstream_source_proof": null
+    },
+    {
+      "id": "public-literal-6c3ab6f0b5c32901",
+      "marker_type": "private_key",
+      "marker": "-----BEGIN PRIVATE KEY-----",
+      "length_including_nul": 28,
+      "sha256_including_nul": "6c3ab6f0b5c329016ebb8b915dac286e612200926f54dddd6e856887b279e24d",
+      "classification": "public_marker_only_nul_literal",
+      "public_file_proofs": [
+        {
+          "path": "/nix/store/2ppj90rlkxyi9pa7j8wn3lzv8csj266n-file-5.47/share/misc/magic.mgc",
+          "file_sha256": "ca0d3f3bf83c2db30b163e9138bcce31f306ffc34c3ff4482b0bdf213f879281",
+          "file_size_bytes": 10658304,
+          "format": "file_magic_database",
+          "literal_offsets": [
+            54032
+          ]
+        },
+        {
+          "path": "/nix/store/bhzcfhg8yv8mn57ycghiagk1yq9qqk9r-tpm2-tss-4.2.0/lib/libtss2-fapi.so.1.0.0",
+          "file_sha256": "0aa9e13f525dfb5c82febe40f22d3276dcd9355da4eaa6a7813bf35630148c51",
+          "file_size_bytes": 1225688,
+          "format": "ELF",
+          "literal_offsets": [
+            821552
+          ]
+        }
+      ],
+      "upstream_source_proof": null
+    },
+    {
+      "id": "public-literal-2f141874e26cde39",
+      "marker_type": "private_key",
+      "marker": "-----BEGIN PRIVATE KEY-----",
+      "length_including_nul": 120,
+      "sha256_including_nul": "2f141874e26cde39444aeefffd68534d87dae314f32614205f91f420ae822223",
+      "classification": "public_gnutls_selftest_constant",
+      "public_file_proofs": [
+        {
+          "path": "/nix/store/m3kyipkhsz25x32l8x6vbiqb6yg9k253-gnutls-3.8.13/lib/libgnutls.so.30.42.0",
+          "file_sha256": "efbf0d3587e4cd2728e2e07d61ed87ec2c6506b9e9a36c0a5b589d1228f6d1e0",
+          "file_size_bytes": 2856520,
+          "format": "ELF",
+          "literal_offsets": [
+            1854016
+          ]
+        }
+      ],
+      "upstream_source_proof": {
+        "archive": "/nix/store/q86aljpcbksyzwpgn8ppr9ar8rhcjgz0-gnutls-3.8.13.tar.xz",
+        "archive_sha256": "ffed8ec1bf09c2426d4f14aae377de4753b53e537d685e604e99a8b16ca9c97e",
+        "member": "gnutls-3.8.13/lib/crypto-selftests-pk.c",
+        "member_sha256": "6e596be00754107fd7f7d1f132c2dc8cd0ff12bbdfc6de08c162a1dd5eedc7e8",
+        "constant": "eddsa_ed25519_privkey",
+        "declaration_line": 246,
+        "selftest_use_lines": [
+          1231
+        ]
+      }
+    },
+    {
+      "id": "public-literal-770f464f06df5e51",
+      "marker_type": "private_key",
+      "marker": "-----BEGIN PRIVATE KEY-----",
+      "length_including_nul": 153,
+      "sha256_including_nul": "770f464f06df5e519fd6546397d0c44abac684a3924ba003abd06c62e43055ea",
+      "classification": "public_gnutls_selftest_constant",
+      "public_file_proofs": [
+        {
+          "path": "/nix/store/m3kyipkhsz25x32l8x6vbiqb6yg9k253-gnutls-3.8.13/lib/libgnutls.so.30.42.0",
+          "file_sha256": "efbf0d3587e4cd2728e2e07d61ed87ec2c6506b9e9a36c0a5b589d1228f6d1e0",
+          "file_size_bytes": 2856520,
+          "format": "ELF",
+          "literal_offsets": [
+            1852272
+          ]
+        }
+      ],
+      "upstream_source_proof": {
+        "archive": "/nix/store/q86aljpcbksyzwpgn8ppr9ar8rhcjgz0-gnutls-3.8.13.tar.xz",
+        "archive_sha256": "ffed8ec1bf09c2426d4f14aae377de4753b53e537d685e604e99a8b16ca9c97e",
+        "member": "gnutls-3.8.13/lib/crypto-selftests-pk.c",
+        "member_sha256": "6e596be00754107fd7f7d1f132c2dc8cd0ff12bbdfc6de08c162a1dd5eedc7e8",
+        "constant": "gost01_privkey",
+        "declaration_line": 224,
+        "selftest_use_lines": [
+          465,
+          466
+        ]
+      }
+    },
+    {
+      "id": "public-literal-2b7524edad33d149",
+      "marker_type": "private_key",
+      "marker": "-----BEGIN PRIVATE KEY-----",
+      "length_including_nul": 157,
+      "sha256_including_nul": "2b7524edad33d1491d447bbb4ff25d14bca4936480a14aa57765da1f1c1e7db9",
+      "classification": "public_gnutls_selftest_constant",
+      "public_file_proofs": [
+        {
+          "path": "/nix/store/m3kyipkhsz25x32l8x6vbiqb6yg9k253-gnutls-3.8.13/lib/libgnutls.so.30.42.0",
+          "file_sha256": "efbf0d3587e4cd2728e2e07d61ed87ec2c6506b9e9a36c0a5b589d1228f6d1e0",
+          "file_size_bytes": 2856520,
+          "format": "ELF",
+          "literal_offsets": [
+            1852432
+          ]
+        }
+      ],
+      "upstream_source_proof": {
+        "archive": "/nix/store/q86aljpcbksyzwpgn8ppr9ar8rhcjgz0-gnutls-3.8.13.tar.xz",
+        "archive_sha256": "ffed8ec1bf09c2426d4f14aae377de4753b53e537d685e604e99a8b16ca9c97e",
+        "member": "gnutls-3.8.13/lib/crypto-selftests-pk.c",
+        "member_sha256": "6e596be00754107fd7f7d1f132c2dc8cd0ff12bbdfc6de08c162a1dd5eedc7e8",
+        "constant": "gost12_256_privkey",
+        "declaration_line": 231,
+        "selftest_use_lines": [
+          471,
+          472
+        ]
+      }
+    },
+    {
+      "id": "public-literal-50ebf0bf934b5b4e",
+      "marker_type": "private_key",
+      "marker": "-----BEGIN PRIVATE KEY-----",
+      "length_including_nul": 157,
+      "sha256_including_nul": "50ebf0bf934b5b4e64fea49638d485b51228a274557123a0f8b23bac903a5e6e",
+      "classification": "public_gnutls_selftest_constant",
+      "public_file_proofs": [
+        {
+          "path": "/nix/store/m3kyipkhsz25x32l8x6vbiqb6yg9k253-gnutls-3.8.13/lib/libgnutls.so.30.42.0",
+          "file_sha256": "efbf0d3587e4cd2728e2e07d61ed87ec2c6506b9e9a36c0a5b589d1228f6d1e0",
+          "file_size_bytes": 2856520,
+          "format": "ELF",
+          "literal_offsets": [
+            1854272
+          ]
+        }
+      ],
+      "upstream_source_proof": {
+        "archive": "/nix/store/q86aljpcbksyzwpgn8ppr9ar8rhcjgz0-gnutls-3.8.13.tar.xz",
+        "archive_sha256": "ffed8ec1bf09c2426d4f14aae377de4753b53e537d685e604e99a8b16ca9c97e",
+        "member": "gnutls-3.8.13/lib/crypto-selftests-pk.c",
+        "member_sha256": "6e596be00754107fd7f7d1f132c2dc8cd0ff12bbdfc6de08c162a1dd5eedc7e8",
+        "constant": "eddsa_ed448_privkey",
+        "declaration_line": 258,
+        "selftest_use_lines": [
+          1241
+        ]
+      }
+    },
+    {
+      "id": "public-literal-3d39c48ee290955e",
+      "marker_type": "private_key",
+      "marker": "-----BEGIN PRIVATE KEY-----",
+      "length_including_nul": 202,
+      "sha256_including_nul": "3d39c48ee290955e72369948d88f1daa57ffc717705f3a42a71d443d315f396c",
+      "classification": "public_gnutls_selftest_constant",
+      "public_file_proofs": [
+        {
+          "path": "/nix/store/m3kyipkhsz25x32l8x6vbiqb6yg9k253-gnutls-3.8.13/lib/libgnutls.so.30.42.0",
+          "file_sha256": "efbf0d3587e4cd2728e2e07d61ed87ec2c6506b9e9a36c0a5b589d1228f6d1e0",
+          "file_size_bytes": 2856520,
+          "format": "ELF",
+          "literal_offsets": [
+            1852592
+          ]
+        }
+      ],
+      "upstream_source_proof": {
+        "archive": "/nix/store/q86aljpcbksyzwpgn8ppr9ar8rhcjgz0-gnutls-3.8.13.tar.xz",
+        "archive_sha256": "ffed8ec1bf09c2426d4f14aae377de4753b53e537d685e604e99a8b16ca9c97e",
+        "member": "gnutls-3.8.13/lib/crypto-selftests-pk.c",
+        "member_sha256": "6e596be00754107fd7f7d1f132c2dc8cd0ff12bbdfc6de08c162a1dd5eedc7e8",
+        "constant": "gost12_512_privkey",
+        "declaration_line": 238,
+        "selftest_use_lines": [
+          477,
+          478
+        ]
+      }
+    },
+    {
+      "id": "public-literal-9eb5314903a26fab",
+      "marker_type": "rsa_private_key",
+      "marker": "-----BEGIN RSA PRIVATE KEY-----",
+      "length_including_nul": 32,
+      "sha256_including_nul": "9eb5314903a26fabfcb2a5031572d144c2542a8bc78b92d8303615a0a58340de",
+      "classification": "public_marker_only_nul_literal",
+      "public_file_proofs": [
+        {
+          "path": "/nix/store/bhzcfhg8yv8mn57ycghiagk1yq9qqk9r-tpm2-tss-4.2.0/lib/libtss2-fapi.so.1.0.0",
+          "file_sha256": "0aa9e13f525dfb5c82febe40f22d3276dcd9355da4eaa6a7813bf35630148c51",
+          "file_size_bytes": 1225688,
+          "format": "ELF",
+          "literal_offsets": [
+            821616
+          ]
+        }
+      ],
+      "upstream_source_proof": null
+    },
+    {
+      "id": "public-literal-0ea40626c08abb85",
+      "marker_type": "rsa_private_key",
+      "marker": "-----BEGIN RSA PRIVATE KEY-----",
+      "length_including_nul": 1676,
+      "sha256_including_nul": "0ea40626c08abb85926ebb11f2c137ba93cb5971663bbf34fbb0950e392f8c52",
+      "classification": "public_gnutls_selftest_constant",
+      "public_file_proofs": [
+        {
+          "path": "/nix/store/m3kyipkhsz25x32l8x6vbiqb6yg9k253-gnutls-3.8.13/lib/libgnutls.so.30.42.0",
+          "file_sha256": "efbf0d3587e4cd2728e2e07d61ed87ec2c6506b9e9a36c0a5b589d1228f6d1e0",
+          "file_size_bytes": 2856520,
+          "format": "ELF",
+          "literal_offsets": [
+            1849376
+          ]
+        }
+      ],
+      "upstream_source_proof": {
+        "archive": "/nix/store/q86aljpcbksyzwpgn8ppr9ar8rhcjgz0-gnutls-3.8.13.tar.xz",
+        "archive_sha256": "ffed8ec1bf09c2426d4f14aae377de4753b53e537d685e604e99a8b16ca9c97e",
+        "member": "gnutls-3.8.13/lib/crypto-selftests-pk.c",
+        "member_sha256": "6e596be00754107fd7f7d1f132c2dc8cd0ff12bbdfc6de08c162a1dd5eedc7e8",
+        "constant": "rsa_2048_privkey",
+        "declaration_line": 43,
+        "selftest_use_lines": [
+          280,
+          281,
+          416,
+          417,
+          421,
+          422,
+          1061,
+          1074
+        ]
+      }
+    }
+  ]
+}

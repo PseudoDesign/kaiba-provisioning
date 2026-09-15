@@ -1,6 +1,7 @@
 {
   lib,
   pkgs,
+  publicInputKeyScan,
   signerIndependentReview ? ../signers/development-prototype/independent-review-2026-08-27.json,
   expectedCustomerKeyHash ? "sha256:b8818acea4e71173903ee003e33ed37e969def7d2ea67bec15c0b73cb36c3895",
   expectedPublicKeyFileSHA256 ? "93923fb1b289c39e8b336b90defb881f5d15ce3832c74655b295e1a35bfdab80",
@@ -714,6 +715,7 @@ let
     meta.mainProgram = "kaiba-stable-campaign-contract";
   };
   inputValidatorRuntimeInputs = [
+    publicInputKeyScan
     campaignContractTool
     pkgs.coreutils
     pkgs.diffutils
@@ -1177,25 +1179,13 @@ let
     # This is deliberately only a PEM/OpenSSH marker check. A non-match says
     # nothing about DER, encrypted blobs, or novel encodings, so no
     # public-inputs-only/private-material-absence claim is emitted.
-    find "$release_tree" -type f -print > "$validation_tmp/release-scan-files"
-    while IFS= read -r input; do
-      set +e
-      grep -aEq -- \
-        '-----BEGIN ([A-Z0-9 ]+ )?PRIVATE KEY-----|-----BEGIN OPENSSH PRIVATE KEY-----' \
-        "$input"
-      scan_status="$?"
-      set -e
-      case "$scan_status" in
-        0)
-          echo 'private-key PEM/OpenSSH marker is forbidden in the campaign release tree' >&2
-          exit 1
-          ;;
-        1) ;;
-        *)
-          echo "private-key marker scanner failed for $input" >&2
-          exit 1
-          ;;
-      esac
+    find "$release_tree" -type f -print0 > "$validation_tmp/release-scan-files"
+    while IFS= read -r -d $'\0' input; do
+      scan_mode=strict
+      if test "$input" = "$release_tree/root.img"; then
+        scan_mode=reviewed-root-literals
+      fi
+      kaiba-public-input-key-scan --input "$input" --mode "$scan_mode" > /dev/null
     done < "$validation_tmp/release-scan-files"
 
     # Re-open every security-relevant public input after validation. Nix store
@@ -1275,6 +1265,7 @@ let
       }' > "$metadata_out"
   '';
   validatorRuntimeInputs = [
+    publicInputKeyScan
     pkgs.coreutils
     pkgs.cryptsetup
     pkgs.diffutils
@@ -1377,27 +1368,18 @@ let
       test -s "$release_tree/$relative_path"
     done < "$release_allowlist"
 
-    find "$release_tree" -type f -print > "$validation_tmp/release-scan-files"
-    while IFS= read -r input; do
-      set +e
-      grep -aEq -- \
-        '-----BEGIN ([A-Z0-9 ]+ )?PRIVATE KEY-----|-----BEGIN OPENSSH PRIVATE KEY-----' \
-        "$input"
-      scan_status="$?"
-      set -e
-      case "$scan_status" in
-        0)
-          echo 'private-key PEM/OpenSSH marker is forbidden in the campaign release tree' >&2
-          exit 1
-          ;;
-        1) ;;
-        *)
-          echo "private-key marker scanner failed for $input" >&2
-          exit 1
-          ;;
-      esac
+    find "$release_tree" -type f -print0 > "$validation_tmp/release-scan-files"
+    while IFS= read -r -d $'\0' input; do
+      scan_mode=strict
+      if test "$input" = "$release_tree/root.img"; then
+        scan_mode=reviewed-root-literals
+      fi
+      kaiba-public-input-key-scan --input "$input" --mode "$scan_mode" > /dev/null
     done < "$validation_tmp/release-scan-files"
 
+    # These are typed media roles, independent of the caller's path spelling.
+    kaiba-public-input-key-scan --input "$root_data" --mode reviewed-root-literals > /dev/null
+    kaiba-public-input-key-scan --input "$root_hash_tree" --mode strict > /dev/null
     cmp "$release_tree/root.img" "$root_data"
     root_data_size="$(stat --format=%s "$root_data")"
     test "$root_data_size" -gt 0

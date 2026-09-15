@@ -27,6 +27,7 @@ let
   );
   campaignMediaBuilder = import ../nix/stable-verifier-campaign-media.nix {
     inherit lib pkgs;
+    publicInputKeyScan = built.publicInputKeyScan;
     signerIndependentReview = fixtureSignerReview;
     expectedCustomerKeyHash = fixtureCustomerKeyHash;
     expectedPublicKeyFileSHA256 = fixturePublicKeyFileSHA256;
@@ -35,6 +36,7 @@ let
   built = import ../nix/packages.nix { inherit lib pkgs; };
   stableVerifierSpikeBuilders = import ../nix/stable-verifier-spike.nix {
     inherit lib pkgs;
+    publicInputKeyScan = built.publicInputKeyScan;
     rpi5KexecInputValidator = pkgs.writeShellScriptBin "kaiba-rpi5-kexec-input-validate" ''
       set -euo pipefail
       test "$#" -eq 4
@@ -257,6 +259,11 @@ let
     truncate --size=8M "$out"
     printf '%s\n' 'kaiba stable-verifier campaign root fixture' \
       | dd of="$out" conv=notrunc status=none
+    # Exact public parser literal, including its first NUL. This makes every
+    # baseline exercise reviewed root handling in the packager and both
+    # validators while preserving byte/digest/dm-verity checks.
+    printf '%s\0' '-----BEGIN PRIVATE KEY-----' \
+      | dd of="$out" bs=1 seek=1024 conv=notrunc status=none
     chmod 0444 "$out"
   '';
   fixtureRootHashTree =
@@ -835,6 +842,15 @@ let
     printf '%s\n' '-----BEGIN PRIVATE KEY-----' 'fixture-only' > "$out/kernel"
   '';
 
+  reviewedLiteralKernelRelease = mkRawTamperedRelease "kaiba-campaign-media-reviewed-literal-in-kernel" ''
+    printf '%s\0' '-----BEGIN PRIVATE KEY-----' > "$out/kernel"
+  '';
+  changedRootLiteralRelease = mkRawTamperedRelease "kaiba-campaign-media-changed-root-literal" ''
+    printf '%s\0' '-----BEGIN PRIVATE KEY-----changed' \
+      | dd of="$out/root.img" bs=1 seek=1024 conv=notrunc status=none
+  '';
+  delegatedReleaseBuildScript = pkgs.writeText "kaiba-campaign-media-packager-validation.sh" delegatedRelease.buildCommand;
+
   mismatchedReleaseTree = mkReleaseTree {
     name = "kaiba-campaign-media-component-mismatch-tree";
     manifestMutation = ''
@@ -1043,6 +1059,9 @@ pkgs.runCommand "kaiba-stable-verifier-campaign-media-test"
     inputValidationToolInput = contract.inputValidationTool;
     oldBootCampaignPlanInput = oldBootCampaignPlan;
     privatePEMReleaseInput = privatePEMRelease;
+    reviewedLiteralKernelReleaseInput = reviewedLiteralKernelRelease;
+    changedRootLiteralReleaseInput = changedRootLiteralRelease;
+    delegatedReleaseBuildScriptInput = delegatedReleaseBuildScript;
     releaseAllowlistInput = releaseAllowlistFile;
     tamperedCampaignPlanInput = tamperedCampaignPlan;
     tamperedCampaignMutationInputsInput = tamperedCampaignMutationInputs;
@@ -1405,6 +1424,30 @@ pkgs.runCommand "kaiba-stable-verifier-campaign-media-test"
     expect_tree_rejection wrong-metadata "$wrongMetadataReleaseInput"
     expect_tree_rejection wrong-command-line "$wrongCommandLineReleaseInput"
     expect_tree_rejection private-pem-marker "$privatePEMReleaseInput"
+    expect_tree_rejection reviewed-literal-in-kernel "$reviewedLiteralKernelReleaseInput"
+    expect_tree_rejection changed-root-literal "$changedRootLiteralReleaseInput"
+    for label in private-pem-marker reviewed-literal-in-kernel changed-root-literal; do
+      grep -F 'scoped defense in depth' "$TMPDIR/tree-$label.stderr" > /dev/null
+    done
+
+    # Replay the supported constructor's exact script on invalid raw trees;
+    # it must refuse before creating its output, even for a known public
+    # literal when that literal appears in a non-root role.
+    expect_packager_rejection() {
+      local label="$1"
+      local tree="$2"
+      if (export releaseTreeInput="$tree" out="$TMPDIR/packager-$label";
+          ${pkgs.bash}/bin/bash "$delegatedReleaseBuildScriptInput") \
+        > "$TMPDIR/packager-$label.stdout" 2> "$TMPDIR/packager-$label.stderr"
+      then
+        echo "delegated packager accepted forbidden marker case: $label" >&2
+        exit 1
+      fi
+      grep -F 'scoped defense in depth' "$TMPDIR/packager-$label.stderr" > /dev/null
+      test ! -e "$TMPDIR/packager-$label"
+    }
+    expect_packager_rejection reviewed-literal-in-kernel "$reviewedLiteralKernelReleaseInput"
+    expect_packager_rejection changed-root-literal "$changedRootLiteralReleaseInput"
 
     mkdir -p "$out"
     printf '%s\n' 'stable-verifier campaign media construction: pass' > "$out/result.txt"
