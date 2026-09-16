@@ -1,5 +1,7 @@
 # Candidate campaign device staging
 
+**Scope:** reference for the existing online stable-verifier campaign. Its artifacts and safety boundaries remain valid within their recorded scope; its server-required boot and offline-refusal behavior do not define the selected [offline fleet policy](fleet-admission-policy.md).
+
 The per-leg staging candidate implements recovery capture, explicit local
 operator acknowledgement, execute-once staging and independent reopened
 readback. It operates on SD on `malak` or NVMe on
@@ -230,4 +232,5 @@ native ARM checks cover the library and package. Unit tests inject interrupted
 writes, sync failures and changed attachments. These establish software
 behavior, including refusal to retry an ambiguous attempt. Real SD/NVMe
 disconnects, power loss, cold readback and the signed-verifier-to-released-OS
-transition remain the [physical baseline](first-physical-baseline.md).
+transition remain unqualified for this candidate; its earlier sequence is
+retained in the archived [physical baseline](archive/first-physical-baseline.md).

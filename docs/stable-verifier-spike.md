@@ -2,6 +2,13 @@
 
 ## Status and boundary
 
+This is an **existing online-verifier candidate reference**, not the current
+fleet delivery plan. It retains the implementation, artifacts, diagnostic
+observations, and qualification requirements for that candidate. Its server
+authorization and offline-refusal behavior differ from the selected
+[fleet policy](fleet-admission-policy.md). Reusing components requires an
+explicit applicability mapping, not declaring the old campaign passed.
+
 The repository now contains the software contracts and Nix assembly boundary
 for the first stable-verifier spike. A development Pi has completed the narrow
 file-mode self-kexec and SMP differential described below, but the repository
@@ -432,17 +439,17 @@ reservation is unavailable or fragmented despite that sizing.
 
 ## Remaining hardware gate
 
-The immediate development priority is the
-[first physical baseline](first-physical-baseline.md): close the current
-recovery/staging prerequisites, observe run 1 end to end, then exercise the
-existing authority-offline case before the remaining matrix. This sequencing
-does not change the qualification requirements or authorize physical execution.
+For further qualification of this online candidate, the archived
+[first physical baseline](archive/first-physical-baseline.md) records its
+recovery/staging prerequisites and positive-boot/offline-refusal sequence.
+It is not the next fleet milestone. This candidate's requirements and retained
+evidence remain intact; resuming it still needs applicable current authority.
 
 The spike is not validated until the development-key-fused sacrificial
 `a04171` Pi completes
 the positive, delegated-key replacement, mutation, replay, one-boot-key, and
 DTB/command-line observation matrix described in the
-[production security follow-on](raspberry-pi-5-production-security-follow-on.md).
+[production security follow-on](archive/raspberry-pi-5-production-security-follow-on.md).
 In particular, successful Nix builds do not establish that Pi 5 kexec is
 reliable. Failure of authenticated handoff is a recorded blocker; it does not
 authorize an unsigned fallback or a production-readiness claim.

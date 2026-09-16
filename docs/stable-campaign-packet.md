@@ -1,5 +1,7 @@
 # First-baseline preparation packet
 
+**Scope:** reference for the existing online stable-verifier campaign. Its artifacts and safety boundaries remain valid within their recorded scope; its server-required boot and offline-refusal behavior do not define the selected [offline fleet policy](fleet-admission-policy.md).
+
 `kaiba-rpi5-stable-campaign-packet` checks the public inputs needed for run 1,
 `positive-baseline`, and run 2, `authorization-offline-rejected:authority-offline`.
 It emits one digest-bound preparation report. The tool requires both independent
@@ -107,8 +109,9 @@ false. The retained GPT envelopes describe previously declared ranges; this
 tool neither captures their recovery bytes nor authenticates their physical
 provenance or freshness. All run witnesses remain outstanding.
 
-Continue with the [first physical baseline runbook](first-physical-baseline.md)
-only when its staging and execution prerequisites are independently met.
+The archived [first physical baseline runbook](archive/first-physical-baseline.md)
+records how this candidate used the packet. Any resumed execution still needs
+its staging and execution prerequisites independently met.
 Run 2 reuses the verified baseline media, with a separate authority-unavailability
 condition and capture. The first observations do not close the full 33-run,
 37-claim qualification.

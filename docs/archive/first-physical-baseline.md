@@ -1,5 +1,9 @@
 # First physical stable-verifier baseline
 
+> **Archived 2026-09-16.** Historical next-step runbook for the online stable-verifier candidate. Its positive boot followed by authority-offline refusal is not the current offline fleet milestone. Preserve its exact-artifact, recovery, approval, and evidence requirements for any later work on that candidate.
+>
+> Current direction: [delivery scope](../delivery-scope.md) and [fleet admission policy](../fleet-admission-policy.md). The text below is historical; archiving does not grant authority, erase evidence, or mark any gate passed.
+
 The next engineering milestone is **run 1: `approved-release-boots`,
 `positive-baseline`** on the already development-key-fused sacrificial
 `a04171` Pi. Establish one complete signed-verifier-to-released-OS boot, then
@@ -13,31 +17,31 @@ changes. The current campaign remains paused after read-only capture.
 
 ## Close the staging prerequisites first
 
-Use the [public campaign preparation constructors](stable-campaign-preparation.md)
+Use the [public campaign preparation constructors](../stable-campaign-preparation.md)
 to assemble the native unsigned verifier and, after signing, the complete
 campaign and staging packet from the reviewed inputs.
 
-The [remaining hardware gate](stable-verifier-spike.md#remaining-hardware-gate)
+The [remaining hardware gate](../stable-verifier-spike.md#remaining-hardware-gate)
 identifies the immediate implementation work:
 
 - Bind the current SD/NVMe `v1alpha2` GPT envelopes to the independently
   supplied staging plan using the [v1alpha2 recovery-requirements
-  tool](stable-campaign-recovery.md). Its descriptive catalog retains both
+  tool](../stable-campaign-recovery.md). Its descriptive catalog retains both
   GPT lineages and every recovery range; it does not capture recovery bytes.
-- Build the [per-leg staging candidate](stable-campaign-staging.md) against
+- Build the [per-leg staging candidate](../stable-campaign-staging.md) against
   the reviewed plan and all four payloads. Its software path implements durable
   recovery capture, explicit local acknowledgement, execute-once writes and
   separate readback. The actual captures, independent attachment observations,
   execution approval and physical writer qualification must still be obtained
   on the selected devices. Keep the descriptive catalogs'
   `destructive_staging_ready=false`; do not repair GPTs to bypass that boundary.
-- The [regular-file sandbox](stable-campaign-sandbox.md) rehearses those
+- The [regular-file sandbox](../stable-campaign-sandbox.md) rehearses those
   recovery and staging operations with synthetic copies. Its tested software
   behavior does not close the physical capture, attachment, approval, or
   writer-qualification requirements above.
 - The separate development provisioner also lacks a writer. Its inner
   `boot.img` is not an SD partition image. Follow the
-  [post-sign outer-boot boundary](raspberry-pi-5-development-target-access.md#compose-a-development-image)
+  [post-sign outer-boot boundary](../raspberry-pi-5-development-target-access.md#compose-a-development-image)
   if that provisioner is needed for inspection.
 
 Resolve these blockers before proposing a physical attempt. Completing this
@@ -47,7 +51,7 @@ document or assembling a packet does not close them.
 
 Use the existing campaign plan and artifact records; keep raw material in the
 operator's protected evidence directory outside Git. Run the
-[packet checker](stable-campaign-packet.md) to cross-check both selected runs,
+[packet checker](../stable-campaign-packet.md) to cross-check both selected runs,
 their actual public inputs, all four payloads and the staging/recovery
 contracts. Its source revision remains a caller assertion; it cannot replace
 the following operator records. Record:
@@ -59,7 +63,7 @@ the following operator records. Record:
   selected handoff mode and platform pins. For the file/live-FDT candidate,
   use `mkRpi5StableVerifierFileLiveFDTHardwareSystem` with its existing kernel
   policy. Retain the current signing review and approval boundaries.
-  Use the [verifier-only signing route](stable-verifier-signing.md) to bind the
+  Use the [verifier-only signing route](../stable-verifier-signing.md) to bind the
   actual unsigned verifier to its one-image approval and authenticated receipt;
   pass its verified evidence to campaign media construction.
 - The sealed baseline media and the run-1 `manifest.json` and
@@ -85,7 +89,7 @@ Once the staging prerequisites and explicit execution authorization exist:
    removal and reapplication through the reviewed physical topology, alongside
    the independent media readback and authority audit. Preserve the complete
    capture; missing or truncated output is incomplete evidence.
-3. Follow the [code-derived run trace](../internal/provisioning/stablecampaign/runs.go):
+3. Follow the [code-derived run trace](../../internal/provisioning/stablecampaign/runs.go):
    release verification, bootstrap, fresh authorization, loaded handoff and
    execution. Then require an observable released OS on the expected root.
    `handoff-executing` alone does not establish entry into that OS.
@@ -110,7 +114,7 @@ power evidence; UART silence alone does not establish either.
 
 Report these attempts as engineering observations with exact inputs, evidence
 locations, missing witnesses and the next blocking boundary. The
-[witness requirements](../internal/provisioning/stablecampaign/witnesses.go)
+[witness requirements](../../internal/provisioning/stablecampaign/witnesses.go)
 and authenticated claim-closure implementation are still outstanding;
 `RequirePlannedClaimClosure` deliberately fails closed. A consistent execution
 envelope cannot be promoted to a campaign pass.

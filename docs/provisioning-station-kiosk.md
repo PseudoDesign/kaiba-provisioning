@@ -33,9 +33,12 @@ evidence, failed recovery, or failed acceptance test ends in
 Reaching the modeled `enrollment_ready` state does not generate a device key,
 issue a certificate, activate a credential, or authorize production access.
 The current development implementation has a stricter real boundary: it stops
-at `security_applied` because independently monotonic anti-rollback is not yet
-implemented. See the [secure-boot design](raspberry-pi-5-secure-boot.md) and
-[architecture and trust boundaries](architecture-and-trust-boundaries.md).
+at `security_applied`, with an existing guard recording unimplemented
+anti-rollback. That runtime guard and the demo's rollback scenario predate the
+selected [fleet admission policy](fleet-admission-policy.md), which does not
+require offline rollback prevention. Updating the real enrollment path and
+its UI requires explicit integration; a demo transition is not an admission
+decision. See [architecture and trust boundaries](architecture-and-trust-boundaries.md).
 
 ## Run locally
 
@@ -208,6 +211,8 @@ arbitrary commands, executable paths, payload paths, profiles, device nodes, or
 key selectors. The static graph must remain a public demonstration and must
 never become fallback behavior for a live station.
 
-The host, service, and network boundaries required before that integration can
-be production-capable are defined in the proposed
-[production-station architecture](provisioning-station-production.md).
+The current [architecture](architecture-and-trust-boundaries.md) and
+[fleet admission mapping](fleet-admission-policy.md#how-to-establish-the-conditions)
+define the integration work for this milestone. The broader
+[production-station proposal](archive/provisioning-station-production.md) is
+deferred reference material, not a requirement to build another station platform.

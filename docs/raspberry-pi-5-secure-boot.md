@@ -5,16 +5,16 @@ are designed to enforce for a Raspberry Pi 5 Model B. It is a design and review
 guide, not permission to program EEPROM, OTP, boot media, or debug settings.
 
 > [!IMPORTANT]
-> The checked-in evidence proves a read-only qualification of one sacrificial
-> development board. It does not prove that the board has been fused, that the
-> signed release has booted on hardware, or that the seven-operation mutation
-> campaign has completed. The current development policy stops at
-> `security_applied`; it explicitly blocks `enrollment_ready`.
+> The development Pi is already owned. Scoped records include read-only
+> qualification and [signed diagnostic/file-handoff observations](stable-verifier-spike.md#development-pi-file-handoff-observations).
+> These do not establish completion of the seven-operation campaign or fleet
+> admission. Do not repeat fresh-device ownership programming on this board.
+> The current development policy stops at `security_applied` and blocks
+> `enrollment_ready`.
 
 For the repository's implemented boundary and remaining blockers, read
-[Production readiness](production-readiness.md). For the proposed path beyond
-that boundary, read the
-[production security follow-on](raspberry-pi-5-production-security-follow-on.md).
+[Production readiness](production-readiness.md). The selected outcomes and
+implementation mapping are in the [fleet admission policy](fleet-admission-policy.md).
 
 ## Native boot chain
 
@@ -84,8 +84,11 @@ Native Raspberry Pi secure boot does not by itself provide:
 
 An older image correctly signed by the same customer key can still be accepted
 by the native chain. Availability rollback such as a one-shot A/B fallback is
-not the same as a monotonic security decision. The development posture
-therefore cannot advance from `security_applied` to `enrollment_ready`.
+not the same as a monotonic security decision. The implemented development
+posture still blocks `enrollment_ready`; that guard must not be confused with
+a requirement to add offline rollback prevention to the selected fleet policy.
+That profile permits older correctly signed software while offline and still
+requires the other admission conditions.
 
 Optional root-equivalent access for development targets is documented in
 [Development target access](raspberry-pi-5-development-target-access.md). It is
@@ -108,7 +111,7 @@ production profile.
 | Persistent root | Read-only dm-verity | Physical enforcement has not been qualified |
 | Mutable state | tmpfs only; no swap, persistent journal, core dumps, or persistent device secrets | Production requires a separate confidential-state design |
 | Recovery | Narrow customer-signed RPIBOOT bundle | Not production-qualified |
-| Rollback | Unimplemented | Blocks enrollment |
+| Rollback | Unimplemented | Existing development terminal guard blocks enrollment; offline rollback prevention is not required by the selected fleet profile |
 
 Boot-media serials, WWIDs, models, and `/dev/disk/by-id` values are not trust
 inputs. The station uses a reviewed, host-bound selector only to determine the
@@ -216,12 +219,12 @@ A complete sacrificial-board campaign must include, at minimum:
 - confirmation that exported artifacts and evidence contain no signing key,
   OTP secret, derived storage secret, or active credential.
 
-The production follow-on adds delegated release keys, server-enforced
-freshness, encrypted mutable state, A/B updates, device authentication, and a
-production-only key hierarchy. None of those controls should be inferred from
-the development contracts. Its separate acceptance campaign must demonstrate
-rejection of an obsolete but correctly signed release before any anti-rollback
-or production freshness claim.
+The selected [fleet admission conditions](fleet-admission-policy.md) add
+protected persistent state, device identity, final hardware controls, and
+durable fleet activation. These are not established by the development
+contracts. Normal operation must work offline; rejection of an older correctly
+signed image is not required. Any separate claim of rollback prevention or
+online release attestation still requires evidence for that specific mechanism.
 
 ## External mechanism references
 

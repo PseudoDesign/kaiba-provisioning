@@ -71,7 +71,9 @@ backend. The exported `kaiba-provision-station` also binds only to loopback,
 installs a disabled backend, rejects `--enable-mutations`, and does not fall
 back to simulation. A deployment-specific authority/hardware integration is
 not exported. See the [station interface guide](provisioning-station-kiosk.md)
-and proposed [production-station architecture](provisioning-station-production.md).
+for the current integration boundary. The broader
+[production-station proposal](archive/provisioning-station-production.md) is
+archived as deferred design material; it is not an additional delivery plan.
 
 ## Fixed development campaign
 
