@@ -29,6 +29,7 @@ The canonical development posture remains
 | Document | Purpose | Current basis |
 | --- | --- | --- |
 | [Current delivery scope](delivery-scope.md) | Frozen implementation baseline and the three delivery outcomes: hardware security, fleet enrollment, and a simple live UI | Agreed scope; integration and physical completion remain open |
+| [Fleet admission policy](fleet-admission-policy.md) | Proposed pass/fail conditions; offline operation and copied-storage protection required; offline rollback prevention not required | Three product choices resolved; remaining profile settings proposed; development posture unchanged |
 | [Development workflow](development-workflow.md) | Focused feedback, consolidated Go checks, and candidate validation | Development and CI workflow |
 | [Native-build policy](../README.md#native-build-policy) | Avoid cross-compilation; select native builders, reuse caches, and keep exceptions narrow | Development and CI policy |
 | [Architecture and trust boundaries](architecture-and-trust-boundaries.md) | Components, authority boundaries, fixed campaign, and failure behavior | Components/contracts implemented; configured composition and physical gates open |

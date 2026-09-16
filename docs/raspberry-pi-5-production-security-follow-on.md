@@ -2,6 +2,15 @@
 
 ## Status and scope
 
+**First-fleet decision update, 2026-09-16:** the user requires normal offline
+operation and copied-storage protection, and does not require rejection of
+older, correctly signed software while offline. The fresh-server gate before
+protected operation described below is therefore not a requirement of the
+selected first-fleet profile. Retain this document as the earlier design
+proposal; use the [fleet admission draft](fleet-admission-policy.md) for those
+explicit product choices. This update does not change the implemented
+development policy or establish production readiness.
+
 This document proposes the path from the sacrificial Raspberry Pi 5 development foundation to a production appliance, preserving native secure boot and dm-verity while adding production key separation, encrypted state, release freshness, identity, updates, recovery, and operations.
 
 > [!IMPORTANT]
