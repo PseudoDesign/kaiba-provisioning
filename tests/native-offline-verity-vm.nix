@@ -86,6 +86,14 @@ pkgs.testers.runNixOSTest {
     machine.succeed("dmesg | grep -E 'verity.*(corrupt|verification failed)'")
     close()
 
+    # Start a fresh kernel for the second negative case. dm-verity's shared
+    # diagnostic rate limiter may have been exhausted by mount's repeated
+    # superblock reads; a missing later diagnostic must not become a flaky
+    # assertion or be mistaken for evidence from the previous experiment.
+    machine.shutdown()
+    machine.start()
+    machine.wait_for_unit("multi-user.target")
+    machine.succeed("mkdir -p /mnt/candidate")
     attach("first-read-after-mount")
     machine.succeed("mount -o ro /dev/mapper/candidate /mnt/candidate")
     machine.succeed("test $(sha256sum /mnt/candidate/etc/os-release | cut -d' ' -f1) = $(cat /etc/offline-fixture/os-release.sha256)")
