@@ -53,6 +53,13 @@ export after signing. Do not repurpose a verifier/provisioner deployment bundle
 or historical grant for this command. Runtime installation is a separately
 reviewed host change; the software builds perform neither installation nor signing.
 
+The [Ubuntu installer and static preflight](../deploy/ubuntu-signing-gate/README.md)
+accept the native runtime as one closed profile and reject packages containing
+multiple profiles. Build the native runtime and `ubuntu-signing-gate-deployment`
+from the same selected clean commit, retain their exact store paths and hashes,
+and review the host replacement before installation. Installation remains inert;
+it creates neither an approval nor a PIN source and does not start the gate.
+
 ## Verified outer FAT and exact media spans
 
 `lib.mkRpi5VerifiedNativeOfflineSigning` accepts the typed signing plan plus

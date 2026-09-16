@@ -54,7 +54,9 @@ sudo apt-get install acl jq libccid pcscd polkitd
 > `kaiba-rpi5-stable-campaign-development-signing`, the configured runtime for
 > the inspection provisioner's one-artifact ceremony. The separate
 > `kaiba-rpi5-stable-verifier-development-signing` runtime supports the
-> [verifier-only ceremony](../../docs/stable-verifier-signing.md). Each is fixed to the reviewed
+> [verifier-only ceremony](../../docs/stable-verifier-signing.md).
+> `kaiba-rpi5-native-offline-development-signing` supports the separate
+> [native offline ceremony](../../docs/native-offline-handoff.md). Each is fixed to the reviewed
 > sacrificial development YubiKey, exposes only its closed command, receipt
 > tool, gate, and token backend, and is not production-approved. The
 > historical five-artifact `development-signing` composition is still not
@@ -69,8 +71,9 @@ build both outputs from the same clean, revisioned repository checkout:
 
 The example selects the inspection provisioner. For verifier signing, replace
 that package attribute with
-`packages.x86_64-linux.kaiba-rpi5-stable-verifier-development-signing`.
-The installer and preflight require exactly one of these two closed commands
+`packages.x86_64-linux.kaiba-rpi5-stable-verifier-development-signing`; for native
+offline signing use `packages.x86_64-linux.kaiba-rpi5-native-offline-development-signing`.
+The installer and preflight require exactly one of these three closed commands
 in the selected immutable package. They retain the same gate/backend,
 credentials and stopped-service checks.
 

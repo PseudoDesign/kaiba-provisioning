@@ -303,18 +303,19 @@ if [[ -z "$staging_root" ]]; then
     die "configured signing package must be root-owned"
 fi
 
-# The immutable package selects one of the two closed one-image commands.
-# A package exposing both profiles is ambiguous and must be reviewed separately.
+# The immutable package selects exactly one closed one-image command.
+# Packages exposing multiple profiles are ambiguous and rejected.
 stable_commands=()
 for candidate in \
   bin/kaiba-rpi5-stable-campaign-signing \
-  bin/kaiba-rpi5-stable-verifier-signing; do
+  bin/kaiba-rpi5-stable-verifier-signing \
+  bin/kaiba-rpi5-native-offline-signing; do
   if [[ -e "$package_on_disk/$candidate" || -L "$package_on_disk/$candidate" ]]; then
     stable_commands+=("$candidate")
   fi
 done
 (( ${#stable_commands[@]} == 1 )) ||
-  die "configured signing package must contain exactly one closed provisioner or verifier signing command"
+  die "configured signing package must contain exactly one closed provisioner, verifier, or native offline signing command"
 stable_command=${stable_commands[0]}
 
 for relative_path in \
