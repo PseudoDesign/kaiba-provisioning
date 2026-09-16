@@ -904,6 +904,16 @@ let
     };
   };
 
+  nativeOfflineSigningTool = pkgs.buildGoModule {
+    pname = "kaiba-rpi5-native-offline-signing";
+    inherit version;
+    src = goSource;
+    subPackages = [ "cmd/kaiba-rpi5-native-offline-signing" ];
+    vendorHash = null;
+    doCheck = false;
+    meta.platforms = lib.platforms.linux;
+  };
+
   stableVerifierSigningTool = pkgs.buildGoModule {
     pname = "kaiba-rpi5-stable-verifier-signing";
     inherit version;
@@ -2068,6 +2078,7 @@ let
       name ? "kaiba-development-yubikey-signing",
       stableCampaignOnly ? false,
       stableVerifierOnly ? false,
+      nativeOfflineOnly ? false,
     }:
     assert lib.assertMsg (canonicalIdentifier cohortID) "cohortID must be a canonical identifier";
     assert lib.assertMsg (canonicalIdentifier signerID) "signerID must be a canonical identifier";
@@ -2080,11 +2091,16 @@ let
       "signerPolicyDigest must use canonical sha256:<64 lowercase hex> form";
     assert lib.assertMsg (canonicalRawDigest expectedCustomerKeyHash)
       "expectedCustomerKeyHash must contain 64 lowercase hexadecimal characters";
+    assert lib.assertMsg (builtins.isBool nativeOfflineOnly) "nativeOfflineOnly must be a boolean";
     assert lib.assertMsg (builtins.isBool stableCampaignOnly) "stableCampaignOnly must be a boolean";
     assert lib.assertMsg (builtins.isBool stableVerifierOnly) "stableVerifierOnly must be a boolean";
     assert lib.assertMsg (
-      !(stableCampaignOnly && stableVerifierOnly)
-    ) "the provisioner and verifier signing profiles are mutually exclusive";
+      lib.count (x: x) [
+        stableCampaignOnly
+        stableVerifierOnly
+        nativeOfflineOnly
+      ] <= 1
+    ) "the provisioner, verifier and native offline signing profiles are mutually exclusive";
     assert lib.assertMsg (storeBacked publicKeyPEM) "publicKeyPEM must be a fixed Nix-store path";
     assert lib.assertMsg (
       cleanAbsolute grantRegistryPath && !lib.hasPrefix "${builtins.storeDir}/" grantRegistryPath
@@ -2288,6 +2304,18 @@ let
           "-X=main.expectedPublicKeyFingerprint=${publicKeyFingerprint}"
         ];
       };
+      nativeOfflineSigning = buildCommand {
+        pname = "${name}-native-offline-signing";
+        subPackage = "cmd/kaiba-rpi5-native-offline-signing";
+        ldflags = [
+          "-X=main.signingGateSocketPath=${socketPath}"
+          "-X=main.signerID=${signerID}"
+          "-X=main.cohortID=${cohortID}"
+          "-X=main.signingPKCS11URI=${pkcs11URI}"
+          "-X=main.expectedPublicKeyPath=${reviewedPublicKeyPEM}"
+          "-X=main.expectedPublicKeyFingerprint=${publicKeyFingerprint}"
+        ];
+      };
     in
     pkgs.symlinkJoin {
       inherit name;
@@ -2297,8 +2325,17 @@ let
         signingReceiptsTool
         yubiKeyWrapper
       ]
-      ++ [ (if stableVerifierOnly then stableVerifierSigning else stableCampaignSigning) ]
-      ++ lib.optionals (!(stableCampaignOnly || stableVerifierOnly)) [
+      ++ [
+        (
+          if nativeOfflineOnly then
+            nativeOfflineSigning
+          else if stableVerifierOnly then
+            stableVerifierSigning
+          else
+            stableCampaignSigning
+        )
+      ]
+      ++ lib.optionals (!(stableCampaignOnly || stableVerifierOnly || nativeOfflineOnly)) [
         eepromSigningTool
         signedBoot
         signer
@@ -2320,6 +2357,7 @@ let
           signerPolicyDigest
           signingGate
           signingReceiptsTool
+          nativeOfflineOnly
           stableCampaignOnly
           stableVerifierOnly
           socketPath
@@ -2328,7 +2366,9 @@ let
           yubiKeyWrapper
           ;
         ${
-          if stableVerifierOnly then
+          if nativeOfflineOnly then
+            "nativeOfflineSigningConfiguration"
+          else if stableVerifierOnly then
             "stableVerifierSigningConfiguration"
           else
             "stableCampaignSigningConfiguration"
@@ -2356,12 +2396,14 @@ let
         privateKeyOperationUpperBoundDeclared = false;
       }
       // (
-        if stableVerifierOnly then
+        if nativeOfflineOnly then
+          { inherit nativeOfflineSigning; }
+        else if stableVerifierOnly then
           { inherit stableVerifierSigning; }
         else
           { inherit stableCampaignSigning; }
       )
-      // lib.optionalAttrs (!(stableCampaignOnly || stableVerifierOnly)) {
+      // lib.optionalAttrs (!(stableCampaignOnly || stableVerifierOnly || nativeOfflineOnly)) {
         inherit
           eepromSigningTool
           signedBoot
@@ -2381,14 +2423,18 @@ let
       };
       meta = {
         mainProgram =
-          if stableVerifierOnly then
+          if nativeOfflineOnly then
+            "kaiba-rpi5-native-offline-signing"
+          else if stableVerifierOnly then
             "kaiba-rpi5-stable-verifier-signing"
           else if stableCampaignOnly then
             "kaiba-rpi5-stable-campaign-signing"
           else
             "kaiba-provision-signer";
         description =
-          if stableVerifierOnly then
+          if nativeOfflineOnly then
+            "Narrow approval-gated development YubiKey signer for one native offline boot image"
+          else if stableVerifierOnly then
             "Narrow approval-gated development YubiKey signer for one stable-verifier boot image"
           else if stableCampaignOnly then
             "Narrow approval-gated development YubiKey signer for one stable-campaign boot artifact"
@@ -2606,6 +2652,7 @@ in
     mkRpi5StableCampaignStagingNativeComponent
     mkRpi5StableCampaignStagingAssembly
     stableCampaignSigningTool
+    nativeOfflineSigningTool
     stableVerifierSigningTool
     stableVerifierTool
     suite

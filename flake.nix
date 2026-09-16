@@ -260,6 +260,20 @@
         lockFile = ./flake.lock;
       };
 
+      nativeOfflineFactories =
+        system:
+        import ./nix/native-offline-handoff.nix {
+          inherit lib;
+          pkgs = import nixpkgs { inherit system; };
+          built = packagesBySystem.${system};
+        };
+      nativeOfflineSigningPlan = (nativeOfflineFactories "aarch64-linux").mkSigningPlan {
+        candidate = nativeOfflineCandidate;
+        review = nativeOfflineReview;
+        sourceRevision = stableCampaignSourceRevision;
+        sourceDateEpoch = self.lastModified or 1;
+      };
+
       mkRpi5StableCampaignProvisionerSignedBootFilesystem =
         (import ./nix/rpi5-stable-campaign-provisioner-signed-boot-filesystem.nix {
           inherit lib;
@@ -457,6 +471,13 @@
           { system, ... }@args:
           packagesBySystem.${system}.mkRpi5VerifiedSignedRelease (builtins.removeAttrs args [ "system" ]);
 
+        mkRpi5VerifiedNativeOfflineSigning =
+          { system, ... }@args:
+          (nativeOfflineFactories system).mkVerified (builtins.removeAttrs args [ "system" ]);
+        mkRpi5NativeOfflineMediaHandoff =
+          { system, ... }@args:
+          (nativeOfflineFactories system).mkMedia (builtins.removeAttrs args [ "system" ]);
+
         mkRpi5ReleaseIntent =
           { system, ... }@args:
           packagesBySystem.${system}.mkRpi5ReleaseIntent (builtins.removeAttrs args [ "system" ]);
@@ -571,6 +592,7 @@
         // lib.optionalAttrs (system == "aarch64-linux" && self ? rev) {
           kaiba-rpi5-native-offline-unsigned = nativeOfflineCandidate.unsignedArtifacts;
           kaiba-rpi5-native-offline-review = nativeOfflineReview;
+          kaiba-rpi5-native-offline-signing-plan = nativeOfflineSigningPlan;
         }
         # The signing workstation is independent of the Pi image builder.
         // lib.optionalAttrs (self ? rev) {
@@ -598,6 +620,19 @@
             signerPolicyDigest =
               assets.signers.developmentPrototype.independentReview.public_bindings.signer_policy_digest;
             stableVerifierOnly = true;
+            tokenSerial = assets.signers.developmentPrototype.independentReview.token.serial;
+          };
+          kaiba-rpi5-native-offline-development-signing = built.mkDevelopmentYubiKeySigning {
+            name = "kaiba-rpi5-native-offline-development-signing";
+            cohortID = "cohort:prototype";
+            expectedCustomerKeyHash = stableCampaignExpectedCustomerKeyHash;
+            publicKeyFingerprint =
+              assets.signers.developmentPrototype.independentReview.public_bindings.public_key_fingerprint;
+            publicKeyPEM = assets.signers.developmentPrototype.reviewedBootPublicKey;
+            signerID = "signer:prototype";
+            signerPolicyDigest =
+              assets.signers.developmentPrototype.independentReview.public_bindings.signer_policy_digest;
+            nativeOfflineOnly = true;
             tokenSerial = assets.signers.developmentPrototype.independentReview.token.serial;
           };
         }
@@ -725,6 +760,10 @@
             )).success;
         in
         {
+          native-offline-handoff = import ./tests/native-offline-handoff.nix {
+            inherit pkgs lib;
+            built = packagesBySystem.${system};
+          };
           native-offline-eval = import ./tests/native-offline-eval.nix {
             inherit pkgs lib;
             candidate = nativeOfflineCandidate;
@@ -1341,6 +1380,7 @@
               '';
         }
         // lib.optionalAttrs (system == "aarch64-linux") {
+          native-offline-signing-plan = nativeOfflineSigningPlan;
           native-offline-artifacts = import ./tests/native-offline-artifacts.nix {
             inherit pkgs;
             candidate = nativeOfflineCandidate;
