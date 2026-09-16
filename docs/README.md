@@ -28,6 +28,7 @@ first-fleet applicability is determined by the admission policy.
 
 | Document | Boundary |
 | --- | --- |
+| [Native offline candidate](native-offline-candidate.md) | Unsigned Pi 5 NVMe boot/root candidate, explicit local action and integrity tests; physical results pending |
 | [Development workflow](development-workflow.md) | Focused tests and candidate validation |
 | [Native-build policy](../README.md#native-build-policy) | Native builders, cache reuse, and narrow exceptions |
 | [Architecture and trust boundaries](architecture-and-trust-boundaries.md) | Implemented authority, execution, audit, and UI boundaries |
