@@ -13,6 +13,11 @@ on NVMe. SD remains the separate provisioner/recovery medium. Existing
 host-bound media selectors and the development EEPROM policy are unchanged.
 The candidate does not use the online verifier or kexec path.
 
+The generic artifact manifest retains its historical rollback-policy label
+for contract compatibility. That label does not add a first-fleet prerequisite:
+the [active admission policy](fleet-admission-policy.md) does not require
+offline rejection of older correctly signed images.
+
 The signed boot ramdisk will bind the kernel, initramfs, DTB, boot arguments,
 root hash and two fixed NVMe GPT partition GUIDs. The unsigned artifacts are
 `unsigned/boot.img`, `nvme/root-data.img`, and `nvme/root-hash.img`. The inner
