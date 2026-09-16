@@ -698,16 +698,16 @@
             )).success;
         in
         {
-          device-secret-capabilities = import ./tests/device-secret-capabilities.nix {
-            inherit pkgs;
-            crypto = import ./nix/rpi5-fwcrypto.nix { inherit pkgs; };
-          };
           asset-api = import ./tests/assets.nix { inherit assets pkgs; };
           boot-image-hash-decoder = bootImageHashDecoderCheck;
           public-input-key-scan = import ./tests/public-input-key-scan.nix { inherit lib pkgs; };
           unit = provisioning.goUnitTests;
           unit-static = provisioning.staticGoTests;
           development-yubikey-signing = provisioning.developmentYubiKeySigningContract;
+          device-secret-capabilities = import ./tests/device-secret-capabilities.nix {
+            inherit pkgs;
+            crypto = import ./nix/rpi5-fwcrypto.nix { inherit pkgs; };
+          };
           device-profile-schema = provisioning.deviceProfileSchema;
           rpi5-development-posture = provisioning.developmentPostureContract;
           module-eval = provisioning.moduleEval;
