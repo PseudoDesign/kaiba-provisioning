@@ -10,6 +10,7 @@ archived proposals do not add requirements to the first fleet.
 | --- | --- |
 | [Delivery scope](delivery-scope.md) | The three outcomes: apply hardware security, enroll devices, and guide the operator through a simple live UI |
 | [Fleet admission policy](fleet-admission-policy.md) | Eight acceptance conditions, implementation/evidence mapping, and the selected offline and copied-storage requirements; remaining profile settings are proposed |
+| [Implementation staging](implementation-staging.md) | Parallel first slices for real station status and native offline boot/storage feasibility, with later admission gates |
 | [Production readiness](production-readiness.md) | What exists, what has been observed, and what still prevents fleet admission |
 
 Normal device operation must work offline. Copied storage must not disclose
