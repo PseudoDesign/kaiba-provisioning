@@ -476,8 +476,11 @@
         let
           built = packagesBySystem.${system};
           provisioning = provisioningBySystem.${system};
+          deviceSecret = import ./nix/rpi5-fwcrypto.nix { pkgs = import nixpkgs { inherit system; }; };
         in
         {
+          kaiba-rpi5-fwcrypto = deviceSecret.library;
+          kaiba-device-secret-capabilities = deviceSecret.probe;
           default = built.provision;
           kaiba-provision-audit = built.audit;
           kaiba-provision-authority-bridge = built.authorityBridge;
@@ -701,6 +704,10 @@
           unit = provisioning.goUnitTests;
           unit-static = provisioning.staticGoTests;
           development-yubikey-signing = provisioning.developmentYubiKeySigningContract;
+          device-secret-capabilities = import ./tests/device-secret-capabilities.nix {
+            inherit pkgs;
+            crypto = import ./nix/rpi5-fwcrypto.nix { inherit pkgs; };
+          };
           device-profile-schema = provisioning.deviceProfileSchema;
           rpi5-development-posture = provisioning.developmentPostureContract;
           module-eval = provisioning.moduleEval;
