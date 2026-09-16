@@ -476,8 +476,11 @@
         let
           built = packagesBySystem.${system};
           provisioning = provisioningBySystem.${system};
+          deviceSecret = import ./nix/rpi5-fwcrypto.nix { pkgs = import nixpkgs { inherit system; }; };
         in
         {
+          kaiba-rpi5-fwcrypto = deviceSecret.library;
+          kaiba-device-secret-capabilities = deviceSecret.probe;
           default = built.provision;
           kaiba-provision-audit = built.audit;
           kaiba-provision-authority-bridge = built.authorityBridge;
@@ -695,6 +698,10 @@
             )).success;
         in
         {
+          device-secret-capabilities = import ./tests/device-secret-capabilities.nix {
+            inherit pkgs;
+            crypto = import ./nix/rpi5-fwcrypto.nix { inherit pkgs; };
+          };
           asset-api = import ./tests/assets.nix { inherit assets pkgs; };
           boot-image-hash-decoder = bootImageHashDecoderCheck;
           public-input-key-scan = import ./tests/public-input-key-scan.nix { inherit lib pkgs; };

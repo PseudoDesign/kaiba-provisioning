@@ -40,6 +40,7 @@ first-fleet applicability is determined by the admission policy.
 | [Live provisioning](raspberry-pi-5-live-provisioning.md) | Required seven-operation fresh-device sequence, approvals, and reconciliation |
 | [Station interface](provisioning-station-kiosk.md) | Simulation and authenticated read-only transaction view; hardware actions and enrollment remain unavailable |
 | [Development target access](raspberry-pi-5-development-target-access.md) | Optional root-equivalent development access; excluded from fleet images |
+| [Device-secret feasibility](device-secret-feasibility.md) | Pinned firmware-crypto package, non-secret capability probe and pending physical mechanism investigation |
 | [Device identity lifecycle](device-identity.md) | Proposed identity, enrollment, and credential lifecycle; not implemented |
 | [Software-only rehearsals](software-rehearsals.md) | Simulation, durable rehearsal, unfused, and regular-file checks |
 | [Public root literals](public-root-key-markers.md) | Implemented key-marker scanner exceptions and their exact scope |
