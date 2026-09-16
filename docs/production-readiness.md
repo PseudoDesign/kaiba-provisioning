@@ -137,10 +137,14 @@ not gates that can be closed by additional approval alone.
 ## Path to a production decision
 
 Use the [fleet admission implementation mapping](fleet-admission-policy.md#how-to-establish-the-conditions)
-under the [delivery scope](delivery-scope.md). Finalize the profile, complete
-and qualify the selected offline device path, implement identity and fleet
-activation, and connect the live UI. Bind the selected policy into the release
-and lane contracts and retain the required physical and protocol evidence.
+under the [delivery scope](delivery-scope.md). Begin with the parallel
+[implementation slices](implementation-staging.md): real read-only station
+status and native offline boot/storage feasibility. Complete and qualify the
+selected device path, implement identity and fleet activation, and connect the
+remaining UI actions. Final profile approval and all admission conditions gate
+fleet entry; unresolved decisions block the work that depends on them. Bind
+the selected policy into the release and lane contracts and retain the
+required physical and protocol evidence.
 The [earlier online production roadmap](archive/raspberry-pi-5-production-security-follow-on.md)
 is archived; its fresh-server and offline-refusal requirements do not define
 this milestone. Documentation or software-only tests do not close physical

@@ -182,28 +182,39 @@ digests, and references to applicable shared qualification. Preserve the
 underlying evidence; a hash without the referenced result is not enough.
 Receipts contain no private keys, unlock material, or plaintext private data.
 
-The practical completion order is:
+Use the [implementation staging plan](implementation-staging.md) to begin
+bounded work before every final profile setting is resolved. Provisional
+choices permit implementation; all eight conditions still gate admission.
 
-1. Finalize the exact first-fleet profile and map the existing qualification
-   cases to the path it will actually ship. Preserve applicable boot, root,
-   recovery, and handoff checks. Keep the old online-verifier campaign intact
-   for that candidate. If the fleet ships native boot, classify its
-   authority-offline-refusal case as inapplicable to that path and require a
-   separate offline-success case; do not invert a result or mark the old case
-   passed. A stable-verifier/kexec mechanism needs its associated tests if it
-   remains in the shipping path; the eight outcomes do not themselves require that
-   particular boot architecture.
+1. Record the native signed-boot/verity candidate, existing SD/NVMe topology,
+   acceptance criteria and specific decision gates. Start the two first slices
+   in parallel: real read-only station status with restart recovery, and
+   native offline boot with protected-storage feasibility. Final protection
+   qualification does not block the read-only UI; fleet-service selection does
+   not block offline-device work.
 2. Close the coupled device-side gap: authenticated offline boot, local
-   encrypted-state unlock, final locks, and copied-storage protection. Start
-   with the existing native signed-boot/verity components. Qualify any added
-   OTP-secret operation under its own explicit plan and authority; do not
-   hide it in or replay the existing ownership operation.
-3. Implement the minimal enrollment/registry interface and its transaction
-   binding, installed-key proof, activation, retry, and revocation behavior.
-   Confirm the actual fleet backing service before wiring this interface.
-4. Connect the current UI to those real backend results and demonstrate one
-   eligible device through the required hardware sequence and enrollment,
+   encrypted-state unlock, final locks, and copied-storage protection. Qualify
+   any added OTP-secret operation under its own explicit plan and authority;
+   do not hide it in or replay the existing ownership operation.
+3. Confirm the actual fleet backing service and identity interface, then
+   implement the minimal enrollment handoff and its transaction binding,
+   installed-key proof, activation, retry, and revocation behavior. This work
+   can proceed alongside remaining hardware qualification; real activation
+   remains conditional on all admission checks.
+4. Finalize and approve the exact fleet profile, close its required evidence,
+   and connect the remaining UI actions to real backend results. Demonstrate
+   one eligible device through the required hardware sequence and enrollment,
    including offline operation and recovery from an interrupted transaction.
+
+Map qualification cases before the physical work they cover, preserving
+applicable boot, root, recovery and handoff checks. Keep the old online-verifier
+campaign intact for that candidate. If the fleet ships native boot, classify
+its authority-offline-refusal case as inapplicable to that path and require a
+separate offline-success case; do not invert a result or mark the old case
+passed. A stable-verifier/kexec mechanism needs its associated tests if it
+remains in the shipping path; the eight outcomes do not themselves require
+that particular boot architecture. Unresolved settings block the operations
+that depend on them and final admission, not unrelated implementation work.
 
 ## Effect on the current work
 

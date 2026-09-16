@@ -61,6 +61,12 @@ implement the minimum fleet enrollment handoff, and connect the live UI.
 Confirm the fleet's backing service and device-identity interface before
 implementing enrollment; the current transaction store is not already a fleet.
 
+Follow the [implementation staging plan](implementation-staging.md) for the
+first two parallel slices: real station status with restart recovery, and
+native offline boot with protected-storage feasibility. Resolve provisional
+choices at the operations they affect; final profile approval gates admission,
+not every implementation step. Missing admission conditions remain blocking.
+
 Retain completed signing, builds and evidence. Collect only missing evidence
 or evidence invalidated by a relevant change. The retained campaign currently
 has signed verifier artifacts and prepared media; recovery backups, physical
