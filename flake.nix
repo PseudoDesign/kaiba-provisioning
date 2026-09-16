@@ -237,6 +237,29 @@
           buildPkgs = import nixpkgs { system = buildPlatformSystem; };
         };
 
+      nativeOfflineSystem =
+        import ./nix/rpi5-native-offline-system.nix
+          {
+            nixosRaspberryPi = nixos-raspberrypi;
+            secureBootTargetModule = modules.secure-boot-target;
+          }
+          {
+            expectedCustomerKeyHash = stableCampaignExpectedCustomerKeyHash;
+            sourceRevision = stableCampaignSourceRevision;
+          };
+      nativeOfflineCandidate = import ./nix/rpi5-native-offline-artifacts.nix {
+        inherit lib;
+        buildPkgs = import nixpkgs { system = "aarch64-linux"; };
+        candidateSystem = nativeOfflineSystem;
+      };
+      nativeOfflineReview = import ./nix/rpi5-native-offline-review.nix {
+        pkgs = import nixpkgs { system = "aarch64-linux"; };
+        candidate = nativeOfflineCandidate;
+        platformRevision = nixos-raspberrypi.rev;
+        platformNarHash = nixos-raspberrypi.narHash;
+        lockFile = ./flake.lock;
+      };
+
       mkRpi5StableCampaignProvisionerSignedBootFilesystem =
         (import ./nix/rpi5-stable-campaign-provisioner-signed-boot-filesystem.nix {
           inherit lib;
@@ -545,6 +568,10 @@
         // lib.optionalAttrs (system == "aarch64-linux") {
           kaiba-rpi5-self-kexec-diagnostic = built.rpi5SelfKexecDiagnostic;
         }
+        // lib.optionalAttrs (system == "aarch64-linux" && self ? rev) {
+          kaiba-rpi5-native-offline-unsigned = nativeOfflineCandidate.unsignedArtifacts;
+          kaiba-rpi5-native-offline-review = nativeOfflineReview;
+        }
         # The signing workstation is independent of the Pi image builder.
         // lib.optionalAttrs (self ? rev) {
           kaiba-rpi5-stable-campaign-development-signing = built.mkDevelopmentYubiKeySigning {
@@ -698,6 +725,10 @@
             )).success;
         in
         {
+          native-offline-eval = import ./tests/native-offline-eval.nix {
+            inherit pkgs lib;
+            candidate = nativeOfflineCandidate;
+          };
           asset-api = import ./tests/assets.nix { inherit assets pkgs; };
           boot-image-hash-decoder = bootImageHashDecoderCheck;
           public-input-key-scan = import ./tests/public-input-key-scan.nix { inherit lib pkgs; };
@@ -1309,7 +1340,15 @@
                 printf '%s\n' 'provisioning station UI: pass' > "$out/results.txt"
               '';
         }
+        // lib.optionalAttrs (system == "aarch64-linux") {
+          native-offline-artifacts = import ./tests/native-offline-artifacts.nix {
+            inherit pkgs;
+            candidate = nativeOfflineCandidate;
+            review = nativeOfflineReview;
+          };
+        }
         // lib.optionalAttrs (system == "x86_64-linux") {
+          native-offline-verity-vm = import ./tests/native-offline-verity-vm.nix { inherit pkgs; };
           stable-campaign-staging-vm = import ./tests/campaign-staging-vm.nix {
             inherit pkgs;
             source = built.goSource;

@@ -68,6 +68,10 @@ block this slice. It does not require a new UI framework or fleet registry.
 
 ## B. Native offline boot and protected-storage feasibility
 
+The [unsigned native candidate](native-offline-candidate.md) implements the
+image composition and software-test preparation. Signing/media handoff,
+physical demonstrations and device-secret feasibility remain separate gates.
+
 Prepare the existing [signed-boot components](raspberry-pi-5-signed-boot-workflow.md)
 and [verified-root target](../nix/modules/secure-boot-target.nix) for the selected
 development board and SD/NVMe topology. Record the source revision, pinned
