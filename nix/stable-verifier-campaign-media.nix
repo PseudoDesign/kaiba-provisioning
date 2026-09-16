@@ -840,7 +840,9 @@ let
     test "$public_key_digest" = 'sha256:${expectedPublicKeyFileSHA256}'
     test "$public_key_fingerprint" = '${expectedPublicKeyFingerprint}'
 
-    readonly signer_review=${lib.escapeShellArg (toString signerIndependentReview)}
+    # Interpolating a source path copies this exact public file and preserves
+    # its store dependency; toString alone leaves an untracked sandbox path.
+    readonly signer_review=${lib.escapeShellArg "${signerIndependentReview}"}
     test -f "$signer_review"
     test ! -L "$signer_review"
     test -s "$signer_review"

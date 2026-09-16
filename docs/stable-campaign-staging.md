@@ -42,6 +42,78 @@ the tool revalidates their typed contracts, exact sizes, hashes and zero tails.
 The [packet checker](stable-campaign-packet.md) ties those inputs to the first
 two selected campaign runs.
 
+### Export a native NVMe component without uploading payload images
+
+An x86 workstation can prepare a bounded public descriptor, obtain a fixed
+executable from native ARM CI, and assemble its complete runtime closure locally.
+The existing `mkRpi5StableCampaignStaging` route remains unchanged. The split
+route supports only `pi-local-nvme` and adds no runtime configuration override.
+
+```nix
+descriptor = kaiba.lib.mkRpi5StableCampaignStagingDescriptor {
+  system = "x86_64-linux";
+  stagingPlan = reviewedStagingPlan;
+  payloads.release-filesystem = "${reviewedRun}/nvme/release-filesystem.img";
+};
+```
+
+Build this file locally. It binds the exact configuration path and bytes, exact
+Go-generated staging-plan bytes, source payload size and hash, and full partition
+hash including the zero tail. Descriptor preparation streams the actual payload.
+All three constructors also pass the embedded plan to the fixed, same-platform
+`kaiba-rpi5-stable-campaign-staging-plan-check` command, which validates bounded
+stdin with the production Go `ParseStagingPlan` contract and has no path or
+device interface. The Python checks alone establish preliminary consistency;
+the required Go check validates the complete plan, including its domain digest
+and GPT bindings. The staging runtime independently validates the full contract.
+
+Copy **only the descriptor's JSON bytes** into a reviewed public source commit.
+Do not pass its local derivation as the CI input: that derivation retains the
+large local input closure. The descriptor contains no image bytes, recovery
+backups, private keys, execution approval, or readiness grant. Its configuration
+path comes from the local packaging platform; do not reconstruct it on ARM and
+assume the path is identical. The descriptor has no self-referential source
+revision field: CI separately binds the commit containing the descriptor.
+
+```nix
+component = kaiba.lib.mkRpi5StableCampaignStagingNativeComponent {
+  system = "aarch64-linux";
+  descriptor = ./reviewed-staging-descriptor.json;
+  sourceRevision = reviewedNativeSourceRevision;
+};
+```
+
+This native build exports only the fixed executable, `share/kaiba/descriptor.json`
+and `share/kaiba/component.json`. It deliberately declares
+`complete_runtime_closure=false`. It must not be presented as a complete staging
+candidate. The component manifest's source revision is a caller assertion;
+ELF architecture, embedded path and file hashes establish consistency, not
+authenticated native-build provenance. Before importing a component for
+assembly, independently verify the reviewed native CI source revision, actual
+runner architecture, output identity and NAR/closure hashes. A self-reported
+manifest is insufficient.
+
+```nix
+candidate = kaiba.lib.mkRpi5StableCampaignStagingAssembly {
+  system = "x86_64-linux";
+  descriptor = ./reviewed-staging-descriptor.json;
+  nativeComponent = importedReviewedComponent;
+  sourceRevision = reviewedNativeSourceRevision;
+  stagingPlan = reviewedStagingPlan;
+  payloads.release-filesystem = "${reviewedRun}/nvme/release-filesystem.img";
+};
+```
+
+Assembly performs file-only work on x86: it verifies the component's exact file
+set and hashes, recreates the original configuration with its full Nix references,
+requires identical configuration and plan bytes, and hashes the complete payload
+and padded partition again. It does not execute ARM code. The resulting output
+retains both the native component and the actual configuration/plan/payload
+closure, including explicit references for plain imported store paths; transfer
+that **complete closure** to the reviewed Pi. Building either
+stage performs no device access and does not replace the recovery, approval,
+attachment or physical qualification gates below.
+
 The SD candidate protects `malak`'s `/dev/nvme0n1` system disk in addition to
 the normal inactive-device inventory. The NVMe candidate must run on the Pi
 booted from separate media: it refuses a mounted, root, swap, held or composite

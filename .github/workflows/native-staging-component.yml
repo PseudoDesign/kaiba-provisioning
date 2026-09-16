@@ -1,0 +1,119 @@
+name: Native staging component
+run-name: Incomplete native staging component ${{ inputs.source_sha }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Full lowercase 40-character commit SHA already on main
+        required: true
+        type: string
+      descriptor:
+        description: Relative reviewed public staging descriptor JSON file in source_sha
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    name: Validate immutable native component source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.source.outputs.source_sha }}
+    steps:
+      - name: Check out the workflow revision and main history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Require a full commit SHA in dispatched main history
+        id: source
+        env:
+          CANDIDATE_SHA: ${{ inputs.source_sha }}
+          DISPATCH_MAIN_SHA: ${{ github.sha }}
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python3 .github/scripts/native_staging_component.py select-source \
+            --repository . --source-sha "$CANDIDATE_SHA" \
+            --main-sha "$DISPATCH_MAIN_SHA" --workflow-ref "$GITHUB_REF" \
+            >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Incomplete staging component (native aarch64-linux)
+    needs: source
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    steps:
+      - name: Check out the workflow tools
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: workflow
+          persist-credentials: false
+
+      - name: Check out the selected component source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+          path: candidate
+          persist-credentials: false
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342 # v31.11.0
+        with:
+          enable_kvm: false
+
+      - name: Configure binary caches (read-only)
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: kaiba-provisioning
+          extraPullNames: nixos-raspberrypi
+          skipPush: true
+
+      - name: Build and export the incomplete public native component
+        env:
+          CANDIDATE_SHA: ${{ needs.source.outputs.sha }}
+          COMPONENT_DESCRIPTOR: ${{ inputs.descriptor }}
+          DISPATCH_MAIN_SHA: ${{ github.sha }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python3 workflow/.github/scripts/native_staging_component.py build \
+            --repository candidate --source-sha "$CANDIDATE_SHA" \
+            --main-sha "$DISPATCH_MAIN_SHA" --workflow-sha "$WORKFLOW_SHA" \
+            --descriptor "$COMPONENT_DESCRIPTOR" \
+            --output "$RUNNER_TEMP/native-staging-component"
+          cat "$RUNNER_TEMP/native-staging-component/SUMMARY.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload incomplete component and public build provenance
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-staging-component-${{ needs.source.outputs.sha }}-aarch64-linux
+          path: ${{ runner.temp }}/native-staging-component/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+  component:
+    name: Native staging component export complete
+    if: always()
+    needs: [source, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Require the native ARM export
+        env:
+          SOURCE_RESULT: ${{ needs.source.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+        run: |
+          if [ "$SOURCE_RESULT" != success ] || [ "$BUILD_RESULT" != success ]; then
+            echo "::error::source=$SOURCE_RESULT build=$BUILD_RESULT"
+            exit 1
+          fi
+          printf '%s\n' 'Incomplete native component exported. Local payload assembly, recovery capture, approval and hardware qualification remain separate.' >> "$GITHUB_STEP_SUMMARY"

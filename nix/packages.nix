@@ -404,6 +404,37 @@ let
     tool = stableCampaignStagingTool;
   };
 
+  mkRpi5StableCampaignStagingDescriptor = import ./campaign-staging-descriptor.nix {
+    inherit lib pkgs;
+    planValidator = stableCampaignStagingPlanCheck;
+  };
+
+  mkRpi5StableCampaignStagingNativeComponent = import ./campaign-staging-native-component.nix {
+    inherit lib pkgs;
+    tool = stableCampaignStagingTool;
+    planValidator = stableCampaignStagingPlanCheck;
+  };
+
+  mkRpi5StableCampaignStagingAssembly = import ./campaign-staging-assembly.nix {
+    inherit lib pkgs;
+    planValidator = stableCampaignStagingPlanCheck;
+  };
+
+  stableCampaignStagingPlanCheck = pkgs.buildGoModule {
+    pname = "kaiba-rpi5-stable-campaign-staging-plan-check";
+    inherit version;
+    src = goSource;
+    subPackages = [ "cmd/kaiba-rpi5-stable-campaign-staging-plan-check" ];
+    vendorHash = null;
+    env.CGO_ENABLED = 0;
+    ldflags = [
+      "-s"
+      "-w"
+    ];
+    doCheck = false;
+    meta.mainProgram = "kaiba-rpi5-stable-campaign-staging-plan-check";
+  };
+
   stableCampaignPacketTool = pkgs.buildGoModule {
     pname = "kaiba-rpi5-stable-campaign-packet";
     inherit version;
@@ -2568,8 +2599,12 @@ in
     stableCampaignRecoveryRequirementsTool
     stableCampaignSandboxTool
     stableCampaignStagingTool
+    stableCampaignStagingPlanCheck
     stableCampaignPacketTool
     mkRpi5StableCampaignStaging
+    mkRpi5StableCampaignStagingDescriptor
+    mkRpi5StableCampaignStagingNativeComponent
+    mkRpi5StableCampaignStagingAssembly
     stableCampaignSigningTool
     stableVerifierSigningTool
     stableVerifierTool
