@@ -1,5 +1,7 @@
 # Stable-campaign recovery preparation
 
+**Scope:** reference for the existing online stable-verifier campaign. Its artifacts and safety boundaries remain valid within their recorded scope; its server-required boot and offline-refusal behavior do not define the selected [offline fleet policy](fleet-admission-policy.md).
+
 The `v1alpha2` recovery-requirements contract connects the current SD/NVMe GPT
 inspection output to an independently supplied stable-campaign staging plan.
 It is a descriptive catalog: it does not back up bytes, authenticate device
@@ -45,7 +47,7 @@ explicit operator approval, and a separately reviewed writer. Its backup,
 approval, block-device-write, and destructive-staging flags are all false;
 `ValidateForDestructiveStaging` always rejects it.
 
-The [first physical baseline](first-physical-baseline.md) requires those
+The archived [first physical baseline](archive/first-physical-baseline.md) requires those
 capabilities and independent complete-partition readback before a physical
 attempt. Successful catalog construction does not authorize GPT repair,
 signing, storage writes, or power operations.

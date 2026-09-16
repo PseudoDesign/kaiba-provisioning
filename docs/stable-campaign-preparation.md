@@ -1,5 +1,7 @@
 # Preparing a complete public campaign
 
+**Scope:** reference for the existing online stable-verifier campaign. Its artifacts and safety boundaries remain valid within their recorded scope; its server-required boot and offline-refusal behavior do not define the selected [offline fleet policy](fleet-admission-policy.md).
+
 `mkRpi5StableVerifierCandidate` builds the native ARM verifier and its public
 signing plan from a closed public configuration. After the reviewed signatures
 exist, `mkRpi5StableVerifierCampaignPreparation` connects the release, twenty
@@ -125,10 +127,11 @@ renderer, checks all bindings, and writes canonical JSON to stdout. It opens
 only regular files and has no block-device or write interface.
 
 The recovery envelopes are descriptions of previous reads. The packet cannot
-refresh them or turn their digests into backup bytes. Continue with the
-[first physical baseline procedure](first-physical-baseline.md) for actual
+refresh them or turn their digests into backup bytes. The archived
+[first physical baseline procedure](archive/first-physical-baseline.md) records this candidate's requirements for
 backup capture/readback, attachment checks, staging approval, media writes and
-bounded run observations.
+bounded run observations. It is not a direction to resume that campaign as
+the next fleet milestone.
 
 ## Software verification
 

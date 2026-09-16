@@ -1,5 +1,7 @@
 # Signing one stable-verifier boot image
 
+**Scope:** reference for the existing online stable-verifier campaign. Its artifacts and safety boundaries remain valid within their recorded scope; its server-required boot and offline-refusal behavior do not define the selected [offline fleet policy](fleet-admission-policy.md).
+
 The physical campaign accepts the authenticated output of
 `mkRpi5VerifiedStableVerifierSigning`. This supplies the missing handoff from
 `mkRpi5StableVerifierUnsignedBoot` to `mkRpi5StableVerifierCampaignMedia` while
@@ -111,8 +113,8 @@ its own generic intent contract.
 
 Successful verification authenticates the signature and receipt under the
 reviewed key. It does not authenticate Git/CI provenance, reviewer identity,
-physical execution or qualification. Continue with the
-[first physical baseline prerequisites](first-physical-baseline.md), including
+physical execution or qualification. The archived
+[first physical baseline prerequisites](archive/first-physical-baseline.md) remain relevant if this candidate is resumed, including
 the complete release/mutation set, packet, durable recovery backups, independent
 readback and explicit staging/power approvals. All hardware/readiness claims
 remain false until their separate evidence exists.

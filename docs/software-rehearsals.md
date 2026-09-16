@@ -145,4 +145,7 @@ production image, a block-device write, or cold-readback evidence. See
 Use these layers to find defects before approaching a physical boundary, but
 do not add their assurance levels together and call the result a hardware test.
 The physical requirements remain in the
-[execution plan](raspberry-pi-5-secure-boot-execution-plan.md).
+[live-provisioning guide](raspberry-pi-5-live-provisioning.md) and the selected
+[fleet admission policy](fleet-admission-policy.md). The older gate-status
+snapshot is preserved in the archived
+[execution plan](archive/raspberry-pi-5-secure-boot-execution-plan.md).

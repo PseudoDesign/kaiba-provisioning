@@ -212,7 +212,7 @@ still blocks fleet admission. Signed artifacts, the limited successful hardware
 observations, and completed signing work remain useful evidence within their
 scope; none establishes that all eight conditions pass.
 
-The earlier [production proposal](raspberry-pi-5-production-security-follow-on.md)
+The archived [production proposal](archive/raspberry-pi-5-production-security-follow-on.md)
 requires fresh server permission before protected operation. Its offline
 refusal behavior conflicts with the user's newly selected requirement and
 cannot be the final fleet behavior unchanged. Mandatory offline rollback

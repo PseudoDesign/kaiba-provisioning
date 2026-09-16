@@ -24,11 +24,15 @@ claims.
 | Seven-operation lane | Implemented, tested | Compiler-owned operation sequence, authority bridge, execute-once journal, and reconciliation tests | Target-facing GPIO, USB, UART, power, and mutation paths are simulated in the automated contracts |
 | Media construction | Implemented, tested | Deterministic GPT/FAT/root/verity plans, host-bound selectors, writer/readback, and independent verification contracts | No checked-in qualification proves a complete live production-media and cold-power cycle |
 | Read-only root design | Implemented, tested | `secure-boot-target.nix` requires `/dev/mapper/root`, dm-verity, tmpfs mutable state, no swap, volatile journal, and no core dumps | The posture explicitly records physical enforcement as unqualified |
+| Owned-board boot/handoff diagnostics | Observed within a narrow scope | [Development Pi file-handoff observations](stable-verifier-spike.md#development-pi-file-handoff-observations) record signed diagnostic and SMP results | These do not establish complete boot/root enforcement, the seven-operation campaign, or fleet admission |
 
 ## Explicit production blockers
 
-The canonical development posture names the following blockers. They are
-requirements, not optional hardening ideas.
+The canonical development posture names the following blockers. The selected
+[fleet admission policy](fleet-admission-policy.md) determines what the future
+fleet profile must satisfy. Its explicit rollback decision changes that target
+requirement; it does not change the existing runtime guard or waive the other
+hardware, storage, identity, and enrollment conditions.
 
 ### Boot policy
 
@@ -76,9 +80,9 @@ PARTUUID. Mutable state is tmpfs-only; swap, persistent journal, core dumps, and
 persistent device secrets are disabled. The missing claim is live physical
 enforcement across the complete production boot path.
 
-### Anti-rollback
+### Development terminal policy and rollback decision
 
-**Not implemented / blocking.** Older correctly signed images may boot. Runtime
+**Development guard still blocking.** Older correctly signed images may boot. Runtime
 evidence reports `rollback=unimplemented`, control terminalization requires
 `rollback_unimplemented`, and the posture blocks enrollment-ready status.
 
@@ -121,13 +125,23 @@ must never be used to retry an old ambiguous outcome. Unknown target state,
 unproven safe-off, authority mismatch, or journal incompatibility requires
 quarantine and external review.
 
+## Missing fleet functionality
+
+The current target has no implemented encrypted persistent-state or local
+LUKS-unlock path. Device-key provisioning, enrollment, authoritative fleet
+membership, and credential activation are also missing. Control-plane mTLS is
+not device enrollment, and durable provisioning transactions are not a fleet
+registry. The live UI has a disabled backend. These are implementation gaps,
+not gates that can be closed by additional approval alone.
+
 ## Path to a production decision
 
-The actionable control plan is maintained in
-[Raspberry Pi 5 production security follow-on](raspberry-pi-5-production-security-follow-on.md).
-At minimum, a production decision must resolve every canonical blocker, bind
-the resulting policy into release and lane contracts, and collect independent
-evidence for the real signer, authority hosts, power path, media path, target
-boot path, recovery path, and rollback behavior. Documentation or software-only
-tests alone cannot close those gates.
-
+Use the [fleet admission implementation mapping](fleet-admission-policy.md#how-to-establish-the-conditions)
+under the [delivery scope](delivery-scope.md). Finalize the profile, complete
+and qualify the selected offline device path, implement identity and fleet
+activation, and connect the live UI. Bind the selected policy into the release
+and lane contracts and retain the required physical and protocol evidence.
+The [earlier online production roadmap](archive/raspberry-pi-5-production-security-follow-on.md)
+is archived; its fresh-server and offline-refusal requirements do not define
+this milestone. Documentation or software-only tests do not close physical
+acceptance gates.

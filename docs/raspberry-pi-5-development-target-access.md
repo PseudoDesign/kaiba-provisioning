@@ -169,7 +169,7 @@ Review and rebuild that lineage rather than attempting to patch the immutable
 target after boot. Follow the
 [signed-release workflow](raspberry-pi-5-signed-boot-workflow.md) for the public
 artifact boundary and the
-[execution plan](raspberry-pi-5-secure-boot-execution-plan.md) before any
+[live-provisioning prerequisites](raspberry-pi-5-live-provisioning.md#release-and-target-prerequisites) before any
 hardware campaign.
 
 ## Prepare a bounded client session
@@ -255,9 +255,10 @@ ssh \
 The UART marker correlates the SSH server key with the current physical boot
 under the lane's UART assumptions. It is not a CA-issued device identity,
 remote attestation, or proof that all running software is uncompromised. The
-production identity and freshness design remains proposed work; see
+fleet identity design remains proposed work; see
 [device identity](device-identity.md) and the
-[production security follow-on](raspberry-pi-5-production-security-follow-on.md).
+[fleet admission policy](fleet-admission-policy.md). The earlier online-only
+boot proposal does not define the selected offline behavior.
 
 ## Root-equivalent operation
 

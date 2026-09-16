@@ -1,5 +1,11 @@
 # Preparing exact release candidate artifacts
 
+This is an export-workflow reference for the existing development components,
+not a selection of the first-fleet boot architecture. The verifier profile
+uses kexec and server authorization even though it is compiled on native ARM.
+See the [fleet admission policy](fleet-admission-policy.md) for the selected
+offline behavior.
+
 Use **Actions → Release candidate artifacts → Run workflow** to prepare a
 stable-campaign development provisioner or a file/live-FDT verifier for review.
 The default `provisioner` profile preserves the existing provisioner export.
@@ -40,8 +46,10 @@ are not assembled by cross-compilation or a local x86 fallback.
 
 Both checkouts use the same selected source SHA. Reporting tools stay pinned to
 the workflow's own SHA, which is recorded separately. The ARM export checks
-that the unsigned manifest and signing intent name the selected source and
-that the intent binds that exact unsigned manifest and artifact set.
+that the unsigned manifest and signing intent name the selected source.
+The provisioner intent binds its unsigned manifest and artifact set; the
+verifier-only intent binds its unsigned manifest and boot-image bytes and has
+no provisioner artifact-set digest.
 Builds reject any required lock-file update, including an update only in memory,
 so the selected commit's dependency pins remain part of the candidate identity.
 

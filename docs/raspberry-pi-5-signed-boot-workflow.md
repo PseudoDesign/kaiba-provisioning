@@ -1,5 +1,10 @@
 # Raspberry Pi 5 signed-boot and release workflow
 
+This guide covers the full-release constructors and their five signing inputs.
+The existing online-verifier candidate has a separate
+[one-image signing route](stable-verifier-signing.md). These are artifact
+workflows, not alternatives selected automatically by the first-fleet policy.
+
 This document describes how the repository separates public release
 construction, approval-gated private-key use, offline verification, and
 per-device execution authority.

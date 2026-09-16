@@ -118,12 +118,14 @@ language used throughout the guides so that implemented code, software tests,
 checked evidence, and proposed production controls are not conflated.
 
 - [Architecture and trust boundaries](docs/architecture-and-trust-boundaries.md)
+- [Fleet admission policy and verification plan](docs/fleet-admission-policy.md)
 - [Raspberry Pi 5 secure-boot model](docs/raspberry-pi-5-secure-boot.md)
-- [Development execution plan](docs/raspberry-pi-5-secure-boot-execution-plan.md)
 - [Production readiness](docs/production-readiness.md)
-- [Production security follow-on](docs/raspberry-pi-5-production-security-follow-on.md)
-- [Production-station architecture](docs/provisioning-station-production.md)
 - [Contracts reference](docs/contracts-reference.md)
+
+Superseded and deferred roadmaps are in the [documentation archive](docs/archive/README.md).
+The existing online-verifier candidate is documented separately in the index;
+its server-required boot policy is not the selected offline fleet behavior.
 
 Operator workflows cover [hardware qualification](docs/raspberry-pi-5-provisioning-probe.md),
 [release signing](docs/raspberry-pi-5-signed-boot-workflow.md),

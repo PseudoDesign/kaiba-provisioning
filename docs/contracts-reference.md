@@ -15,7 +15,7 @@ exported package.
 
 ## JSON schema groups
 
-There are 57 versioned files under [`schemas/`](../schemas/). Several groups
+Versioned JSON schemas live under [`schemas/`](../schemas/). Several groups
 retain older alpha revisions so checked inputs can be verified; revision
 coexistence does not imply automatic migration.
 

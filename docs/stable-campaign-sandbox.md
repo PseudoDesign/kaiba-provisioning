@@ -1,5 +1,7 @@
 # Stable-campaign recovery and staging sandbox
 
+**Scope:** reference for the existing online stable-verifier campaign. Its artifacts and safety boundaries remain valid within their recorded scope; its server-required boot and offline-refusal behavior do not define the selected [offline fleet policy](fleet-admission-policy.md).
+
 The sandbox implements the recovery/write sequence on private regular-file
 copies. It consumes the same fixed campaign staging plan and v1alpha2 recovery
 requirements as the preparation tools, and exercises real file I/O, fsync,
@@ -136,5 +138,5 @@ its reviewed configuration, current recovery-byte capture, independently
 validated readback and attachment observations, and explicit operator approval.
 Real media durability, disconnects, power loss, cold
 readback, and Pi boot behavior require hardware qualification. The
-[first physical baseline](first-physical-baseline.md) remains the next hardware
+archived [first physical baseline](archive/first-physical-baseline.md) describes the historical hardware
 milestone.

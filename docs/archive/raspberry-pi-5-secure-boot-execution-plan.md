@@ -1,5 +1,9 @@
 # Raspberry Pi 5 secure-boot execution plan
 
+> **Archived 2026-09-16.** Historical fresh-board development plan and gate-status snapshot. Its target freshness, blocked-gate table, and mandatory online production follow-on are not current status. The development Pi is already owned; this plan must not trigger another ownership operation. The required seven-operation sequence for eligible fresh devices remains in the active live-provisioning guide.
+>
+> Current direction: [delivery scope](../delivery-scope.md) and [fleet admission policy](../fleet-admission-policy.md). The text below is historical; archiving does not grant authority, erase evidence, or mark any gate passed.
+
 This plan organizes the sacrificial development campaign into gates that must
 close in order. It adapts the original monorepo execution plan to the current
 standalone repository and intentionally distinguishes software completion from
@@ -68,11 +72,11 @@ Every gate must preserve these invariants:
 
 ## SB-00: read-only qualification
 
-Use the [probe runbook](raspberry-pi-5-provisioning-probe.md) to obtain two
+Use the [probe runbook](../raspberry-pi-5-provisioning-probe.md) to obtain two
 independent live observations separated by complete power removal and RPIBOOT
 re-entry, then repeat the same known-good normal-boot criterion. Raw results
 remain private; only the deterministic whitelist-redacted record may enter
-[`tests/evidence/`](../tests/evidence/).
+[`tests/evidence/`](../../tests/evidence).
 
 Exit criteria:
 
@@ -114,7 +118,7 @@ development key must never be promoted.
 
 ## SB-03: assemble a complete release
 
-Follow the [signed-boot workflow](raspberry-pi-5-signed-boot-workflow.md). The
+Follow the [signed-boot workflow](../raspberry-pi-5-signed-boot-workflow.md). The
 release must have one intent, five signing inputs and grants, five artifact
 signatures, five receipt-attestation signatures, an authenticated receipt
 export, six exact RPIBOOT trees, and one content-addressed 18-role publication.
@@ -124,7 +128,7 @@ artifacts, exact source lineage, no private material, and a reviewed manifest
 digest suitable for the later per-device plan.
 
 The current standalone composition gap must be resolved before using the
-[signing ceremony](ubuntu-rpi5-development-signing-ceremony.md) for a new
+[signing ceremony](../ubuntu-rpi5-development-signing-ceremony.md) for a new
 release.
 
 ## SB-04: stage target media
@@ -137,7 +141,7 @@ selector, resolved raw whole device, boot ID, and disk sequence.
 After the reviewed preflight, stage once, remove all power, detach and reattach
 the medium, then cold-read and verify GPT, the canonical FAT, every payload and
 padding region, the complete media digest, release lineage, and dm-verity tree.
-See [target-media staging](target-media-staging-prototype.md).
+See [target-media staging](../target-media-staging-prototype.md).
 
 Any ambiguous write or receipt publication result quarantines the selected
 medium; it is not automatically restaged.
@@ -188,7 +192,7 @@ read-only reconciliation/quarantine path—never a second mutation.
 
 SB-08 requires a separately generated, immutable ceremony packet binding every
 closed gate and the final go/no-go approval. Use the fixed seven-operation
-sequence in [live provisioning](raspberry-pi-5-live-provisioning.md).
+sequence in [live provisioning](../raspberry-pi-5-live-provisioning.md).
 
 Once `AttemptStarted` is durable for the first operation, the board must be
 treated as potentially owned until direct observation proves otherwise. An
