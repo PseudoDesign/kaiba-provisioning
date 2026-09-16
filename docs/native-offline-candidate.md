@@ -17,7 +17,7 @@ The signed boot ramdisk will bind the kernel, initramfs, DTB, boot arguments,
 root hash and two fixed NVMe GPT partition GUIDs. The unsigned artifacts are
 `unsigned/boot.img`, `nvme/root-data.img`, and `nvme/root-hash.img`. The inner
 FAT boot ramdisk is not an outer boot partition: do not write it directly to
-a boot partition. A separate signed-media handoff is still required.
+a boot partition. The [native handoff](native-offline-handoff.md) supplies the separate signing and media package; actual signing and physical execution remain pending.
 
 Mutable state is tmpfs only. There is no encrypted persistent-state volume or
 device identity. Development SSH/USB networking, DHCP, network-manager and

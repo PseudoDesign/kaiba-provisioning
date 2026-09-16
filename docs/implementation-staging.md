@@ -132,3 +132,8 @@ not a pass or inversion of the old authority-offline-refusal case. If the
 shipping path retains stable-verifier/kexec components, retain their required
 qualification. Archived plans do not add first-fleet prerequisites, and this
 staging plan neither waives missing evidence nor grants hardware authority.
+
+The [native offline handoff](native-offline-handoff.md) supplies a distinct
+one-image signing scope and exact regular-file media package. Software checks
+do not close Slice B: offline physical results and the device-secret mechanism
+experiment remain pending.
