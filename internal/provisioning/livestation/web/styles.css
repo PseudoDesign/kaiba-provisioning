@@ -15,6 +15,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 
 body {
   min-width: 320px;
@@ -275,3 +276,19 @@ footer {
   footer { flex-wrap: wrap; gap: 8px 16px; }
 }
 
+
+.connection[data-status="stale"] { color: var(--amber); }
+.status-succeeded,
+.status-confirmed_applied { color: var(--green); background: rgb(140 233 154 / 12%); }
+.status-uncertain,
+.status-intent_recorded { color: var(--amber); background: rgb(255 200 97 / 12%); }
+.status-not_recorded,
+.status-confirmed_not_applied { color: var(--muted); background: rgb(155 173 184 / 12%); }
+.condition-list { margin: 0; padding-left: 22px; color: #d6e1e6; line-height: 1.6; }
+.condition-list li + li { margin-top: 8px; }
+.diagnostics summary,
+.record-details summary { cursor: pointer; color: var(--cyan); }
+.diagnostics .facts,
+.record-details .facts { margin-top: 12px; }
+.record-details { margin-top: 14px; }
+.record-details .facts { grid-template-columns: minmax(110px, 0.6fr) 1fr; }

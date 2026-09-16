@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -412,7 +413,7 @@ func startMTLSServer(t *testing.T, handler http.HandlerFunc) (*httptest.Server, 
 	return server, serverCA
 }
 
-func writeClientCredential(t *testing.T) (string, string) {
+func writeClientCredential(t *testing.T, identities ...string) (string, string) {
 	t.Helper()
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -426,6 +427,13 @@ func writeClientCredential(t *testing.T) (string, string) {
 		NotAfter:     now.Add(time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	}
+	for _, identity := range identities {
+		uri, err := url.Parse(identity)
+		if err != nil {
+			t.Fatal(err)
+		}
+		template.URIs = append(template.URIs, uri)
 	}
 	certificateDER, err := x509.CreateCertificate(rand.Reader, template, template, &privateKey.PublicKey, privateKey)
 	if err != nil {

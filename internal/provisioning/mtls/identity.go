@@ -35,6 +35,21 @@ type StationLaneIdentity struct {
 	LaneID    string
 }
 
+// ParseStationLaneCertificate reads the canonical identity from a certificate.
+// It does not authenticate the certificate, its issuer, validity or authority;
+// callers use it only for configuration consistency before a verified TLS exchange.
+func ParseStationLaneCertificate(certificate *x509.Certificate) (StationLaneIdentity, error) {
+	identityURI, err := certificateIdentityURI(certificate)
+	if err != nil {
+		return StationLaneIdentity{}, err
+	}
+	identity, err := parseStationLaneURI(identityURI)
+	if err != nil {
+		return StationLaneIdentity{}, fmt.Errorf("%w: %v", ErrClientIdentity, err)
+	}
+	return identity, nil
+}
+
 // ApproverIdentity is an independent plan-approval principal. It is encoded as
 // exactly one canonical URI SAN:
 // spiffe://kaiba.network/approver/<approver-id>.
@@ -170,6 +185,13 @@ func verifiedIdentityURI(request *http.Request) (*url.URL, error) {
 		if !bytes.Equal(leaf.Raw, chain[0].Raw) {
 			return nil, fmt.Errorf("%w: verified chains contain different leaf certificates", ErrClientIdentity)
 		}
+	}
+	return certificateIdentityURI(leaf)
+}
+
+func certificateIdentityURI(leaf *x509.Certificate) (*url.URL, error) {
+	if leaf == nil {
+		return nil, fmt.Errorf("%w: no client certificate", ErrClientIdentity)
 	}
 	if len(leaf.URIs) == 0 {
 		return nil, fmt.Errorf("%w: client certificate has no URI SAN", ErrClientIdentity)

@@ -1265,6 +1265,16 @@
             inherit pkgs;
           };
           ubuntu-signing-gate-deployment = mkUbuntuSigningGateDeployment { inherit system; };
+          station-observation-integration = import ./tests/station-observation.nix {
+            deployment = mkUbuntuProvisioningAuthorityDeployment {
+              inherit system;
+              listenAddress = "127.0.0.1";
+              controlPort = 38093;
+              auditPort = 38094;
+            };
+            inherit pkgs;
+            station = built.liveStation;
+          };
           station-ui =
             pkgs.runCommand "kaiba-provisioning-station-ui-check"
               {

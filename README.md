@@ -21,7 +21,7 @@ construction, audited execution, and operator-facing workflows.
 | Lane execution | Compile the fixed operation sequence, collect explicit acknowledgement, and execute one bound physical action at a time | `kaiba-provision-lane-workflow`, `kaiba-provision-lane-operator`, `kaiba-provision-lane-guard` |
 | Signing and releases | Gate YubiKey-backed signing behind immutable approvals and verify complete signed releases offline | `kaiba-provision-signing-gate`, `kaiba-provision-sign-boot`, `kaiba-provision-sign-eeprom`, `kaiba-provision-finalize-release` |
 | Media construction | Bind a release to an exact storage layout, write it through a configured device-specific package, and verify it independently | `kaiba-provision-media-device-stager`, `kaiba-provision-media-device-verifier`, `kaiba-provision-media-contract` |
-| Operator interfaces | Provide a loopback live-interface foundation with a disabled backend and a separate in-memory simulation | `kaiba-provision-station`, `kaiba-provision-station-demo` |
+| Operator interfaces | Observe one authenticated transaction through a read-only loopback UI, or run the separate in-memory simulation | `kaiba-provision-station`, `kaiba-provision-station-demo` |
 
 Generic hardware-facing binaries and `kaiba-provision-sign-boot` are
 intentionally unconfigured and fail closed. The exported
@@ -79,9 +79,10 @@ nix build .#kaiba-provision-station-pages
   outcomes enter reconciliation or quarantine and never become blind retries.
 - Signing keys and PINs are runtime-only. The repository contains public trust
   anchors and signed inputs, not private keys or credentials.
-- The exported live-interface foundation has a disabled backend and rejects
-  mutation enablement. It never falls back to the browser simulation, and the
-  simulation never calls a live backend.
+- The live station observes one configured transaction without submitting
+  control commands or performing enrollment. Its unconfigured foundation keeps a disabled backend.
+  Neither mode falls back to the browser simulation, and the simulation never
+  calls a live backend.
 - Raw device observations remain outside the repository. Only validated,
   whitelist-redacted qualification evidence belongs under
   [`tests/evidence/`](tests/evidence/).

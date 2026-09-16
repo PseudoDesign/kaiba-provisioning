@@ -2,9 +2,11 @@
 
 This is the implementation plan under the [delivery scope](delivery-scope.md)
 and [fleet admission policy](fleet-admission-policy.md). The three delivery
-outcomes and FA-01 through FA-08 remain authoritative. All capabilities and
-acceptance scenarios below are planned; this document records no new hardware
-result or fleet approval.
+outcomes and FA-01 through FA-08 remain authoritative. Slice A now has a
+read-only software implementation and repeatable real-service checks, described
+in the [station runbook](provisioning-station-kiosk.md#read-only-live-station).
+Slice B and the later milestones remain planned. This document records no new
+hardware result or fleet approval.
 
 ## Starting decisions and planning exit
 
@@ -24,6 +26,12 @@ software work. Unknown, missing or conflicting admission evidence still
 blocks enrollment. The current development policy remains unchanged.
 
 ## A. Real station status and restart recovery
+
+The implemented viewer selects one transaction through startup configuration,
+keeps only a memory-resident last successful snapshot, and fetches fresh state
+after restart. Its evidence consists of coordinator-recorded results and
+references, without independent audit verification. The runbook describes the
+configuration and software acceptance demonstration.
 
 Connect the [live station interface](provisioning-station-kiosk.md) to existing
 authenticated control-plane transaction reads and available read-only station

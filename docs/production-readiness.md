@@ -131,8 +131,10 @@ The current target has no implemented encrypted persistent-state or local
 LUKS-unlock path. Device-key provisioning, enrollment, authoritative fleet
 membership, and credential activation are also missing. Control-plane mTLS is
 not device enrollment, and durable provisioning transactions are not a fleet
-registry. The live UI has a disabled backend. These are implementation gaps,
-not gates that can be closed by additional approval alone.
+registry. The live UI can observe an authenticated transaction and reload its
+recorded progress after restart, but hardware orchestration and enrollment
+remain unavailable. These are implementation gaps, not gates that can be
+closed by additional approval alone.
 
 ## Path to a production decision
 
