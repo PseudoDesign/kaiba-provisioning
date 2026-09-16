@@ -37,6 +37,25 @@ const (
 
 var transactionIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`)
 
+// HTTPStatusError preserves a rejected HTTP status without exposing its body.
+type HTTPStatusError struct {
+	StatusCode int
+}
+
+func (err *HTTPStatusError) Error() string {
+	return fmt.Sprintf("unexpected HTTP status %d %s", err.StatusCode, http.StatusText(err.StatusCode))
+}
+
+// InvalidResponseError distinguishes an invalid authority response from a
+// temporary transport failure. Consumers must not retain a trusted snapshot
+// after discovering that the authority returned the wrong or malformed data.
+type InvalidResponseError struct {
+	Err error
+}
+
+func (err *InvalidResponseError) Error() string { return err.Err.Error() }
+func (err *InvalidResponseError) Unwrap() error { return err.Err }
+
 // ControlReader reads authenticated transaction snapshots from the control
 // service. Its transport has an exclusive server trust pool and never consults
 // proxy environment variables.
@@ -65,6 +84,28 @@ func NewControlReader(baseURL string, files mtls.ClientFiles) (*ControlReader, e
 		return nil, err
 	}
 	return &ControlReader{client: client, baseURL: parsed}, nil
+}
+
+// StationIdentity returns the identity of the exact client credential loaded
+// into this reader. This checks local configuration only; the control server
+// still authenticates and authorizes every transaction read.
+func (reader *ControlReader) StationIdentity() (mtls.StationLaneIdentity, error) {
+	if reader == nil || reader.client == nil {
+		return mtls.StationLaneIdentity{}, errors.New("control reader is not configured")
+	}
+	transport, ok := reader.client.Transport.(*http.Transport)
+	if !ok || transport.TLSClientConfig == nil || len(transport.TLSClientConfig.Certificates) != 1 {
+		return mtls.StationLaneIdentity{}, errors.New("control reader has no fixed client credential")
+	}
+	credential := transport.TLSClientConfig.Certificates[0]
+	if len(credential.Certificate) == 0 {
+		return mtls.StationLaneIdentity{}, errors.New("control reader client certificate is empty")
+	}
+	leaf, err := x509.ParseCertificate(credential.Certificate[0])
+	if err != nil {
+		return mtls.StationLaneIdentity{}, fmt.Errorf("parse control client certificate: %w", err)
+	}
+	return mtls.ParseStationLaneCertificate(leaf)
 }
 
 // NewAuditReader creates an audit reader for an origin-only HTTPS base URL.
@@ -252,7 +293,7 @@ func (reader *ControlReader) GetTransaction(ctx context.Context, transactionID s
 		return controlplane.Transaction{}, fmt.Errorf("read control transaction: %w", err)
 	}
 	if transaction.SchemaVersion != controlplane.TransactionSchemaVersion || transaction.ID != transactionID {
-		return controlplane.Transaction{}, errors.New("read control transaction: response identity is invalid")
+		return controlplane.Transaction{}, &InvalidResponseError{Err: errors.New("read control transaction: response identity is invalid")}
 	}
 	return transaction, nil
 }
@@ -390,24 +431,24 @@ func requestJSON(ctx context.Context, client *http.Client, method, endpoint stri
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected HTTP status %s", response.Status)
+		return &HTTPStatusError{StatusCode: response.StatusCode}
 	}
 	mediaType, _, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
 	if err != nil || strings.ToLower(mediaType) != "application/json" {
-		return errors.New("response Content-Type is not application/json")
+		return &InvalidResponseError{Err: errors.New("response Content-Type is not application/json")}
 	}
 	if response.ContentLength > maxResponseBytes {
-		return errors.New("response exceeds the fixed size limit")
+		return &InvalidResponseError{Err: errors.New("response exceeds the fixed size limit")}
 	}
 	data, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes+1))
 	if err != nil {
 		return fmt.Errorf("read response: %w", err)
 	}
 	if len(data) == 0 || len(data) > maxResponseBytes {
-		return errors.New("response has an invalid size")
+		return &InvalidResponseError{Err: errors.New("response has an invalid size")}
 	}
 	if err := decode(data); err != nil {
-		return fmt.Errorf("decode response: %w", err)
+		return &InvalidResponseError{Err: fmt.Errorf("decode response: %w", err)}
 	}
 	return nil
 }

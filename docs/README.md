@@ -38,7 +38,7 @@ first-fleet applicability is determined by the admission policy.
 | [Development signing ceremony](ubuntu-rpi5-development-signing-ceremony.md) | Five-input full-release integration reference and outstanding composition requirements |
 | [Target-media staging](target-media-staging-prototype.md) | Exact-media plans, writer, and independent verification |
 | [Live provisioning](raspberry-pi-5-live-provisioning.md) | Required seven-operation fresh-device sequence, approvals, and reconciliation |
-| [Station interface](provisioning-station-kiosk.md) | Existing simulation and disabled live-backend foundation |
+| [Station interface](provisioning-station-kiosk.md) | Simulation and authenticated read-only transaction view; hardware actions and enrollment remain unavailable |
 | [Development target access](raspberry-pi-5-development-target-access.md) | Optional root-equivalent development access; excluded from fleet images |
 | [Device identity lifecycle](device-identity.md) | Proposed identity, enrollment, and credential lifecycle; not implemented |
 | [Software-only rehearsals](software-rehearsals.md) | Simulation, durable rehearsal, unfused, and regular-file checks |

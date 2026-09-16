@@ -2,6 +2,13 @@ package controlplane
 
 import "fmt"
 
+// ValidateTransactionSnapshot checks the internal consistency of one control
+// transaction. It does not authenticate the reader, verify audit receipts, or
+// establish whether its fence is still current in the authority's asset index.
+func ValidateTransactionSnapshot(transaction Transaction) error {
+	return validateTransaction(transaction, map[string]uint64{transaction.AssetID: transaction.FenceEpoch})
+}
+
 func validatePersistedState(state persistedState) error {
 	if state.SchemaVersion != StoreSchemaVersion {
 		return corrupt("unsupported store schema_version")
