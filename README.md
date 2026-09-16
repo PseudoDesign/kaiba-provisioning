@@ -109,6 +109,10 @@ qualification.
 
 ## Documentation
 
+The [current delivery scope](docs/delivery-scope.md) fixes the next milestone:
+apply the agreed hardware security configuration, enroll the verified device
+in a fleet, and guide the operator through a simple live UI.
+
 Start with the [documentation index](docs/README.md). It defines the status
 language used throughout the guides so that implemented code, software tests,
 checked evidence, and proposed production controls are not conflated.
