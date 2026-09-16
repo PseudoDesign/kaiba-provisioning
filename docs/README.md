@@ -28,6 +28,7 @@ first-fleet applicability is determined by the admission policy.
 
 | Document | Boundary |
 | --- | --- |
+| [Native offline handoff](native-offline-handoff.md) | One-image signing scope, verified FAT/GPT package and bounded physical procedure; execution and hardware results pending |
 | [Native offline candidate](native-offline-candidate.md) | Unsigned Pi 5 NVMe boot/root candidate, explicit local action and integrity tests; physical results pending |
 | [Development workflow](development-workflow.md) | Focused tests and candidate validation |
 | [Native-build policy](../README.md#native-build-policy) | Native builders, cache reuse, and narrow exceptions |
