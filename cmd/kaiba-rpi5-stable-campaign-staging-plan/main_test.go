@@ -125,6 +125,12 @@ func TestPublicFileBoundaryRejectsSpecialPathsAndChanges(t *testing.T) {
 	if err := os.WriteFile(regular, []byte("change"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	// Rapid same-size writes can share both filesystem timestamps. Give the
+	// metadata revalidation check a deterministic change without sleeping.
+	changedAt := time.Unix(file.identity.mtime.Sec, file.identity.mtime.Nsec).Add(time.Second)
+	if err := os.Chtimes(regular, changedAt, changedAt); err != nil {
+		t.Fatal(err)
+	}
 	if err := file.revalidate(); err == nil {
 		t.Fatal("missed same-inode input change")
 	}
