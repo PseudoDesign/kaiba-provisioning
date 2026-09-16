@@ -57,6 +57,26 @@ commands, or broad firmware-log collection. Do not infer support on another
 board class or key ID. The library prefers `/dev/vcio_crypto` and falls back
 to `/dev/vcio`; record the paths available in the actual environment.
 
+### Pinned-kernel metadata limitation
+
+The pinned Linux source `c8c7494100e99ee05b11aaa4f0588a223a63d1af`
+([restricted mailbox allowlist](https://github.com/raspberrypi/linux/blob/c8c7494100e99ee05b11aaa4f0588a223a63d1af/drivers/char/broadcom/vcio.c))
+permits count and status through `/dev/vcio_crypto`, but omits the library's
+`GET_CRYPTO_KEY_USAGE` tag `0x0003009c`. The pinned library falls back to
+`/dev/vcio` only when opening the restricted node fails, not when an ioctl is
+rejected. When the restricted node is available, a successful count/status
+with failed usage therefore does not establish lack of firmware support.
+The probe must retain its partial result and unknown usage.
+
+The assumption that these two pins provide a complete slot inventory through
+the default endpoint is false. Resolve it with a separately reviewed kernel
+allowlist change for the read-only usage tag, then repeat the same probe on the
+selected board. Until usage is observed, slot selection and secret programming
+remain blocked. Do not hide the failure by changing device permissions or
+automatically retrying rejected operations through the unrestricted endpoint.
+This compatibility limitation does not block native offline boot experiments
+and does not decide HMAC or storage feasibility.
+
 ## Proposed mechanism and authority gate
 
 Use a dedicated device key only after reviewing the slot's current status,
