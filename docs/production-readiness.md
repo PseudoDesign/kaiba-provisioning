@@ -82,6 +82,14 @@ enforcement across the complete production boot path.
 evidence reports `rollback=unimplemented`, control terminalization requires
 `rollback_unimplemented`, and the posture blocks enrollment-ready status.
 
+**First-fleet decision update, 2026-09-16:** the user has explicitly decided
+that rejection of older, correctly signed software while offline is not
+required. See the [fleet admission draft](fleet-admission-policy.md). The
+existing development guard remains as implemented; the future fleet policy
+must express the selected rule without requiring offline rollback prevention
+or clearing the other blockers. The missing anti-rollback mechanism is not
+itself a requirement to add hardware or require a server at every fleet boot.
+
 ### Lane power and topology
 
 **Partly implemented / blocked on qualification.** Relay mode is fail-closed in
