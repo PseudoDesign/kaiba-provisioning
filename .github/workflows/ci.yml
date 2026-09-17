@@ -254,6 +254,40 @@ jobs:
       - name: Build remaining ARM64 checks and operator-facing packages
         run: nix --accept-flake-config flake check -L
 
+      - name: Export the tested native read-only metadata companion
+        run: |
+          test "$(uname -m)" = aarch64
+          probe_package="$(nix --accept-flake-config build --no-link --print-out-paths .#kaiba-device-secret-capabilities)"
+          export METADATA_PACKAGE="$probe_package"
+          export METADATA_EXPORT="$RUNNER_TEMP/device-secret-metadata"
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, shutil, subprocess
+          output = pathlib.Path(os.environ["METADATA_EXPORT"])
+          output.mkdir()
+          source = pathlib.Path(os.environ["METADATA_PACKAGE"]) / "bin/kaiba-device-secret-metadata"
+          target = output / source.name
+          shutil.copyfile(source, target)
+          target.chmod(0o555)
+          (output / "build.json").write_text(json.dumps({
+              "source_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "run_id": os.environ["GITHUB_RUN_ID"],
+              "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "system": "aarch64-linux",
+              "store_path": str(source.resolve()),
+              "sha256": hashlib.sha256(target.read_bytes()).hexdigest(),
+              "hardware_observation": False,
+          }, indent=2) + "\n")
+          PY
+
+      - name: Upload the native read-only metadata companion
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: device-secret-metadata-${{ github.sha }}-aarch64-linux
+          path: ${{ runner.temp }}/device-secret-metadata/
+          if-no-files-found: error
+          retention-days: 30
+
   pages:
     name: Deploy GitHub Pages
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
