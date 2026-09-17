@@ -5,7 +5,7 @@ file-only packet construction, a fixed privileged media executor, and a private
 report projector. Software tests cover staging, interruption and restoration;
 the real Pi/USB enclosure and secret operations have not been exercised by this
 change. No selected physical packet, new signing grant, or hardware approval is
-created by these constructors.
+included in this change.
 
 ## Preparation before the operator session
 
@@ -186,7 +186,7 @@ pre-existing ext4 filesystem with a test record, with an explicitly
 separate synthetic selector. It does not qualify USB identity or the physical
 enclosure. Native ARM CI additionally builds the new experiment signing plan.
 
-The constructors and software checks do not produce a selected physical packet.
+The synthetic outputs from these software checks are not a selected physical packet.
 That requires fresh inventory, the three substantive reviews, exact native build
 and signing results, and separate execution authority. The current undefined
 slot and older inspection image remain unresolved inputs. No secret has been
