@@ -22,7 +22,9 @@ keys, backup bytes or raw captures in the Nix store.
    resolves that image exposure for fleet use.
 2. Build `lib.mkRpi5DeviceSecretExperiment` with the proposed public experiment
    configuration, expected customer-key hash and exact source revision. Build it
-   on native ARM. The target remains the [bounded harness](device-secret-target-harness.md),
+   on native ARM. Without a local ARM builder, use the [public candidate export](device-secret-native-export.md)
+   workflow. It accepts only the experiment bindings and keeps physical host
+   selectors local. The target remains the [bounded harness](device-secret-target-harness.md),
    without generation or OTP usage writes.
 3. Build `lib.mkRpi5DeviceSecretSigningPlan` with `system`, that `candidate` and
    `sourceDateEpoch`. This reuses the native single-image signing contract. Its
