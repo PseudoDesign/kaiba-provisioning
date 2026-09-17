@@ -16,6 +16,7 @@ def run(arguments=(), environment=None, code=0):
 assert json.loads(run())["key"] is None
 state = json.loads(run(["--key-id", "1"]))
 assert state["key_count"] == 2 and state["key"]["status_bits"] == 0x1301
+assert state["transport"] == "rpifwcrypto-default"
 assert state["feasibility"] == "pending" and state["key"]["usage"] == 8
 for operation in ["privkey", "genkey", "hmac", "sign", "set-key-status", "set-key-usage"]:
     assert run([operation], code=2) == ""

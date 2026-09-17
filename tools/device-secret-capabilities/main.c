@@ -11,16 +11,22 @@
 #ifndef FWCRYPTO_REVISION
 #define FWCRYPTO_REVISION "test"
 #endif
+#ifndef PROBE_NAME
+#define PROBE_NAME "kaiba-device-secret-capabilities"
+#endif
+#ifndef PROBE_TRANSPORT
+#define PROBE_TRANSPORT "rpifwcrypto-default"
+#endif
 
 static void usage(FILE *stream) {
-    fputs("Usage: kaiba-device-secret-capabilities [--key-id 1..32]\n"
+    fputs("Usage: " PROBE_NAME " [--key-id 1..32]\n"
           "Queries only key count, status and usage. No secret values are read.\n", stream);
 }
 
 int main(int argc, char **argv) {
     unsigned long key_id = 0;
     if (argc == 2 && strcmp(argv[1], "--version") == 0) {
-        puts("kaiba-device-secret-capabilities/v1 fwcrypto=" FWCRYPTO_REVISION);
+        puts(PROBE_NAME "/v1 fwcrypto=" FWCRYPTO_REVISION " transport=" PROBE_TRANSPORT);
         return 0;
     }
     if (argc == 2 && strcmp(argv[1], "--help") == 0) {
@@ -43,7 +49,7 @@ int main(int argc, char **argv) {
     int count = rpi_fw_crypto_get_num_otp_keys();
     if (count < 0 || count > 32) {
         printf("{\"schema_version\":\"provisioning.kaiba.network/device-secret-capabilities/v1alpha1\","
-               "\"status\":\"unavailable\",\"operation\":\"get_num_otp_keys\",\"return_code\":%d,"
+               "\"transport\":\"" PROBE_TRANSPORT "\",\"status\":\"unavailable\",\"operation\":\"get_num_otp_keys\",\"return_code\":%d,"
                "\"feasibility\":\"pending\"}\n", count);
         return 1;
     }
@@ -59,7 +65,7 @@ int main(int argc, char **argv) {
         usage_rc = rpi_fw_crypto_get_key_usage((uint32_t)key_id, &usage_value);
     }
     printf("{\"schema_version\":\"provisioning.kaiba.network/device-secret-capabilities/v1alpha1\","
-           "\"status\":\"%s\",\"fwcrypto_revision\":\"" FWCRYPTO_REVISION "\","
+           "\"transport\":\"" PROBE_TRANSPORT "\",\"status\":\"%s\",\"fwcrypto_revision\":\"" FWCRYPTO_REVISION "\","
            "\"key_count\":%d,\"feasibility\":\"pending\",\"key\":",
            status_rc || usage_rc ? "partial" : "observed", count);
     if (!key_id) {

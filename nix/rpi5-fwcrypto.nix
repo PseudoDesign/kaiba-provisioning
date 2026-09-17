@@ -28,7 +28,7 @@ let
       license = pkgs.lib.licenses.bsd3;
     };
   };
-  probe = pkgs.stdenv.mkDerivation {
+  libraryProbe = pkgs.stdenv.mkDerivation {
     pname = "kaiba-device-secret-capabilities";
     version = "0.1.0";
     src = ../tools/device-secret-capabilities;
@@ -41,6 +41,30 @@ let
     installPhase = ''
       install -Dm0555 kaiba-device-secret-capabilities "$out/bin/kaiba-device-secret-capabilities"
     '';
+  };
+  # Same-CPU musl build: a small standalone executable can run from volatile
+  # storage on the existing inspection image, without rebuilding that image.
+  metadataProbe = pkgs.pkgsStatic.stdenv.mkDerivation {
+    pname = "kaiba-device-secret-metadata";
+    version = "0.1.0";
+    src = ../tools/device-secret-capabilities;
+    buildPhase = ''
+      $CC -std=c11 -Wall -Wextra -Werror -O2 -static \
+        -I${library}/include -DFWCRYPTO_REVISION='"${revision}"' \
+        -DPROBE_NAME='"kaiba-device-secret-metadata"' \
+        -DPROBE_TRANSPORT='"vcio-metadata-only"' main.c metadata.c \
+        -o kaiba-device-secret-metadata
+    '';
+    installPhase = ''
+      install -Dm0555 kaiba-device-secret-metadata "$out/bin/kaiba-device-secret-metadata"
+    '';
+  };
+  probe = pkgs.symlinkJoin {
+    name = "kaiba-device-secret-capabilities-0.1.0";
+    paths = [
+      libraryProbe
+      metadataProbe
+    ];
   };
 in
 {
