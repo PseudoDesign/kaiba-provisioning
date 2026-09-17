@@ -1,0 +1,768 @@
+{
+  "candidate": {
+    "boot_image_sha256": "b6ff9cf9f3e6ce925f0ed2ffb91bebf8f08c4c7c1299279f8f13d812cf91a7bd",
+    "expected_os_release_sha256": "98ee691b0ffa69d72bada9173f56ce85a7cc4244fa069949e2761fd3d4617ffa",
+    "expected_probe_sha256": "9448a513dbeb546ec6de043762fee167ee09298ebb99003694c0d88e869b4fe3",
+    "root_data_partuuid": "b1a02b6c-8ec1-4ca9-9b8a-348211271de0",
+    "root_data_sha256": "dd03d49e9c35d54d0b1cd057b81560fbf3806135b05ad389524050a4d9237f00",
+    "root_tree_partuuid": "66d98f80-4260-4de0-98b5-232bcac98e29",
+    "root_tree_sha256": "71a140d40e844ea1107721bdb45164262ced6c52b3e389f6c6189402cb227f6d",
+    "signed_root_digest": "162d93bff118b3de09e92b6d92299f842875ef557c7b52c9d24060c10066a1c5",
+    "source_configuration_sha256": {
+      "nix/modules/native-offline-evidence.nix": "1c066d86bf15eb5bdcc115323a8b330db7e20f4b5b00f03c93da7dc8d5c901e3",
+      "nix/rpi5-native-offline-system.nix": "c99916c531c66d2b2da1d2106b1c5be109441ce35fe37aa3787872255b0b5390"
+    }
+  },
+  "final_pristine_readback": {
+    "finished_at": "2026-09-17T01:47:34.872618+00:00",
+    "kernel_read_only_guard_restored": true,
+    "read_bytes": 1177204224,
+    "result": "all-five-candidate-spans-match",
+    "spans": [
+      {
+        "name": "gpt-primary",
+        "offset": 0,
+        "sha256": "64961d27c0c35ca73ebcfae0369900fdbee3da843af024ffe2e738dafbac5228",
+        "size": 17408
+      },
+      {
+        "name": "boot-filesystem",
+        "offset": 1048576,
+        "sha256": "a3a67f76c0462001d5fd9f901631c6835181e2808f184241d1265e505b46812a",
+        "size": 134217728
+      },
+      {
+        "name": "root-data",
+        "offset": 135266304,
+        "sha256": "dd03d49e9c35d54d0b1cd057b81560fbf3806135b05ad389524050a4d9237f00",
+        "size": 1034792960
+      },
+      {
+        "name": "root-hash",
+        "offset": 1170210816,
+        "sha256": "71a140d40e844ea1107721bdb45164262ced6c52b3e389f6c6189402cb227f6d",
+        "size": 8159232
+      },
+      {
+        "name": "gpt-secondary",
+        "offset": 256060497408,
+        "sha256": "33dafb8ee72706cb3b40ecdfde2719ec016fbfe7c61c5ba298b92f35a081b782",
+        "size": 16896
+      }
+    ]
+  },
+  "fresh_candidate_backups": {
+    "blocks": [
+      {
+        "altered_sha256": "3f1b51e926c992a2fa91cd32327e1daf912e9cce9118d56668c3355a47060971",
+        "case": "startup",
+        "changed_byte_in_block": 1024,
+        "device_offset_bytes": 135266304,
+        "original_sha256": "5979138bce119b5eb85fcc4fb5b2a7710027e329454c1299df63bd0e85e40b04",
+        "size_bytes": 4096
+      },
+      {
+        "altered_sha256": "2ed74f81f900438807b58b19dd783e71986b961b348a62f813a10de2f161cb9e",
+        "case": "probe",
+        "changed_byte_in_block": 0,
+        "device_offset_bytes": 156061696,
+        "original_sha256": "93629d84769014373cb7e141713fc85853ad6c4df1ff18e452c17190047ad437",
+        "size_bytes": 4096
+      }
+    ],
+    "original_pre_staging_filesystem_backup": false,
+    "total_bytes": 8192
+  },
+  "host_cleanup": {
+    "disk_management_service_restored": true,
+    "nvme_enclosure_disconnected": true,
+    "original_inspection_network_active": true,
+    "result": "verified",
+    "temporary_profile_created_this_procedure": false
+  },
+  "limits": {
+    "authority_granted_by_this_record": false,
+    "fleet_admission": "unevaluated",
+    "full_production_path_qualified": false,
+    "independent_attestation": false,
+    "new_signing_eeprom_or_otp_secret_operations": false,
+    "original_nvme_filesystem_restored": false,
+    "slice_b_complete": false
+  },
+  "media_operations": [
+    {
+      "action": "startup-corrupt",
+      "finished_at": "2026-09-17T01:15:44.870330+00:00",
+      "post_readback": [
+        {
+          "name": "gpt-primary",
+          "offset": 0,
+          "sha256": "64961d27c0c35ca73ebcfae0369900fdbee3da843af024ffe2e738dafbac5228",
+          "size": 17408
+        },
+        {
+          "name": "boot-filesystem",
+          "offset": 1048576,
+          "sha256": "a3a67f76c0462001d5fd9f901631c6835181e2808f184241d1265e505b46812a",
+          "size": 134217728
+        },
+        {
+          "name": "root-data",
+          "offset": 135266304,
+          "sha256": "7358cceb6272dd4561de5d792035e090c9dd2eec75676ce024a283cf59c66cd8",
+          "size": 1034792960
+        },
+        {
+          "name": "root-hash",
+          "offset": 1170210816,
+          "sha256": "71a140d40e844ea1107721bdb45164262ced6c52b3e389f6c6189402cb227f6d",
+          "size": 8159232
+        },
+        {
+          "name": "gpt-secondary",
+          "offset": 256060497408,
+          "sha256": "33dafb8ee72706cb3b40ecdfde2719ec016fbfe7c61c5ba298b92f35a081b782",
+          "size": 16896
+        }
+      ],
+      "post_state": "startup",
+      "pre_readback": [
+        {
+          "name": "gpt-primary",
+          "offset": 0,
+          "sha256": "64961d27c0c35ca73ebcfae0369900fdbee3da843af024ffe2e738dafbac5228",
+          "size": 17408
+        },
+        {
+          "name": "boot-filesystem",
+          "offset": 1048576,
+          "sha256": "a3a67f76c0462001d5fd9f901631c6835181e2808f184241d1265e505b46812a",
+          "size": 134217728
+        },
+        {
+          "name": "root-data",
+          "offset": 135266304,
+          "sha256": "dd03d49e9c35d54d0b1cd057b81560fbf3806135b05ad389524050a4d9237f00",
+          "size": 1034792960
+        },
+        {
+          "name": "root-hash",
+          "offset": 1170210816,
+          "sha256": "71a140d40e844ea1107721bdb45164262ced6c52b3e389f6c6189402cb227f6d",
+          "size": 8159232
+        },
+        {
+          "name": "gpt-secondary",
+          "offset": 256060497408,
+          "sha256": "33dafb8ee72706cb3b40ecdfde2719ec016fbfe7c61c5ba298b92f35a081b782",
+          "size": 16896
+        }
+      ],
+      "private_record": {
+        "private_reference": "root-owned-media-records/startup-corrupt.json",
+        "sha256": "172a59c2e20a5977b7a00b126ba46279dfd675ad2f9e636ab1d655591366102d",
+        "size_bytes": 2169
+      },
+      "program_sha256": "4945c0c6248f0d2ab9d9768a2855780c11a0581aee874f8c9a45ff96114b6259",
+      "result": "passed",
+      "started_at": "2026-09-17T01:15:15.494386+00:00",
+      "write_bytes": 4096,
+      "write_offset": 135266304,
+      "writes_attempted": 1
+    },
+    {
+      "action": "startup-restore",
+      "finished_at": "2026-09-17T01:26:48.005800+00:00",
+      "post_readback": [
+        {
+          "name": "gpt-primary",
+          "offset": 0,
+          "sha256": "64961d27c0c35ca73ebcfae0369900fdbee3da843af024ffe2e738dafbac5228",
+          "size": 17408
+        },
+        {
+          "name": "boot-filesystem",
+          "offset": 1048576,
+          "sha256": "a3a67f76c0462001d5fd9f901631c6835181e2808f184241d1265e505b46812a",
+          "size": 134217728
+        },
+        {
+          "name": "root-data",
+          "offset": 135266304,
+          "sha256": "dd03d49e9c35d54d0b1cd057b81560fbf3806135b05ad389524050a4d9237f00",
+          "size": 1034792960
+        },
+        {
+          "name": "root-hash",
+          "offset": 1170210816,
+          "sha256": "71a140d40e844ea1107721bdb45164262ced6c52b3e389f6c6189402cb227f6d",
+          "size": 8159232
+        },
+        {
+          "name": "gpt-secondary",
+          "offset": 256060497408,
+          "sha256": "33dafb8ee72706cb3b40ecdfde2719ec016fbfe7c61c5ba298b92f35a081b782",
+          "size": 16896
+        }
+      ],
+      "post_state": "pristine",
+      "pre_readback": [
+        {
+          "name": "gpt-primary",
+          "offset": 0,
+          "sha256": "64961d27c0c35ca73ebcfae0369900fdbee3da843af024ffe2e738dafbac5228",
+          "size": 17408
+        },
+        {
+          "name": "boot-filesystem",
+          "offset": 1048576,
+          "sha256": "a3a67f76c0462001d5fd9f901631c6835181e2808f184241d1265e505b46812a",
+          "size": 134217728
+        },
+        {
+          "name": "root-data",
+          "offset": 135266304,
+          "sha256": "7358cceb6272dd4561de5d792035e090c9dd2eec75676ce024a283cf59c66cd8",
+          "size": 1034792960
+        },
+        {
+          "name": "root-hash",
+          "offset": 1170210816,
+          "sha256": "71a140d40e844ea1107721bdb45164262ced6c52b3e389f6c6189402cb227f6d",
+          "size": 8159232
+        },
+        {
+          "name": "gpt-secondary",
+          "offset": 256060497408,
+          "sha256": "33dafb8ee72706cb3b40ecdfde2719ec016fbfe7c61c5ba298b92f35a081b782",
+          "size": 16896
+        }
+      ],
+      "private_record": {
+        "private_reference": "root-owned-media-records/startup-restore.json",
+        "sha256": "3d06dd80cdacdb11f5879eab08cc4d356d1316b8ce7c8f67c5cda3c8af2ddb52",
+        "size_bytes": 2170
+      },
+      "program_sha256": "4945c0c6248f0d2ab9d9768a2855780c11a0581aee874f8c9a45ff96114b6259",
+      "result": "passed",
+      "started_at": "2026-09-17T01:26:18.685197+00:00",
+      "write_bytes": 4096,
+      "write_offset": 135266304,
+      "writes_attempted": 1
+    },
+    {
+      "action": "probe-corrupt",
+      "finished_at": "2026-09-17T01:29:09.438856+00:00",
+      "post_readback": [
+        {
+          "name": "gpt-primary",
+          "offset": 0,
+          "sha256": "64961d27c0c35ca73ebcfae0369900fdbee3da843af024ffe2e738dafbac5228",
+          "size": 17408
+        },
+        {
+          "name": "boot-filesystem",
+          "offset": 1048576,
+          "sha256": "a3a67f76c0462001d5fd9f901631c6835181e2808f184241d1265e505b46812a",
+          "size": 134217728
+        },
+        {
+          "name": "root-data",
+          "offset": 135266304,
+          "sha256": "af74b3ea473e57d79ac0d2a4f4cffb711e2de8a28320e16494e6dcd51dea7f3a",
+          "size": 1034792960
+        },
+        {
+          "name": "root-hash",
+          "offset": 1170210816,
+          "sha256": "71a140d40e844ea1107721bdb45164262ced6c52b3e389f6c6189402cb227f6d",
+          "size": 8159232
+        },
+        {
+          "name": "gpt-secondary",
+          "offset": 256060497408,
+          "sha256": "33dafb8ee72706cb3b40ecdfde2719ec016fbfe7c61c5ba298b92f35a081b782",
+          "size": 16896
+        }
+      ],
+      "post_state": "probe",
+      "pre_readback": [
+        {
+          "name": "gpt-primary",
+          "offset": 0,
+          "sha256": "64961d27c0c35ca73ebcfae0369900fdbee3da843af024ffe2e738dafbac5228",
+          "size": 17408
+        },
+        {
+          "name": "boot-filesystem",
+          "offset": 1048576,
+          "sha256": "a3a67f76c0462001d5fd9f901631c6835181e2808f184241d1265e505b46812a",
+          "size": 134217728
+        },
+        {
+          "name": "root-data",
+          "offset": 135266304,
+          "sha256": "dd03d49e9c35d54d0b1cd057b81560fbf3806135b05ad389524050a4d9237f00",
+          "size": 1034792960
+        },
+        {
+          "name": "root-hash",
+          "offset": 1170210816,
+          "sha256": "71a140d40e844ea1107721bdb45164262ced6c52b3e389f6c6189402cb227f6d",
+          "size": 8159232
+        },
+        {
+          "name": "gpt-secondary",
+          "offset": 256060497408,
+          "sha256": "33dafb8ee72706cb3b40ecdfde2719ec016fbfe7c61c5ba298b92f35a081b782",
+          "size": 16896
+        }
+      ],
+      "private_record": {
+        "private_reference": "root-owned-media-records/probe-corrupt.json",
+        "sha256": "c4bdfe8c49d3b166254b5bf001e16165e47ae613d679c2555f9d7c3ecbe08871",
+        "size_bytes": 2165
+      },
+      "program_sha256": "4945c0c6248f0d2ab9d9768a2855780c11a0581aee874f8c9a45ff96114b6259",
+      "result": "passed",
+      "started_at": "2026-09-17T01:28:40.130835+00:00",
+      "write_bytes": 4096,
+      "write_offset": 156061696,
+      "writes_attempted": 1
+    },
+    {
+      "action": "probe-restore",
+      "finished_at": "2026-09-17T01:47:34.872618+00:00",
+      "post_readback": [
+        {
+          "name": "gpt-primary",
+          "offset": 0,
+          "sha256": "64961d27c0c35ca73ebcfae0369900fdbee3da843af024ffe2e738dafbac5228",
+          "size": 17408
+        },
+        {
+          "name": "boot-filesystem",
+          "offset": 1048576,
+          "sha256": "a3a67f76c0462001d5fd9f901631c6835181e2808f184241d1265e505b46812a",
+          "size": 134217728
+        },
+        {
+          "name": "root-data",
+          "offset": 135266304,
+          "sha256": "dd03d49e9c35d54d0b1cd057b81560fbf3806135b05ad389524050a4d9237f00",
+          "size": 1034792960
+        },
+        {
+          "name": "root-hash",
+          "offset": 1170210816,
+          "sha256": "71a140d40e844ea1107721bdb45164262ced6c52b3e389f6c6189402cb227f6d",
+          "size": 8159232
+        },
+        {
+          "name": "gpt-secondary",
+          "offset": 256060497408,
+          "sha256": "33dafb8ee72706cb3b40ecdfde2719ec016fbfe7c61c5ba298b92f35a081b782",
+          "size": 16896
+        }
+      ],
+      "post_state": "pristine",
+      "pre_readback": [
+        {
+          "name": "gpt-primary",
+          "offset": 0,
+          "sha256": "64961d27c0c35ca73ebcfae0369900fdbee3da843af024ffe2e738dafbac5228",
+          "size": 17408
+        },
+        {
+          "name": "boot-filesystem",
+          "offset": 1048576,
+          "sha256": "a3a67f76c0462001d5fd9f901631c6835181e2808f184241d1265e505b46812a",
+          "size": 134217728
+        },
+        {
+          "name": "root-data",
+          "offset": 135266304,
+          "sha256": "af74b3ea473e57d79ac0d2a4f4cffb711e2de8a28320e16494e6dcd51dea7f3a",
+          "size": 1034792960
+        },
+        {
+          "name": "root-hash",
+          "offset": 1170210816,
+          "sha256": "71a140d40e844ea1107721bdb45164262ced6c52b3e389f6c6189402cb227f6d",
+          "size": 8159232
+        },
+        {
+          "name": "gpt-secondary",
+          "offset": 256060497408,
+          "sha256": "33dafb8ee72706cb3b40ecdfde2719ec016fbfe7c61c5ba298b92f35a081b782",
+          "size": 16896
+        }
+      ],
+      "private_record": {
+        "private_reference": "root-owned-media-records/probe-restore.json",
+        "sha256": "79095dd2179b19d39f62cd997de850104658b1cdf2fe7f66e573f54ee3be5982",
+        "size_bytes": 2168
+      },
+      "program_sha256": "4945c0c6248f0d2ab9d9768a2855780c11a0581aee874f8c9a45ff96114b6259",
+      "result": "passed",
+      "started_at": "2026-09-17T01:47:04.699699+00:00",
+      "write_bytes": 4096,
+      "write_offset": 156061696,
+      "writes_attempted": 1
+    }
+  ],
+  "native_cases": {
+    "late_read_negative": {
+      "capture": {
+        "collector_sha256": "7f24b2b3eb320209debf473a0426510d166be76b0f0d6212bb6614c68e61b270",
+        "complete": true,
+        "duration_limit_seconds": 180,
+        "finished_at": "2026-09-17T01:39:17.098833+00:00",
+        "metadata": {
+          "private_reference": "uart-probe.5pbr3rh1/capture.json",
+          "sha256": "c8fcfb0acccecc835a71ee96fbbe1cfb917a2eaa08584d2b9df66a164c256fb1",
+          "size_bytes": 1919
+        },
+        "raw": {
+          "private_reference": "uart-probe.5pbr3rh1/uart.raw.log",
+          "sha256": "e427fb10d7eb88f31e3e9404edb23767231b5a4ddcf7b6bf5d2bae51c4835de0",
+          "size_bytes": 69521
+        },
+        "started_at": "2026-09-17T01:36:17.083208+00:00",
+        "termios_restored": true
+      },
+      "expected_native_image_root_bindings": true,
+      "interleaving_review": {
+        "basis": "Exact interrupted record reconstructed by removing only the two fully retained kernel records; event timestamps and pinned program order place the completed local action before the explicit probe read. Raw byte order reflects asynchronous console interleaving.",
+        "derived_view_sha256": "f383bd463e83ad458842a756f292379d2e0ca2afb0eb64358f4eb9fdb77843c2",
+        "kernel_corruption_event_seconds": [
+          "10.449295",
+          "10.449948"
+        ],
+        "kernel_record_lengths_bytes": [
+          75,
+          75
+        ],
+        "kernel_record_raw_offsets": [
+          67459,
+          67566
+        ],
+        "limit": "Engineering interpretation of this capture, not independent attestation; no unobserved bytes supplied and no boot repeated.",
+        "local_action_event_seconds": "10.440971",
+        "probe_failure_marker_event_seconds": "10.500077",
+        "probe_io_error_event_seconds": "10.444418",
+        "raw_capture_unchanged": true,
+        "raw_parser_result": "inconclusive",
+        "reviewed_result": "matched",
+        "source_module_sha256": "1c066d86bf15eb5bdcc115323a8b330db7e20f4b5b00f03c93da7dc8d5c901e3"
+      },
+      "probe_io_error_observed": true,
+      "probe_read_failed_marker_observed": true,
+      "probe_success_absent": true,
+      "rejected_verity_data_block": 5077,
+      "result": "observed-after-explicit-console-interleaving-review",
+      "sd_or_network_fallback_observed": false
+    },
+    "restored_positive": {
+      "capture": {
+        "collector_sha256": "2f6df9e05b072b69aa54d83b50ba99759ddc38f78bc5f163f3d38c3f1186f3fd",
+        "complete": true,
+        "duration_limit_seconds": 180,
+        "finished_at": "2026-09-17T01:52:46.325359+00:00",
+        "metadata": {
+          "private_reference": "uart-restored-positive.oq1qezcf/capture.json",
+          "sha256": "4547eea6821e13f0ce1aaaa390eefd03bd76e6ab3e6d370a7d1950f96cf24e76",
+          "size_bytes": 1955
+        },
+        "raw": {
+          "private_reference": "uart-restored-positive.oq1qezcf/uart.raw.log",
+          "sha256": "e8b0b3762238751e1a26ec8fb49133efc18b5a54c2fe3a05258d81d02f67b4b3",
+          "size_bytes": 69111
+        },
+        "started_at": "2026-09-17T01:49:46.313949+00:00",
+        "termios_restored": true
+      },
+      "exact_secure_boot_local_action_and_probe_markers": true,
+      "expected_native_image_root_bindings": true,
+      "initial_rtc_utc": "1970-01-01T00:00:20Z",
+      "result": "observed",
+      "sd_or_network_fallback_observed": false,
+      "systemd_builtin_epoch_utc": "2026-03-17T19:55:52Z",
+      "verity_corruption_observed": false
+    },
+    "startup_negative": {
+      "capture": {
+        "collector_sha256": "e60b6b0437c86834635410d69bddae279bccbbeaabd44389eb02cdf1494c67cf",
+        "complete": true,
+        "duration_limit_seconds": 180,
+        "finished_at": "2026-09-17T01:22:11.106891+00:00",
+        "metadata": {
+          "private_reference": "uart-startup.w58hxk_s/capture.json",
+          "sha256": "38233f4eca17e7d238287fc90a6054d0b5de6e8a93dac6fbf7dede3405eea973",
+          "size_bytes": 1925
+        },
+        "raw": {
+          "private_reference": "uart-startup.w58hxk_s/uart.raw.log",
+          "sha256": "9f72b4a94e4c7bf73732db332ac47ef05dc44aee75e2ac2e2a96c72be4d9a323",
+          "size_bytes": 67928
+        },
+        "started_at": "2026-09-17T01:19:11.082892+00:00",
+        "termios_restored": true
+      },
+      "expected_native_image_root_bindings": true,
+      "local_action_success_absent": true,
+      "probe_success_absent": true,
+      "rejected_verity_data_block": 0,
+      "result": "observed",
+      "sd_or_network_fallback_observed": false
+    }
+  },
+  "native_isolation": {
+    "ethernet_poe": "operator reported disconnected",
+    "independent_host_observation": "No Pi USB network gadget observed during capture",
+    "power": "operator reported separate USB-C supply only",
+    "usb_management_and_other_usb_storage_network_adapters": "operator reported disconnected",
+    "wireless_and_network_time": "Pinned candidate disables wireless configuration and network-time clients; source hashes retained above."
+  },
+  "observation_date_utc": "2026-09-17",
+  "observation_id": "native-verity-20260917",
+  "platform": {
+    "board_model": "Raspberry Pi 5 Model B Rev 1.1",
+    "board_reference": "existing-owned-development-board",
+    "board_revision": "a04171",
+    "identity_binding": "Private exact-media executor checks, operator-reported physical moves and fresh UART-matched SSH board/SD inventory on return; native UART is not independent full-serial attestation.",
+    "installed_bootloader_build_time": "2026-05-26T16:01:25Z",
+    "installed_bootloader_revision": "086b83e3332dfc8927c56762771d082f3077a1ae",
+    "kernel_release": "6.18.34",
+    "nvme_capacity_bytes": 256060514304,
+    "storage_topology": "native candidate on NVMe; separate inspection SD"
+  },
+  "private_evidence_references": [
+    {
+      "private_reference": "authorization.json",
+      "sha256": "0908737f4a7ded432440b03cc301d642966867ce9bf7df943340330311cb8e60",
+      "size_bytes": 600
+    },
+    {
+      "private_reference": "review.md",
+      "sha256": "af254d8f4d91c9cf01cd152877420a28821dc3b9e745c6a9a0f8469abba95ac5",
+      "size_bytes": 7816
+    },
+    {
+      "private_reference": "review.json",
+      "sha256": "f4dc663f5abc9711997e1951ea1be77a9e3de254360889b3b608b90f9d351b66",
+      "size_bytes": 4159
+    },
+    {
+      "private_reference": "programs.json",
+      "sha256": "406c715605ae12e28916769c5044e0cfa4da8645b158efef560f2646d8951257",
+      "size_bytes": 730
+    },
+    {
+      "private_reference": "software-tests.log",
+      "sha256": "b97340a436bf192207dcd4f6d1a481be1fc5288e41015d9efd70d5afdb92b484",
+      "size_bytes": 2527
+    },
+    {
+      "private_reference": "backup-verification.json",
+      "sha256": "b81021bd3570a8911b0e34fc84a90f8b6c1b75fae3f4b8b39f8c56ab6fa775b1",
+      "size_bytes": 1555
+    },
+    {
+      "private_reference": "inspection-shutdown.json",
+      "sha256": "f50054355a026ba1beeb1aa217c189d9e8068690d1397f044d8bd3321b6a7120",
+      "size_bytes": 432
+    },
+    {
+      "private_reference": "startup-mutation-verification.json",
+      "sha256": "92c0915b8e43611c29b7e3f70bff64ba9691bb09320a66e49410dfc994642a0d",
+      "size_bytes": 2520
+    },
+    {
+      "private_reference": "startup-ready.json",
+      "sha256": "c686d91002fadf1cb2b07dec563d3a4844eb8237f0f3f801ff30f1609883f3da",
+      "size_bytes": 357
+    },
+    {
+      "private_reference": "startup-powered.json",
+      "sha256": "12b7f35d884e82fd36fa46439d8ffa30e61ec629107ef6a9bbac62fdef348bba",
+      "size_bytes": 344
+    },
+    {
+      "private_reference": "startup-result.json",
+      "sha256": "0ab224ef7be0a17bb14c8422ef1dc57549094aacb90dff62ddab0826218a6c79",
+      "size_bytes": 1642
+    },
+    {
+      "private_reference": "startup-restoration-verification.json",
+      "sha256": "4bab677887faa4441676f1be1d34d7f47a78dc25c1edaaf5fac30f93b576ffc0",
+      "size_bytes": 2521
+    },
+    {
+      "private_reference": "probe-mutation-verification.json",
+      "sha256": "3b3183a66f0f39dfb14b46573f5cfcc834f506015fb74d2bb1dc3ddc3c09852c",
+      "size_bytes": 2516
+    },
+    {
+      "private_reference": "probe-ready.json",
+      "sha256": "c3f33d37fc5a1cefaa2b9501676c83e00eb316f6a54ffaa2349886259064341e",
+      "size_bytes": 286
+    },
+    {
+      "private_reference": "probe-powered.json",
+      "sha256": "43b0b4cb7ec142a8182e873bf41261b50304d5c0904a72e408001ef078a8de17",
+      "size_bytes": 323
+    },
+    {
+      "private_reference": "probe-capture-rearm.json",
+      "sha256": "c37a29fe5b410385d455b1acc3549d8b994fe96e68955a61974078cd9f5db948",
+      "size_bytes": 387
+    },
+    {
+      "private_reference": "probe-interleaving-review.json",
+      "sha256": "d80498bbe2e990600e2f9a700fd016ab9ed38398624084ae2ecb4aed553a6156",
+      "size_bytes": 3465
+    },
+    {
+      "private_reference": "review-probe-interleaving.py",
+      "sha256": "580387d82b46610ed73a0c4e43fb77a8f256fd602eec8ae294d5bc32fa11e369",
+      "size_bytes": 4873
+    },
+    {
+      "private_reference": "probe-result.json",
+      "sha256": "84b20d41fcf24bfc74835a05601b6482fc78b869edc757235171e7513a50c516",
+      "size_bytes": 3548
+    },
+    {
+      "private_reference": "probe-returned-enclosure-preflight.json",
+      "sha256": "6aadf03a9a96f6faffc8d13972300e480c1def5c2d9513f2da68cc23b4d7a063",
+      "size_bytes": 560
+    },
+    {
+      "private_reference": "probe-restoration-verification.json",
+      "sha256": "1fa6b5c71b358443ee7f55f831428cc40b786b1bbae9bfb1b8850631bfbedbe2",
+      "size_bytes": 2519
+    },
+    {
+      "private_reference": "restored-positive-ready.json",
+      "sha256": "d4818b2887a2425bdcc5ca8497e089bbc3906655d854a4f3946b3727b5c6b49b",
+      "size_bytes": 381
+    },
+    {
+      "private_reference": "restored-positive-powered.json",
+      "sha256": "913a930d19a80fc21ec96288d66d1d4b8b164c84de68deca4c89d9eeaf525b9a",
+      "size_bytes": 332
+    },
+    {
+      "private_reference": "restored-positive-result.json",
+      "sha256": "f37f64d73a96cbb8cdcdb36dd4a0e84f3371290305bad280649a97f0ff839ed7",
+      "size_bytes": 2150
+    },
+    {
+      "private_reference": "write-accounting.json",
+      "sha256": "b94dc23aec5838b16c9d35dc370e28d41dd42b65c95f11931729046e65463c07",
+      "size_bytes": 1427
+    },
+    {
+      "private_reference": "evaluate-uart.py",
+      "sha256": "851071e510e9b3457962a07dec0c858aa5d0f98604eea0f04ae80b49c130b285",
+      "size_bytes": 4607
+    },
+    {
+      "private_reference": "sd-return-ready.json",
+      "sha256": "8e8acdfecc68d7b38356480ee14e0f5c62de1425500d037f81db00d6f08700f4",
+      "size_bytes": 535
+    },
+    {
+      "private_reference": "sd-return-powered.json",
+      "sha256": "f96905838200fb4602ab6fd7dd0a88d8db2f859c6412792051356da5615de09e",
+      "size_bytes": 442
+    },
+    {
+      "private_reference": "ssh-host-key-verification.final-sd-return.json",
+      "sha256": "3a797c956b1d3f724bb6f58869999908024dad1d9877db5f2d2a986ae61414db",
+      "size_bytes": 954
+    },
+    {
+      "private_reference": "verify-final-sd-return.py",
+      "sha256": "bc465daeeeee2c5706b6ed9a19c87fbd0ae61b967179165adaa40ff5f4e961b1",
+      "size_bytes": 5652
+    },
+    {
+      "private_reference": "sd-return-inventory.json",
+      "sha256": "461a654dc09782287362d053040c30e8144b496bdd718561547c6e251fcbe826",
+      "size_bytes": 3176
+    },
+    {
+      "private_reference": "sd-return-result.json",
+      "sha256": "50225b0f79826ef7853243e499def9b7abeafeb3034d95a13fb2eb1767d5d699",
+      "size_bytes": 1484
+    },
+    {
+      "private_reference": "host-cleanup.json",
+      "sha256": "56f2c5e1a4aa4bc4129845d75ab57eeb70a40496eb6936ccb451fbf73bb99065",
+      "size_bytes": 349
+    },
+    {
+      "private_reference": "procedure-complete.json",
+      "sha256": "a01f2a5ccb42b1283d80e2dbd71ecd5fca71eec5ab5ffc914f3e8b59952d7b06",
+      "size_bytes": 638
+    }
+  ],
+  "record_kind": "reviewed-engineering-observation",
+  "remaining_work": [
+    "Firmware-HMAC feasibility and mechanism-specific secret/lock checks.",
+    "Protected persistent state and original-board/comparable-board copied-media demonstration.",
+    "Final fleet profile, protections, recovery and integrated admission qualification."
+  ],
+  "retention": {
+    "all_archive_member_digests_verified": true,
+    "archive_bytes": 117759,
+    "archive_regular_files": 69,
+    "archive_scope": "private test captures, procedure records, reviewed executors and two candidate-block preimages; Nix artifact payloads and unrelated earlier evidence excluded",
+    "archive_sha256": "ab915b08573eab24111088b38fd4f2e1ffba4f78fecee57cfeab3981773e991f",
+    "off_host_raw_backup": false,
+    "original_pre_staging_nvme_backup_spans": "Still unavailable after earlier host restart; current backups restore candidate blocks only.",
+    "raw_evidence_private_on_station": true,
+    "unused_capture": {
+      "disposition": "Capture window expired before power instruction; not counted as a boot test.",
+      "private_reference": "uart-probe.yksnjo4f/uart.raw.log",
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+      "size_bytes": 1
+    }
+  },
+  "scope": "Two bounded native root-corruption tests, both pristine restores, isolated positive control, final inspection SD return and host cleanup on the existing owned development board.",
+  "sd_return": {
+    "capture": {
+      "collector_sha256": "e753e3d7453678b7c99d6452acee9375c8db539fda0bbaa138cd1745a4298024",
+      "complete": true,
+      "duration_limit_seconds": 180,
+      "finished_at": "2026-09-17T02:02:46.226921+00:00",
+      "metadata": {
+        "private_reference": "final-sd-return/capture.json",
+        "sha256": "fb4c6df8b870a11b4726769ace9c1c5602a6503aa828b0a9588ce6b180862f1b",
+        "size_bytes": 1723
+      },
+      "raw": {
+        "private_reference": "final-sd-return/uart.raw.log",
+        "sha256": "a00729eabf3b7e7ec3a1f71bbac98f29a6b80c06aa46314bafe22e3818382bf7",
+        "size_bytes": 70596
+      },
+      "started_at": "2026-09-17T01:59:46.211573+00:00",
+      "termios_restored": true
+    },
+    "expected_board_sd_and_absent_nvme_verified": true,
+    "fresh_ssh_key_matched_to_uart": true,
+    "inspection_boot_image_sha256": "24fb925328ce67697d85d44379d9d695941dedd633c327ab3886795a193f6020",
+    "inspection_root_digest": "279278b4930319a5af4b9e250fbb8ead7169cd34fd71ae0349cb6a69efb52d31",
+    "network_connected_management_session": true,
+    "result": "verified",
+    "root_read_only_and_verity_healthy": true
+  },
+  "software_validation": {
+    "bounded_media_executor_tests_passed": 22,
+    "scope": "Regular-file fixtures and immutable candidate; software tests did not access block devices."
+  },
+  "source_revision": "27a73ea3e06c11608911a270f8e7f7f706da792c",
+  "total_logical_write_bytes": 16384
+}

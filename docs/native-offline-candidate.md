@@ -24,8 +24,11 @@ root hash and two fixed NVMe GPT partition GUIDs. The unsigned artifacts are
 FAT boot ramdisk is not an outer boot partition: do not write it directly to
 a boot partition. The [native handoff](native-offline-handoff.md) supplies the
 separate signing and media package. The [2026-09-16 observation](observations/2026-09-16-native-offline-positive.md)
-records one signed native offline positive and return to inspection SD. Physical
-integrity negatives and device-secret qualification remain pending.
+records one signed native offline positive and return to inspection SD. The
+[2026-09-17 verity observations](observations/2026-09-17-native-verity.md) add startup
+and late-read rejection, pristine restoration and a positive control; the
+late-read interpretation includes an explicit console-interleaving review.
+Device-secret feasibility and full fleet qualification remain pending.
 
 Mutable state is tmpfs only. There is no encrypted persistent-state volume or
 device identity. Development SSH/USB networking, DHCP, network-manager and
