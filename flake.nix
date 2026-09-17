@@ -278,6 +278,16 @@
           pkgs = import nixpkgs { inherit system; };
           built = packagesBySystem.${system};
         };
+      deviceSecretExecutionFactories =
+        system:
+        import ./nix/device-secret-execution.nix {
+          inherit lib;
+          pkgs = import nixpkgs { inherit system; };
+          built = packagesBySystem.${system};
+          platformRevision = nixos-raspberrypi.rev;
+          platformNarHash = nixos-raspberrypi.narHash;
+          lockFile = ./flake.lock;
+        };
       nativeOfflineSigningPlan = (nativeOfflineFactories "aarch64-linux").mkSigningPlan {
         candidate = nativeOfflineCandidate;
         review = nativeOfflineReview;
@@ -486,6 +496,18 @@
           { system, ... }@args:
           (nativeOfflineFactories system).mkVerified (builtins.removeAttrs args [ "system" ]);
         inherit mkRpi5DeviceSecretExperiment;
+        mkRpi5DeviceSecretSigningPlan =
+          { system, ... }@args:
+          (deviceSecretExecutionFactories system).mkSigningPlan (builtins.removeAttrs args [ "system" ]);
+        mkRpi5DeviceSecretExecutionPacket =
+          { system, ... }@args:
+          (deviceSecretExecutionFactories system).mkPacket (builtins.removeAttrs args [ "system" ]);
+        mkRpi5DeviceSecretReport =
+          { system, ... }@args:
+          (deviceSecretExecutionFactories system).mkReport (builtins.removeAttrs args [ "system" ]);
+        mkRpi5DeviceSecretMediaExecutor =
+          { system, ... }@args:
+          (deviceSecretExecutionFactories system).mkExecutor (builtins.removeAttrs args [ "system" ]);
         mkRpi5NativeOfflineMediaHandoff =
           { system, ... }@args:
           (nativeOfflineFactories system).mkMedia (builtins.removeAttrs args [ "system" ]);
@@ -792,6 +814,28 @@
           unit = provisioning.goUnitTests;
           unit-static = provisioning.staticGoTests;
           development-yubikey-signing = provisioning.developmentYubiKeySigningContract;
+          device-secret-execution-vm = import ./tests/device-secret-execution-vm.nix {
+            inherit pkgs;
+            fixture =
+              (import ./nix/device-secret-execution-tests.nix {
+                factories = deviceSecretExecutionFactories system;
+                inherit pkgs;
+                fixtureMedia =
+                  (import ./tests/native-offline-handoff.nix {
+                    inherit pkgs lib;
+                    built = packagesBySystem.${system};
+                  }).media;
+              }).fixture;
+          };
+          device-secret-execution = import ./nix/device-secret-execution-tests.nix {
+            inherit pkgs;
+            factories = deviceSecretExecutionFactories system;
+            fixtureMedia =
+              (import ./tests/native-offline-handoff.nix {
+                inherit pkgs lib;
+                built = packagesBySystem.${system};
+              }).media;
+          };
           device-secret-runner = (import ./nix/device-secret-runner.nix { inherit pkgs; }).check;
           device-secret-target = (import ./nix/device-secret-target.nix { inherit pkgs; }).check;
           device-secret-target-luks-vm = import ./tests/device-secret-target-vm.nix { inherit pkgs; };
@@ -1406,6 +1450,10 @@
               '';
         }
         // lib.optionalAttrs (system == "aarch64-linux") {
+          device-secret-signing-plan = (deviceSecretExecutionFactories "aarch64-linux").mkSigningPlan {
+            candidate = deviceSecretExperimentFixture;
+            sourceDateEpoch = 1786968000;
+          };
           device-secret-target-artifacts = import ./tests/device-secret-target-artifacts.nix {
             inherit pkgs;
             candidate = deviceSecretExperimentFixture;

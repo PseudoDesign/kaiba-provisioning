@@ -11,7 +11,7 @@ fresh-board seven-operation workflow. This plan grants no hardware authority.
 | --- | --- | --- |
 | 1. Host capture runner | Passive UART collection, boot-relative observation windows, private durable checkpoints, two-phase ordering, simulation isolation, restart/failure tests, and native packages. | Implemented; exercised with synthetic transcripts and pseudo-terminals, not the Pi. |
 | 2. Signed target harness | Reuse the pinned derivation and LUKS integration; implement exact target observations, a disposable volume, key cleanup and approved lock checks; create then reopen across isolated cold boots. | [Implemented in the target harness](device-secret-target-harness.md); software and VM tests only. Image selection, signing and physical operation remain pending. |
-| 3. Execution packet and staging | Exact artifacts, selected target/slot/volume, separate authority scopes, backups, one-shot privileged staging/readback, recovery route, capture plan and reviewed report projection. | Planned; complete and review this before live execution. |
+| 3. Execution packet and staging | Exact artifacts, selected target/slot/volume, separate authority scopes, backups, one-shot privileged staging/readback, recovery route, capture plan and reviewed report projection. | [Packet constructors and executor implemented](device-secret-execution-packet.md); software tests only. Exact physical packet, decisions and execution approval remain pending. |
 
 The later copied-media demonstration uses the original and a functioning
 comparable board. It remains part of the protected-state milestone. Full fleet
@@ -123,7 +123,7 @@ active state then requires review and never automatically repeats the phase.
 The runner performs no signing, media staging, power operation, UART payload
 write, SSH login, firmware call, control transaction, or audit submission.
 It does not need root merely to collect from an already permitted UART.
-The privileged staging executor is a separate planned component.
+The [privileged staging executor](device-secret-execution-packet.md#one-bounded-privileged-executor) is a separate component with fixed packet bindings.
 
 ## Experimental plan and reporting protocol
 
