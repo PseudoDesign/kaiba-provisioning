@@ -83,7 +83,7 @@ func (s *Signer) Sign(ctx context.Context, inputPath string) ([]byte, error) {
 		if operationContext.Err() != nil {
 			return nil, fmt.Errorf("YubiKey signing timed out or was cancelled: %w", operationContext.Err())
 		}
-		return nil, errors.New("YubiKey signing command failed")
+		return nil, commandFailure("YubiKey signing", result, err)
 	}
 	if len(result.Stdout) > maxDiagnosticBytes || len(result.Stderr) > maxDiagnosticBytes || len(result.Stdout) != 0 || len(result.Stderr) != 0 {
 		return nil, errors.New("YubiKey signing command produced unexpected output")
@@ -125,7 +125,7 @@ func (s *Signer) Sign(ctx context.Context, inputPath string) ([]byte, error) {
 		if operationContext.Err() != nil {
 			return nil, fmt.Errorf("signature verification timed out or was cancelled: %w", operationContext.Err())
 		}
-		return nil, errors.New("signature verification command failed")
+		return nil, commandFailure("signature verification", verification, err)
 	}
 	if len(verification.Stdout) > maxDiagnosticBytes || len(verification.Stderr) > maxDiagnosticBytes ||
 		!bytes.Equal(verification.Stdout, []byte("Verified OK\n")) || len(verification.Stderr) != 0 {
