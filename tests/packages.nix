@@ -7,6 +7,12 @@
 }:
 
 let
+  historicalEEPROMRelease =
+    (import ../nix/eeprom-release.nix {
+      inherit lib pkgs;
+      releaseVersion = "2026-05-26";
+    }).mkRpi5EEPROMRelease
+      { name = "kaiba-rpi5-eeprom-release-2026-05-26"; };
   goUnitTests = import ./go-unit.nix {
     inherit lib pkgs;
     source = built.goSource;
@@ -2552,7 +2558,7 @@ let
       let
         contract = built.rpi5EEPROMRelease.kaibaRpi5EEPROMRelease;
       in
-      contract.schemaVersion == "kaiba.provisioning.rpi5-eeprom-release/v1alpha1"
+      contract.schemaVersion == "kaiba.provisioning.rpi5-eeprom-release/v1alpha2"
       &&
         contract.requiredBootImageSHA256DeviceTreePath
         == "/proc/device-tree/chosen/bootloader/boot_img_sha256"
@@ -2589,7 +2595,7 @@ let
 
         readonly release=${built.rpi5EEPROMRelease}
         readonly manifest="$release/release.json"
-        readonly schema=${built.goSource}/schemas/rpi5-eeprom-release-v1alpha1.schema.json
+        readonly schema=${built.goSource}/schemas/rpi5-eeprom-release-v1alpha2.schema.json
         readonly source=${built.rpi5EEPROMRelease.kaibaRpi5EEPROMRelease.eepromSource}
         readonly update_script=${built.rpi5EEPROMRelease.kaibaRpi5EEPROMRelease.updatePieeprom}
         readonly verifier=${built.rpi5EEPROMReleaseVerifier}/bin/kaiba-verify-rpi5-eeprom-release
@@ -2600,15 +2606,24 @@ let
         cmp "$manifest" "$TMPDIR/canonical.json"
 
         jq -e '
-          .schema_version == "kaiba.provisioning.rpi5-eeprom-release/v1alpha1"
+          .schema_version == "kaiba.provisioning.rpi5-eeprom-release/v1alpha2"
           and .device_class == "raspberry-pi-5-model-b-v1alpha1"
-          and .source.revision == "05d94be4554ce44a057bfce8d0dd37d951703dab"
-          and .source.nix_hash == "sha256-duzftioXXrLizQVLwAS285n6ve4Y3rCt/ERjcGQG+Dc="
-          and .firmware.release == "2026-05-26"
-          and .firmware.build_epoch == 1779807685
-          and .firmware.revision == "086b83e3"
+          and .source.revision == "2fee426f27b6c54d3f5b6f36efd9a2fe1286a45d"
+          and .source.nix_hash == "sha256-EB4hvvPNSs0ykZ86VJLvCq5hBYwAZX/BmZ2leZyEBaM="
+          and .firmware.release == "2026-09-12"
+          and .firmware.build_epoch == 1789171628
+          and .firmware.revision == "a8698392"
           and .firmware.image.upstream_channel == "default"
-          and .firmware.image.upstream_path == "firmware-2712/default/pieeprom-2026-05-26.bin"
+          and .firmware.image.upstream_path == "firmware-2712/default/pieeprom-2026-09-12.bin"
+          and (.source | has("tag") | not)
+          and .firmware.versions_index_channel == "latest"
+          and .firmware.crypto_locks == {
+            "introduced_release": "2026-06-17",
+            "introduced_build_epoch": 1781654813,
+            "operations": ["read", "generate", "sign", "hmac", "usage"],
+            "required": true,
+            "hardware_qualified": false
+          }
           and .firmware.recovery.upstream_channel == "latest"
           and .firmware.recovery.upstream_path == "firmware-2712/latest/recovery.bin"
           and [.firmware.extracted_components[].id] == ["bootcode.bin", "bootsys"]
@@ -2620,8 +2635,8 @@ let
           and .toolchain.usbboot_rpi_eeprom_submodule == {
             "repository": "https://github.com/raspberrypi/rpi-eeprom",
             "revision": "25f837ab8009a643ed85b9aad94d911baddaf0c4",
-            "selected_helper_source_revision": "05d94be4554ce44a057bfce8d0dd37d951703dab",
-            "selected_helpers_byte_identical": true
+            "selected_helper_source_revision": "2fee426f27b6c54d3f5b6f36efd9a2fe1286a45d",
+            "selected_helpers_byte_identical": false
           }
           and [.toolchain.tools[].id] == [
             "update-pieeprom.sh",
@@ -2679,8 +2694,8 @@ let
           "$TMPDIR/source/firmware-2712/latest" \
           "$TMPDIR/source/tools"
         install -m 0644 \
-          "$source/firmware-2712/default/pieeprom-2026-05-26.bin" \
-          "$TMPDIR/source/firmware-2712/default/pieeprom-2026-05-26.bin"
+          "$source/firmware-2712/default/pieeprom-2026-09-12.bin" \
+          "$TMPDIR/source/firmware-2712/default/pieeprom-2026-09-12.bin"
         install -m 0644 \
           "$source/firmware-2712/latest/recovery.bin" \
           "$TMPDIR/source/firmware-2712/latest/recovery.bin"
@@ -2714,7 +2729,7 @@ let
         cp -R "$TMPDIR/source" "$TMPDIR/old-firmware-source"
         install -m 0644 \
           "$source/firmware-2712/old/latest/pieeprom-2025-01-14.bin" \
-          "$TMPDIR/old-firmware-source/firmware-2712/default/pieeprom-2026-05-26.bin"
+          "$TMPDIR/old-firmware-source/firmware-2712/default/pieeprom-2026-09-12.bin"
         set +e
         "$verifier" "$TMPDIR/old-firmware-source" "$update_script" \
           > "$TMPDIR/old-firmware.stdout" \
@@ -2725,6 +2740,41 @@ let
         test ! -s "$TMPDIR/old-firmware.stdout"
         grep -F 'firmware image predates the required boot_img_sha256 capability' \
           "$TMPDIR/old-firmware.stderr"
+
+        # May supports the earlier API, but cannot satisfy the required locks.
+        cp -R "$TMPDIR/source" "$TMPDIR/pre-lock-source"
+        install -m 0644 \
+          ${historicalEEPROMRelease}/firmware/pieeprom.original.bin \
+          "$TMPDIR/pre-lock-source/firmware-2712/default/pieeprom-2026-09-12.bin"
+        if "$verifier" "$TMPDIR/pre-lock-source" "$update_script" \
+          > "$TMPDIR/pre-lock.stdout" 2> "$TMPDIR/pre-lock.stderr"; then
+          echo 'accepted firmware predating required crypto locks' >&2
+          exit 1
+        fi
+        grep -F 'firmware image predates required fine-grained crypto locks' \
+          "$TMPDIR/pre-lock.stderr"
+
+        cp -R "$TMPDIR/source" "$TMPDIR/missing-locks-source"
+        sed -i '/## 2026-06-17: rpi-fw-crypto fine-grained locking/d' \
+          "$TMPDIR/missing-locks-source/firmware-2712/release-notes.md"
+        if "$verifier" "$TMPDIR/missing-locks-source" "$update_script" \
+          > "$TMPDIR/missing-locks.stdout" 2> "$TMPDIR/missing-locks.stderr"; then
+          echo 'accepted source without required crypto lock declaration' >&2
+          exit 1
+        fi
+        grep -F 'required fine-grained crypto lock declaration is missing' \
+          "$TMPDIR/missing-locks.stderr"
+
+        # Preserve the May manifest and schema exactly for historical replay.
+        test "sha256:$(sha256sum ${historicalEEPROMRelease}/release.json | cut -d ' ' -f 1)" = \
+          sha256:318dbaafa730aa25d655fdd89b29c5636c7dceb7e1a100e6ad7d8a22df79e1a5
+        check-jsonschema \
+          --schemafile ${built.goSource}/schemas/rpi5-eeprom-release-v1alpha1.schema.json \
+          ${historicalEEPROMRelease}/release.json
+        if check-jsonschema --schemafile "$schema" ${historicalEEPROMRelease}/release.json; then
+          echo 'current schema accepted the historical release' >&2
+          exit 1
+        fi
 
         cp "$update_script" "$TMPDIR/non-ab-update-pieeprom.sh"
         chmod u+w "$TMPDIR/non-ab-update-pieeprom.sh"
@@ -2743,7 +2793,7 @@ let
 
         cp -R "$TMPDIR/source" "$TMPDIR/tampered-source"
         printf X | dd \
-          of="$TMPDIR/tampered-source/firmware-2712/default/pieeprom-2026-05-26.bin" \
+          of="$TMPDIR/tampered-source/firmware-2712/default/pieeprom-2026-09-12.bin" \
           bs=1 seek=0 conv=notrunc status=none
         set +e
         "$verifier" "$TMPDIR/tampered-source" "$update_script" \
@@ -2756,6 +2806,12 @@ let
         grep -F 'EEPROM image digest differs from the reviewed pin' \
           "$TMPDIR/tampered.stderr"
 
+        jq '.source.tag = null' "$manifest" > "$TMPDIR/null-source-tag.json"
+        jq '.source.tag = "untagged"' "$manifest" > "$TMPDIR/invented-source-tag.json"
+        jq '.firmware.crypto_locks.hardware_qualified = true' "$manifest" \
+          > "$TMPDIR/false-hardware-claim.json"
+        jq 'del(.firmware.crypto_locks)' "$manifest" \
+          > "$TMPDIR/missing-locks.json"
         jq 'del(.required_capability)' "$manifest" \
           > "$TMPDIR/missing-required-capability.json"
         jq '.required_capability.fail_closed = false' "$manifest" \
@@ -2773,6 +2829,10 @@ let
         jq '.unexpected = true' "$manifest" \
           > "$TMPDIR/unknown-field.json"
         for invalid_manifest in \
+          "$TMPDIR/null-source-tag.json" \
+          "$TMPDIR/invented-source-tag.json" \
+          "$TMPDIR/false-hardware-claim.json" \
+          "$TMPDIR/missing-locks.json" \
           "$TMPDIR/missing-required-capability.json" \
           "$TMPDIR/non-fail-closed-capability.json" \
           "$TMPDIR/different-release.json" \
@@ -3080,7 +3140,7 @@ let
             and .public_key_fingerprint == $public_key_fingerprint
             and .signer_policy_digest == $signer_policy_digest
             and .customer_key_hash == $customer_key_hash
-            and .firmware_build_epoch == 1779807685
+            and .firmware_build_epoch == 1789171628
             and .source_date_epoch == 1786968000
             and .updater_mode == "fresh-board"
             and .updater_flags == ["-f"]
@@ -3750,6 +3810,13 @@ let
         check-jsonschema \
           --schemafile "$publication_schema" \
           ${staticGoTests}/publication.json
+
+        # Exercise the generated EEPROM manifest through the actual packaged
+        # finalizer, not only the synthetic Go publication fixture. This catches
+        # producer/consumer mismatches such as a null tag for a commit-only pin.
+        check-jsonschema \
+          --schemafile "$publication_schema" \
+          ${productionMediaSignedReleaseFixture}/publication.json
 
         test -x ${built.signedReleaseTool}/bin/kaiba-provision-finalize-release
         strings ${built.signedReleaseTool}/bin/kaiba-provision-finalize-release \

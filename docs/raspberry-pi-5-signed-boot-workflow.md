@@ -192,6 +192,9 @@ or signing authority.
 Building or verifying these directories does not execute `rpiboot` or report a
 hardware result.
 
+For the current firmware pin, public signing inputs and pending owned-device
+update, see the [EEPROM crypto-lock update](rpi5-eeprom-crypto-update.md).
+
 ## Checked-in development release
 
 [`releases/rpi5-v0.1.6/`](../releases/rpi5-v0.1.6/) contains public signed

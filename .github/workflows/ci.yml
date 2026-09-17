@@ -135,7 +135,10 @@ jobs:
           nix --accept-flake-config build -L --no-link \
             .#packages.x86_64-linux.kaiba-rpi5-stable-campaign-development-signing \
             .#packages.x86_64-linux.kaiba-rpi5-stable-verifier-development-signing \
-            .#packages.x86_64-linux.kaiba-rpi5-native-offline-development-signing
+            .#packages.x86_64-linux.kaiba-rpi5-native-offline-development-signing \
+            .#packages.x86_64-linux.rpi5-eeprom-release-signing-inputs \
+            .#packages.x86_64-linux.kaiba-provision-sign-eeprom \
+            .#packages.x86_64-linux.kaiba-provision-sign-eeprom-2026-05-26
 
       - name: Configure GitHub Pages
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
@@ -255,6 +258,9 @@ jobs:
             .#packages.aarch64-linux.kaiba-rpi5-stable-campaign-development-signing \
             .#packages.aarch64-linux.kaiba-rpi5-stable-verifier-development-signing \
             .#packages.aarch64-linux.kaiba-rpi5-native-offline-development-signing \
+            .#packages.aarch64-linux.rpi5-eeprom-release-signing-inputs \
+            .#packages.aarch64-linux.kaiba-provision-sign-eeprom \
+            .#packages.aarch64-linux.kaiba-provision-sign-eeprom-2026-05-26 \
             .#packages.aarch64-linux.kaiba-rpi5-stable-campaign-provisioner-signing-plan
 
       - name: Build remaining ARM64 checks and operator-facing packages

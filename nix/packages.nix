@@ -2,6 +2,7 @@
   pkgs,
   lib,
   moduleRoot ? null,
+  eepromReleaseVersion ? "2026-09-12",
 }:
 
 let
@@ -1269,10 +1270,7 @@ let
 
   eepromReleaseFactories = import ./eeprom-release.nix {
     inherit lib pkgs;
-    eepromPackageVersion = pkgs.raspberrypi-eeprom.version;
-    eepromSource = pkgs.raspberrypi-eeprom.src;
-    eepromSourceHash = pkgs.raspberrypi-eeprom.src.outputHash;
-    eepromSourceRevision = pkgs.raspberrypi-eeprom.src.rev;
+    releaseVersion = eepromReleaseVersion;
   };
   inherit (eepromReleaseFactories) mkRpi5EEPROMRelease;
   rpi5EEPROMRelease = mkRpi5EEPROMRelease { };

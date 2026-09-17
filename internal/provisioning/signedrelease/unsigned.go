@@ -261,7 +261,8 @@ func validateEEPROMRelease(encoded []byte) error {
 			return errors.New("EEPROM release manifest has an unexpected top-level shape")
 		}
 	}
-	if object["schema_version"] != "kaiba.provisioning.rpi5-eeprom-release/v1alpha1" ||
+	if (object["schema_version"] != "kaiba.provisioning.rpi5-eeprom-release/v1alpha1" &&
+		object["schema_version"] != "kaiba.provisioning.rpi5-eeprom-release/v1alpha2") ||
 		object["device_class"] != bundle.SignedReleaseDeviceClassV1Alpha1 {
 		return errors.New("EEPROM release manifest schema or device class is unsupported")
 	}
