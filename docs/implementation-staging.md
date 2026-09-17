@@ -5,8 +5,9 @@ and [fleet admission policy](fleet-admission-policy.md). The three delivery
 outcomes and FA-01 through FA-08 remain authoritative. Slice A now has a
 read-only software implementation and repeatable real-service checks, described
 in the [station runbook](provisioning-station-kiosk.md#read-only-live-station).
-Slice B and the later milestones remain planned. This document records no new
-hardware result or fleet approval.
+Slice B has a native candidate and a [scoped pristine offline observation](observations/2026-09-16-native-offline-positive.md);
+physical integrity negatives, device-secret feasibility and the later milestones
+remain open. This document grants no fleet approval.
 
 ## Starting decisions and planning exit
 
@@ -68,9 +69,11 @@ block this slice. It does not require a new UI framework or fleet registry.
 
 ## B. Native offline boot and protected-storage feasibility
 
-The [unsigned native candidate](native-offline-candidate.md) implements the
-image composition and software-test preparation. Signing/media handoff,
-physical demonstrations and device-secret feasibility remain separate gates.
+The [native candidate](native-offline-candidate.md) implements image composition
+and software-test preparation, and the [handoff](native-offline-handoff.md)
+provides the distinct signing/media route. A [pristine offline positive and
+return-to-SD sequence](observations/2026-09-16-native-offline-positive.md) is observed.
+Physical integrity negatives and device-secret feasibility remain separate gates.
 
 Prepare the existing [signed-boot components](raspberry-pi-5-signed-boot-workflow.md)
 and [verified-root target](../nix/modules/secure-boot-target.nix) for the selected
@@ -135,5 +138,5 @@ staging plan neither waives missing evidence nor grants hardware authority.
 
 The [native offline handoff](native-offline-handoff.md) supplies a distinct
 one-image signing scope and exact regular-file media package. Software checks
-do not close Slice B: offline physical results and the device-secret mechanism
-experiment remain pending.
+do not close Slice B: the pristine offline positive is observed, while physical
+corruption enforcement and the device-secret mechanism experiment remain pending.

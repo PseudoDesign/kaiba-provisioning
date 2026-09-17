@@ -22,7 +22,10 @@ The signed boot ramdisk will bind the kernel, initramfs, DTB, boot arguments,
 root hash and two fixed NVMe GPT partition GUIDs. The unsigned artifacts are
 `unsigned/boot.img`, `nvme/root-data.img`, and `nvme/root-hash.img`. The inner
 FAT boot ramdisk is not an outer boot partition: do not write it directly to
-a boot partition. The [native handoff](native-offline-handoff.md) supplies the separate signing and media package; actual signing and physical execution remain pending.
+a boot partition. The [native handoff](native-offline-handoff.md) supplies the
+separate signing and media package. The [2026-09-16 observation](observations/2026-09-16-native-offline-positive.md)
+records one signed native offline positive and return to inspection SD. Physical
+integrity negatives and device-secret qualification remain pending.
 
 Mutable state is tmpfs only. There is no encrypted persistent-state volume or
 device identity. Development SSH/USB networking, DHCP, network-manager and
@@ -91,5 +94,6 @@ The physical procedure must demonstrate a cold boot with every network path
 unavailable, no network-time dependency, the expected local action, and both
 integrity cases. Record the actual board/EEPROM/kernel identities, source and
 image bindings, media readback, corruption offsets/digests, UART capture
-reference and outcome. Raw observations stay outside Git; no hardware result
-is supplied by this PR. Firmware-HMAC feasibility proceeds independently.
+reference and outcome. Raw observations stay outside Git; publish only reviewed
+public results and digest references, as in the [retained positive observation](observations/2026-09-16-native-offline-positive.md).
+Firmware-HMAC feasibility proceeds independently.
