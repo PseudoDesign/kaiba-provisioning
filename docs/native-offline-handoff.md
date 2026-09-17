@@ -1,9 +1,11 @@
 # Native offline signing and physical-attempt handoff
 
 This is the execution package for the [native offline candidate](native-offline-candidate.md)
-in [Slice B](implementation-staging.md). It prepares signing and media inputs;
-physical boot and device-secret feasibility remain pending. Nothing here admits
-the device to a fleet or repeats fresh-board qualification.
+in [Slice B](implementation-staging.md). It prepares signing and media inputs.
+The [2026-09-16 observation](observations/2026-09-16-native-offline-positive.md)
+records one pristine native offline boot and verified return to inspection SD;
+physical corruption enforcement and device-secret feasibility remain pending.
+Nothing here admits the device to a fleet or repeats fresh-board qualification.
 
 ## Separate, single-image signing scope
 
