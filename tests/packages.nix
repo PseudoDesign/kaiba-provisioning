@@ -2615,7 +2615,7 @@ let
           and .firmware.revision == "a8698392"
           and .firmware.image.upstream_channel == "default"
           and .firmware.image.upstream_path == "firmware-2712/default/pieeprom-2026-09-12.bin"
-          and .source.tag == null
+          and (.source | has("tag") | not)
           and .firmware.versions_index_channel == "latest"
           and .firmware.crypto_locks == {
             "introduced_release": "2026-06-17",
@@ -2806,6 +2806,8 @@ let
         grep -F 'EEPROM image digest differs from the reviewed pin' \
           "$TMPDIR/tampered.stderr"
 
+        jq '.source.tag = null' "$manifest" > "$TMPDIR/null-source-tag.json"
+        jq '.source.tag = "untagged"' "$manifest" > "$TMPDIR/invented-source-tag.json"
         jq '.firmware.crypto_locks.hardware_qualified = true' "$manifest" \
           > "$TMPDIR/false-hardware-claim.json"
         jq 'del(.firmware.crypto_locks)' "$manifest" \
@@ -2827,6 +2829,8 @@ let
         jq '.unexpected = true' "$manifest" \
           > "$TMPDIR/unknown-field.json"
         for invalid_manifest in \
+          "$TMPDIR/null-source-tag.json" \
+          "$TMPDIR/invented-source-tag.json" \
           "$TMPDIR/false-hardware-claim.json" \
           "$TMPDIR/missing-locks.json" \
           "$TMPDIR/missing-required-capability.json" \
@@ -3806,6 +3810,13 @@ let
         check-jsonschema \
           --schemafile "$publication_schema" \
           ${staticGoTests}/publication.json
+
+        # Exercise the generated EEPROM manifest through the actual packaged
+        # finalizer, not only the synthetic Go publication fixture. This catches
+        # producer/consumer mismatches such as a null tag for a commit-only pin.
+        check-jsonschema \
+          --schemafile "$publication_schema" \
+          ${productionMediaSignedReleaseFixture}/publication.json
 
         test -x ${built.signedReleaseTool}/bin/kaiba-provision-finalize-release
         strings ${built.signedReleaseTool}/bin/kaiba-provision-finalize-release \

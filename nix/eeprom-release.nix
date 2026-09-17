@@ -241,11 +241,13 @@ let
     source = {
       inherit (policy.source)
         repository
-        tag
         revision
         ;
       package_version = policy.source.packageVersion;
       nix_hash = policy.source.nixHash;
+    }
+    // lib.optionalAttrs historical {
+      inherit (policy.source) tag;
     };
     firmware = {
       inherit (policy.firmware)

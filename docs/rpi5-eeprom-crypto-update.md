@@ -17,7 +17,8 @@ release manifest explicitly records `hardware_qualified: false`.
 The selected source is
 [`raspberrypi/rpi-eeprom` `2fee426f27b6c54d3f5b6f36efd9a2fe1286a45d`](https://github.com/raspberrypi/rpi-eeprom/tree/2fee426f27b6c54d3f5b6f36efd9a2fe1286a45d),
 with Nix hash `sha256-EB4hvvPNSs0ykZ86VJLvCq5hBYwAZX/BmZ2leZyEBaM=`.
-This is a commit pin, with no claimed release tag. Its
+This is a commit pin: the manifest omits `source.tag` rather than emitting a
+null or invented tag. Its
 [release notes](https://github.com/raspberrypi/rpi-eeprom/blob/2fee426f27b6c54d3f5b6f36efd9a2fe1286a45d/firmware-2712/release-notes.md)
 promote September 12 to the default channel on September 15. They also describe
 the September 10 move of crypto functions into protected RAM, with the same API.
