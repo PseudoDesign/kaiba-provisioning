@@ -159,6 +159,12 @@ waive the storage boundary. No production identity is used in this experiment.
 
 ## Bounded mechanism experiment
 
+The [automation plan and host runner](device-secret-automation.md) reduce the
+operator session to prepared execution and physical steps. The passive runner
+and software rehearsal are implemented; the signed target harness and exact
+staging/execution packet remain planned. Neither a capture plan nor a matched
+target report grants execution authority or qualifies this mechanism.
+
 Prepare a signed test image and an exact operation/slot plan after the baseline.
 Use disposable secret material. Disable swap, core dumps and persistent logs;
 keep result buffers in locked memory and clear them after comparison. Negative
