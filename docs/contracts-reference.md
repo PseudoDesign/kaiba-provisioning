@@ -15,7 +15,7 @@ exported package.
 
 ## JSON schema groups
 
-There are 57 versioned files under [`schemas/`](../schemas/). Several groups
+Versioned JSON schemas live under [`schemas/`](../schemas/). Several groups
 retain older alpha revisions so checked inputs can be verified; revision
 coexistence does not imply automatic migration.
 
@@ -50,6 +50,7 @@ and version constants for these interfaces live with their strict decoders:
 | Lane plan, request, attempt, and boot transition | `internal/provisioning/laneguard` | Fixed operation vocabulary, plan digest, execute-once persistence, safe-off, and reconciliation |
 | Operator prompt | `internal/provisioning/operatorprompt` | Unix peer authentication and exact server-selected acknowledgement phrases |
 | Workflow proposals | `internal/provisioning/operatorworkflow` and `plancompiler` | Authority-free draft reconstruction and typed approval/intent/evidence transitions |
+| Read-only station observation | `internal/provisioning/livestation/observation_types.go` | Separate `station-observation-runtime/v1alpha1` and `station-observation-state/v1alpha1` contracts; one authenticated transaction, recorded operation results, explicit unknown hardware state, and memory-only stale snapshots; no action endpoint |
 | Release binding | `internal/provisioning/releasebinding` | Exact equality over signed release, lane package, compiled artifacts, customer key, EEPROM, and boot image digests |
 | Stable release verification and handoff | `internal/provisioning/stableverifier` and `stablehandoff` | Inline root/delegated signatures, exact release roles, retained descriptors, fixed credential archive, and kexec boundary |
 | Non-production authorization and evidence | `internal/provisioning/releaseauthorization`, `verifierevents`, and `stableevidence` | TLS 1.3 with explicit roots, one-use challenge binding, structured UART events, and allowlisted spike evidence |

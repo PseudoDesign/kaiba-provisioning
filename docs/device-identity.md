@@ -2,11 +2,14 @@
 
 ## Status and scope
 
-This document defines the target production contract for provisioning,
-enrolling, operating, rotating, recovering, and retiring Kaiba device
-credentials. It is platform-neutral where possible and specializes the
-Raspberry Pi 5 bootstrap requirements described in the
-[production security follow-on](raspberry-pi-5-production-security-follow-on.md).
+This document is the proposed identity and credential-lifecycle reference.
+The [fleet admission policy](fleet-admission-policy.md) selects the first-fleet
+requirements: normal offline operation, copied-storage protection, unique
+identity, and durable activation. Offline rollback prevention and online
+authorization before local unlock are not required. Broader lifecycle features
+below do not automatically add work to the [delivery scope](delivery-scope.md);
+an unsupported operation must remain unavailable rather than use an insecure
+fallback.
 
 > [!IMPORTANT]
 > This lifecycle is not implemented by the current repository. The current
@@ -28,7 +31,11 @@ When a service accepts a device, it needs evidence that:
 2. the registration authority assigned that key exactly one canonical logical
    device identity; and
 3. the device, credential role, key generation, certificate instance, issuer,
-   release authorization, and lifecycle state remain allowed by current policy.
+   applicable release policy, and lifecycle state remain allowed by current policy.
+
+The first fleet does not require remote attestation of the running release.
+Current credential/membership authorization is still required for fleet access;
+it is not a server lease on normal offline functions.
 
 The registration authority, not a device-supplied hostname, serial number,
 MAC address, common name, or request field, assigns the canonical identity. A
@@ -58,8 +65,10 @@ freshness, endorsements, reference values, and appraisal policy.
 - **Device root secret**: device-lifetime secret or private key anchoring
   stronger derivations. It is not the PKI root-CA key and is never a general
   network credential.
-- **Bootstrap identity**: narrowly accepted for enrollment, recovery, and
-  pre-release authorization. It is not used for routine application traffic.
+- **Bootstrap identity or endorsement**: narrowly accepted to authorize initial
+  enrollment or recovery. The first-fleet proposal uses a qualified physical
+  channel and authenticated station endorsement; it does not assume an already
+  enrolled device credential or require online pre-unlock authorization.
 - **Operational identity**: replaceable key and certificate used by one
   deployed workload or protocol.
 - **Attestation identity**: restricted key used only to authenticate structured
@@ -81,12 +90,15 @@ authentication, inbound service authentication, attestation, storage
 encryption, and CA issuance use separate keys or reviewed, strongly
 domain-separated derivations.
 
-For the proposed no-TPM Pi design, the preferred pre-unlock bootstrap identity
-is a separate hardware key or a strongly domain-separated child key. Direct
-HMAC/ECDSA dual use of the BCM2712 device-private OTP key is not an assumed
-capability. A software key created inside LUKS may serve as a lower-assurance
-operational key after unlock, but cannot satisfy the stable verifier's
-pre-unlock bootstrap requirement.
+For the selected offline Pi profile, local unlock can precede enrollment.
+An independent operational software key in LUKS is a proposed mechanism for
+the copied-storage boundary, with the privileged-software limits below.
+The station must bind its public key to the exact physical target and fresh
+transaction through the [qualified bootstrap exchange](fleet-admission-policy.md#how-to-establish-the-conditions).
+Neither a serial number nor physical custody alone supplies that proof.
+Direct HMAC/ECDSA dual use of the BCM2712 device-private OTP key remains an
+unapproved assumption. The archived online-verifier design's separate
+pre-unlock identity is not a first-fleet prerequisite.
 
 ## Device-resident material
 
@@ -98,7 +110,7 @@ pre-unlock bootstrap requirement.
 | Validation bundle | No | Integrity- and rollback-sensitive; updated through an authenticated path |
 | Attestation private key | Yes | Restricted to structured evidence; never exposed as a generic TLS key |
 | LUKS and data-encryption material | Yes | Separate from identity and signing roles; never included in audit evidence |
-| One-boot private key | Yes | Generated for one authorized boot, held in volatile memory, then destroyed |
+| One-boot private key, if that protocol is selected | Yes | Generated for one authorized boot, held in volatile memory, then destroyed |
 | Enrollment/recovery token | Yes | Single device, transaction, audience, and use; short-lived and erased afterward |
 | Hardware identifiers | Usually no | Inventory correlation only; not proof of possession |
 | Transaction and idempotency state | No | Durable and integrity-protected because it prevents replay and unsafe retry |
@@ -163,7 +175,9 @@ not collapse those different assurances into the phrase "hardware-backed."
 - Verified boot, rollback, debug lifecycle, update authorization, and operation
   locks match the claimed key boundary.
 - An unavailable signer, expired certificate, stale trust bundle, or failed
-  policy check fails closed; there is no unprotected fallback key.
+  network-authorization check denies the affected credential use; there is no
+  unprotected fallback key. Network-credential expiry or a server outage alone
+  must not disable normal local operation or local storage unlock.
 
 ### Fleet and service requirements
 
@@ -178,8 +192,10 @@ not collapse those different assurances into the phrase "hardware-backed."
 - The offline trust root does not perform routine issuance.
 - Lifecycle operations are authenticated, authorized, idempotent, and
   attributable to a service or human identity.
-- Recovery, revocation, CA compromise, ownership transfer, and retirement are
-  designed and tested before the first production device is enrolled.
+- Recovery and revocation paths required by the selected profile must be
+  designed and tested before admission. Supported rotation, CA recovery,
+  ownership-transfer, and retirement operations require their corresponding
+  checks before being enabled; unsupported operations remain denied.
 
 ## Provisioning and enrollment roles
 
@@ -233,8 +249,8 @@ whatever certificate or target state it happens to observe:
    candidate's bootstrap evidence; the device authenticates and authorizes the
    intended enrollment domain. Physical custody alone supplies neither
    direction automatically.
-6. **Apply security foundation.** Establish verified boot, fresh-release gate,
-   storage, debug, update, recovery, and operation-lock posture. Record intent
+6. **Apply security foundation.** Establish verified boot, the selected release
+   policy, storage, debug, update, recovery, and operation-lock posture. Record intent
    before each irreversible action and verify direct postconditions.
 7. **Create device-unique material.** Generate or derive keys in their final
    boundaries. Export only public keys, endorsements, and fingerprints. Check
@@ -341,9 +357,12 @@ Use the stronger bootstrap/recovery path and operator policy.
 Device-side server trust and service-side device trust roll independently.
 Validation-bundle rollover first installs overlapping old and new trust,
 confirms adoption, changes the serving or issuing chain, waits through the
-offline recovery window, and finally removes old trust. Bundle versions must
-be monotonic or otherwise rollback-protected. Compromise of the old root needs
-an independent recovery trust path rather than ordinary overlap.
+offline recovery window, and finally removes old trust. Fleet services enforce
+currently authorized trust and credential generations on reconnection. Any
+additional device-side protection against trust-bundle rollback must be
+specified and evidenced separately; this profile does not require an offline
+hardware counter. Compromise of the old root needs an independent recovery
+trust path rather than ordinary overlap.
 
 ## Revocation and quarantine
 
@@ -351,11 +370,15 @@ On suspected loss or compromise:
 
 1. quarantine at the narrowest safe scope: certificate instance, slot
    generation, logical instance, entire device, cohort, or issuer;
-2. deny production use and routine renewal while preserving only explicitly
-   authorized recovery;
+2. deny fleet access and routine renewal while preserving only explicitly
+   authorized recovery access;
 3. revoke affected certificates and publish the configured status information;
 4. determine the earliest plausible exposure and affected descendants; and
 5. use a stronger bootstrap/recovery path for replacement.
+
+A disconnected device cannot learn a newly issued revocation. Revocation does
+not promise immediate shutdown of its offline local functions. Reconnection
+must enforce the current fleet decision before access is granted.
 
 Compromise scope matters. An operational-key compromise normally requires a
 new generation. Bootstrap/root compromise invalidates trust in the physical
@@ -449,8 +472,9 @@ A production implementation must demonstrate that:
 - replacement storage leaves the prior instance retired;
 - reset, transfer, and retirement remove prior authorization and close audit;
 - unknown irreversible results and audit gaps prevent completion; and
-- production release authorization was freshly enforced before protected
-  storage and credentials became usable.
+- the installed release was approved at admission, local boot/unlock obeys
+  the selected offline policy, and fleet access requires current credential
+  and membership authorization.
 
 Until all applicable gates pass on production hardware, the repository must
 continue to describe device identity and `enrollment_ready` as future work.

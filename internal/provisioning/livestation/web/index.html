@@ -11,10 +11,10 @@
   <body>
     <header class="masthead">
       <div>
-        <p class="eyebrow">Hardware-backed station</p>
-        <h1>Kaiba Live Provisioning</h1>
+        <p id="station-label" class="eyebrow">Hardware-backed station</p>
+        <h1 id="station-title">Kaiba Live Provisioning</h1>
       </div>
-      <div class="live-marker" aria-label="Live, non-simulated interface">
+      <div id="mode-marker" class="live-marker" aria-label="Live, non-simulated interface">
         <span aria-hidden="true"></span>
         Live authority
       </div>
@@ -23,10 +23,10 @@
     <main>
       <section class="safety-banner" aria-labelledby="safety-title">
         <div>
-          <p class="eyebrow">Development security boundary</p>
+          <p id="safety-label" class="eyebrow">Development security boundary</p>
           <h2 id="safety-title">Rollback protection is not implemented</h2>
         </div>
-        <p>
+        <p id="safety-description">
           This station can finish only at <code>security_applied</code>. It cannot
           enroll a device or classify one as production-ready.
         </p>
@@ -35,7 +35,7 @@
       <section class="phase-card" aria-labelledby="phase-title">
         <div class="phase-heading">
           <div>
-            <p class="eyebrow">Authoritative workflow phase</p>
+            <p id="phase-label" class="eyebrow">Authoritative workflow phase</p>
             <h2 id="phase-title">Loading live state…</h2>
           </div>
           <button id="refresh" class="secondary" type="button">Refresh state</button>
@@ -44,9 +44,14 @@
         <p id="connection-status" class="connection" role="status" aria-live="polite"></p>
       </section>
 
+      <section id="observation-times" class="panel" aria-labelledby="observation-times-title" hidden>
+        <h2 id="observation-times-title">When this was checked</h2>
+        <dl id="observation-time-facts" class="facts"></dl>
+      </section>
+
       <div class="facts-grid">
         <section class="panel" aria-labelledby="target-title">
-          <p class="eyebrow">Direct observation</p>
+          <p id="target-label" class="eyebrow">Direct observation</p>
           <h2 id="target-title">Target</h2>
           <dl id="target-facts" class="facts"></dl>
         </section>
@@ -58,10 +63,28 @@
         </section>
       </div>
 
+      <section id="operation-panel" class="panel" aria-labelledby="operation-title" hidden>
+        <p class="eyebrow">Coordinator records</p>
+        <h2 id="operation-title">Recorded operation progress</h2>
+        <ol id="operation-list" class="evidence-list"></ol>
+      </section>
+
+      <section id="condition-panel" class="panel" aria-labelledby="condition-title" hidden>
+        <h2 id="condition-title">Unresolved conditions</h2>
+        <ul id="condition-list" class="condition-list"></ul>
+      </section>
+
+      <section id="port-panel" class="panel" aria-labelledby="port-title" hidden>
+        <p class="eyebrow">Local station observations</p>
+        <h2 id="port-title">Configured ports</h2>
+        <p class="action-guidance">Port visibility does not authenticate the bound device. A normally booted device may not appear in RPIBOOT.</p>
+        <dl id="port-facts" class="facts"></dl>
+      </section>
+
       <section class="panel" aria-labelledby="evidence-title">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">Durable receipts</p>
+            <p id="evidence-label" class="eyebrow">Durable receipts</p>
             <h2 id="evidence-title">Authoritative evidence</h2>
           </div>
           <strong id="evidence-count">0 records</strong>
@@ -69,7 +92,12 @@
         <ol id="evidence-list" class="evidence-list"></ol>
       </section>
 
-      <section class="panel action-panel" aria-labelledby="actions-title">
+      <details id="observation-diagnostics" class="panel diagnostics" hidden>
+        <summary>Diagnostic identifiers and intended bindings</summary>
+        <dl id="diagnostic-facts" class="facts"></dl>
+      </details>
+
+      <section id="action-panel" class="panel action-panel" aria-labelledby="actions-title">
         <p class="eyebrow">Current revision only</p>
         <h2 id="actions-title">Allowed actions</h2>
         <p class="action-guidance">

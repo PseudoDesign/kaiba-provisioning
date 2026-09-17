@@ -1,0 +1,261 @@
+{
+  "candidate": {
+    "boot_image_sha256": "b6ff9cf9f3e6ce925f0ed2ffb91bebf8f08c4c7c1299279f8f13d812cf91a7bd",
+    "expected_os_release_sha256": "98ee691b0ffa69d72bada9173f56ce85a7cc4244fa069949e2761fd3d4617ffa",
+    "expected_probe_sha256": "9448a513dbeb546ec6de043762fee167ee09298ebb99003694c0d88e869b4fe3",
+    "root_data_partuuid": "b1a02b6c-8ec1-4ca9-9b8a-348211271de0",
+    "root_data_sha256": "dd03d49e9c35d54d0b1cd057b81560fbf3806135b05ad389524050a4d9237f00",
+    "root_tree_partuuid": "66d98f80-4260-4de0-98b5-232bcac98e29",
+    "root_tree_sha256": "71a140d40e844ea1107721bdb45164262ced6c52b3e389f6c6189402cb227f6d",
+    "signed_root_digest": "162d93bff118b3de09e92b6d92299f842875ef557c7b52c9d24060c10066a1c5",
+    "source_configuration_sha256": {
+      "nix/modules/native-offline-evidence.nix": "1c066d86bf15eb5bdcc115323a8b330db7e20f4b5b00f03c93da7dc8d5c901e3",
+      "nix/rpi5-native-offline-system.nix": "c99916c531c66d2b2da1d2106b1c5be109441ce35fe37aa3787872255b0b5390"
+    }
+  },
+  "host_cleanup": {
+    "disk_management_service_restored": true,
+    "nvme_enclosure_disconnected": true,
+    "original_inspection_network_active": true,
+    "result": "verified",
+    "temporary_network_profile_removed": true
+  },
+  "limits": {
+    "authority_granted_by_this_record": false,
+    "fleet_admission": "unevaluated",
+    "independent_remote_attestation": false,
+    "new_signing_media_writes_eeprom_or_otp_operations_in_this_boot_and_return": false,
+    "original_nvme_filesystem_restored": false,
+    "slice_b_complete": false
+  },
+  "media_readback": {
+    "finished_at": "2026-09-16T23:07:07.376771+00:00",
+    "read_bytes": 1177204224,
+    "result": "all-five-staged-spans-match",
+    "spans": [
+      {
+        "matched": true,
+        "name": "gpt-primary",
+        "offset_bytes": 0,
+        "sha256": "64961d27c0c35ca73ebcfae0369900fdbee3da843af024ffe2e738dafbac5228",
+        "size_bytes": 17408
+      },
+      {
+        "matched": true,
+        "name": "boot-filesystem",
+        "offset_bytes": 1048576,
+        "sha256": "a3a67f76c0462001d5fd9f901631c6835181e2808f184241d1265e505b46812a",
+        "size_bytes": 134217728
+      },
+      {
+        "matched": true,
+        "name": "root-data",
+        "offset_bytes": 135266304,
+        "sha256": "dd03d49e9c35d54d0b1cd057b81560fbf3806135b05ad389524050a4d9237f00",
+        "size_bytes": 1034792960
+      },
+      {
+        "matched": true,
+        "name": "root-hash",
+        "offset_bytes": 1170210816,
+        "sha256": "71a140d40e844ea1107721bdb45164262ced6c52b3e389f6c6189402cb227f6d",
+        "size_bytes": 8159232
+      },
+      {
+        "matched": true,
+        "name": "gpt-secondary",
+        "offset_bytes": 256060497408,
+        "sha256": "33dafb8ee72706cb3b40ecdfde2719ec016fbfe7c61c5ba298b92f35a081b782",
+        "size_bytes": 16896
+      }
+    ],
+    "started_at": "2026-09-16T23:06:38.458535+00:00"
+  },
+  "native_boot": {
+    "boot_mode": "NVMe",
+    "capture": {
+      "private_reference": "uart-capture.9vvfnxz2/uart.raw.log",
+      "sha256": "7a369e6b54643a84aa7f765cc3ba606e1bb6db7f40113eb193955d67a74d99c9",
+      "size_bytes": 69333
+    },
+    "capture_finished_at": "2026-09-16T23:40:46.552114+00:00",
+    "capture_started_at": "2026-09-16T23:37:46.534177+00:00",
+    "clock": {
+      "initial_rtc_utc": "1970-01-01T00:00:20Z",
+      "result": "Local boot/action completed without network-supplied time in this configuration.",
+      "systemd_builtin_epoch_utc": "2026-03-17T19:55:52Z"
+    },
+    "diagnostics": [
+      {
+        "context": "The pinned candidate explicitly omits the wireless regulatory database and disables wireless configuration.",
+        "message": "cfg80211 failed to load regulatory.db"
+      }
+    ],
+    "isolation": {
+      "ethernet_poe": "operator reported disconnected",
+      "independent_host_observation": "No Pi USB network gadget observed during capture",
+      "power": "operator reported separate USB-C supply only",
+      "usb_management_and_other_usb_storage_network_adapters": "operator reported disconnected",
+      "wireless_and_network_time": "Pinned candidate disables wireless configuration and network-time clients; source hashes retained above."
+    },
+    "markers": {
+      "local_action": "KAIBA_NATIVE_OFFLINE=pass schema=v1 os_release_sha256=sha256:98ee691b0ffa69d72bada9173f56ce85a7cc4244fa069949e2761fd3d4617ffa root=/dev/mapper/root fleet_admission=unevaluated",
+      "pristine_probe": "KAIBA_NATIVE_OFFLINE_PROBE=pass sha256=sha256:9448a513dbeb546ec6de043762fee167ee09298ebb99003694c0d88e869b4fe3",
+      "secure_boot": "KAIBA_SECURE_BOOT_EVIDENCE=pass signed=80000009 boot_img_sha256=sha256:b6ff9cf9f3e6ce925f0ed2ffb91bebf8f08c4c7c1299279f8f13d812cf91a7bd root=/dev/mapper/root rollback=unimplemented enrollment_ready=false"
+    },
+    "result": "pristine-offline-positive-observed",
+    "sd_fallback_observed": false
+  },
+  "observation_date_utc": "2026-09-16",
+  "observation_id": "native-offline-positive-20260916",
+  "platform": {
+    "board_model": "Raspberry Pi 5 Model B Rev 1.1",
+    "board_reference": "existing-owned-development-board",
+    "board_revision": "a04171",
+    "identity_binding": "Fresh UART-checked SSH inventories before and after; full board and media identifiers retained privately.",
+    "installed_bootloader_build_time": "2026-05-26T16:01:25Z",
+    "installed_bootloader_revision": "086b83e3332dfc8927c56762771d082f3077a1ae",
+    "kernel_release": "6.18.34",
+    "nvme_capacity_bytes": 256060514304,
+    "nvme_identity_basis": "Private preflight/readback identity plus operator-reported physical movement; the native UART did not independently emit its full serial.",
+    "storage_topology": "native candidate on NVMe; separate inspection SD"
+  },
+  "private_evidence_references": [
+    {
+      "private_reference": "native-positive-authorization.json",
+      "sha256": "0d123a164928f5f56d0a7aaf3ab4b9c3dde6e9329d07bbcb8946116edfd0ba6a",
+      "size_bytes": 853
+    },
+    {
+      "private_reference": "native-positive-preflight.json",
+      "sha256": "a2cb9041c6ee128436db54e0e39c6bbd86f7296e52b8716f0c3edce9cbda61cd",
+      "size_bytes": 1865
+    },
+    {
+      "private_reference": "native-positive-power-off-readiness.json",
+      "sha256": "c62c8a23cc2ca98a4f26ed2b3e66b1c35d39f38ecef840220f0520889b68fa0e",
+      "size_bytes": 942
+    },
+    {
+      "private_reference": "native-positive-powered-isolation.json",
+      "sha256": "c8c3e6da3aad40c9fad8c5b527a284d6bb30a908f18417d3d42495fa2dbc41d0",
+      "size_bytes": 595
+    },
+    {
+      "private_reference": "enclosure-readback.json",
+      "sha256": "aa6696584ac317c96c2632901697d5123af16e6a2d99b0e950481de624b30537",
+      "size_bytes": 2084
+    },
+    {
+      "private_reference": "uart-capture.9vvfnxz2/capture.json",
+      "sha256": "71e5b11201536f6744a2db75f394b4d1f66c7f1679ae6ad94cd802c0e38f6ef2",
+      "size_bytes": 1945
+    },
+    {
+      "private_reference": "uart-capture.9vvfnxz2/uart.raw.log",
+      "sha256": "7a369e6b54643a84aa7f765cc3ba606e1bb6db7f40113eb193955d67a74d99c9",
+      "size_bytes": 69333
+    },
+    {
+      "private_reference": "native-positive-result.json",
+      "sha256": "3fdf2b8b054f816fdeda5b166e69979c5cd83819df94a0c265b80b07d45661ae",
+      "size_bytes": 4766
+    },
+    {
+      "private_reference": "native-positive-sd-return-readiness.json",
+      "sha256": "f985705a9cce5899ff657a16df773a0f5e21adaa2c66c4df9fb2519998785249",
+      "size_bytes": 898
+    },
+    {
+      "private_reference": "native-positive-sd-return-powered.json",
+      "sha256": "66163359b35f5ed5c3d4bca330ac84515213bd55f4085062453e559381c8678c",
+      "size_bytes": 399
+    },
+    {
+      "private_reference": "ssh-host-key-verification.sd-return.json",
+      "sha256": "5bd961e056b655e968b64a82c919f709650d4024907c3f678585480f5a45dff1",
+      "size_bytes": 1009
+    },
+    {
+      "private_reference": "sd-return-inventory.json",
+      "sha256": "e69a369bc838c98e46462ba7f9dbb1486d2f8460de66eed5f3184e494efdb6ae",
+      "size_bytes": 2889
+    },
+    {
+      "private_reference": "sd-return-bootloader-version.json",
+      "sha256": "2317f963face610e82725c6a579aaff610c41b7a51abe9e8ec55de10cc6d631d",
+      "size_bytes": 522
+    },
+    {
+      "private_reference": "uart-capture.oy5hxpjc/capture.json",
+      "sha256": "9f6c67878219a2a1067b807dc0b89e43fe60ae4d4569c4cdd301ec9aa89e0219",
+      "size_bytes": 1723
+    },
+    {
+      "private_reference": "uart-capture.oy5hxpjc/uart.raw.log",
+      "sha256": "90cb21f925cc06d7b676949bd2fa251293d1b2367428854f245a591e0d521ca4",
+      "size_bytes": 71317
+    },
+    {
+      "private_reference": "sd-return-result.json",
+      "sha256": "7f49c6203ec7e84d5270a593919ad681312503f8f1a514d3ed6a90d42d5174b0",
+      "size_bytes": 2624
+    },
+    {
+      "private_reference": "native-positive-host-cleanup.json",
+      "sha256": "75e99eac5b1a4d423834fd8f9f9a0d020ea1f82bebe5412ad60cd3e524ad2e67",
+      "size_bytes": 628
+    },
+    {
+      "private_reference": "native-positive-procedure-complete.json",
+      "sha256": "3aeda14c4bb2aa63e21639ee462c1eefc619216db7ce95261affad113c9504ed",
+      "size_bytes": 1439
+    },
+    {
+      "private_reference": "next-native-offline-positive-review.md",
+      "sha256": "5162f04fc335bbcc7097a81447826b4e52e1762649314e593a29cced24db5e1e",
+      "size_bytes": 6286
+    }
+  ],
+  "record_kind": "reviewed-native-offline-engineering-observation",
+  "remaining_work": [
+    "physical startup-root corruption rejection",
+    "physical late-read corruption rejection",
+    "pristine restoration readback and repeated positive after negative tests",
+    "firmware-HMAC feasibility and mechanism-specific secret/lock checks",
+    "protected persistent state and later original/comparable-board copied-media demonstration"
+  ],
+  "retention": {
+    "lost_prior_evidence": "Host restart removed earlier temporary captures and original pre-staging NVMe backup bytes; the new captures and readback support only the stated current observations. Hashes do not recreate missing bytes.",
+    "off_host_raw_backup_created": false,
+    "private_evidence_set": "slice-b-recovery-20260916",
+    "raw_material_in_git": false,
+    "raw_material_location": "operator-held on the station, outside Git",
+    "station_local_archive": {
+      "nix_store_payloads_included": false,
+      "original_pre_staging_nvme_bytes_included": false,
+      "private_reference": "slice-b-recovery-20260916.tar.gz",
+      "regular_files_verified": 63,
+      "sha256": "ef108735c0549f5e174953ddc190bf91419090334d016f6f12ffafb75c5364c9",
+      "size_bytes": 110474
+    }
+  },
+  "scope": "One pristine native offline boot and one return to inspection SD on the existing owned development board; not a canonical qualification or admission record.",
+  "sd_return": {
+    "capture": {
+      "private_reference": "uart-capture.oy5hxpjc/uart.raw.log",
+      "sha256": "90cb21f925cc06d7b676949bd2fa251293d1b2367428854f245a591e0d521ca4",
+      "size_bytes": 71317
+    },
+    "capture_finished_at": "2026-09-16T23:50:56.080258+00:00",
+    "capture_started_at": "2026-09-16T23:47:56.063414+00:00",
+    "expected_board_and_sd_inventory_match": true,
+    "fresh_uart_ssh_host_key_match": true,
+    "inspection_boot_image_sha256": "24fb925328ce67697d85d44379d9d695941dedd633c327ab3886795a193f6020",
+    "installed_bootloader_matches_native_observation": true,
+    "result": "return-to-inspection-sd-verified",
+    "root_mount": "/dev/mapper/root; read-only",
+    "root_verity_status": "V"
+  },
+  "source_revision": "27a73ea3e06c11608911a270f8e7f7f706da792c"
+}

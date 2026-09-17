@@ -12,11 +12,19 @@ TPM-equipped board. Neither track is implemented or production-qualified.
 Writing this plan does not authorize OTP programming, EEPROM writes, or changes
 to the existing sacrificial development campaign.
 
-The existing [production follow-on](raspberry-pi-5-production-security-follow-on.md)
+The archived [production follow-on](archive/raspberry-pi-5-production-security-follow-on.md)
 describes an external root signer and no TPM. This plan proposes a replacement
 for that root-custody model for future devices; it does not silently change the
-[current secure-boot contracts](raspberry-pi-5-secure-boot.md). Its encrypted-state,
-device-identity, delegated-release, and enrollment work remains necessary.
+[current secure-boot contracts](raspberry-pi-5-secure-boot.md).
+
+The current [fleet admission policy](fleet-admission-policy.md) remains the
+authority for the selected fleet: normal operation must work offline, copied
+storage must protect private data and credentials, and offline rejection of
+older correctly signed software is not required. This plan does not reinstate
+the archived online-only boot design. Online authorization proposed below is
+for new root-signing operations, not normal boot or local data access. Its
+compromised-OS threat model is a stronger design goal than the first-fleet
+admission scope, not a claim about the implemented device.
 
 ## Required security properties
 
@@ -169,8 +177,9 @@ Select candidates only after proving:
   absence of a runtime compromise; retain exact-input authorization.
 - Protected NV state, if used, has defined administration, endurance, reset,
   rollback, and interruption behavior. Blocking a new signature for an old
-  image does not stop the Pi ROM booting an already signed old image. End-to-end
-  rollback protection requires every admitted boot path to enforce freshness.
+  image does not stop the Pi ROM booting an already signed old image. If a future
+  profile requires end-to-end rollback protection, every admitted boot path must
+  enforce freshness; that is not a current fleet requirement.
 
 Hardware review includes bus access and probing, reset/power sequencing,
 authenticated TPM sessions where applicable, driver support, physical layout,
@@ -216,9 +225,9 @@ with public, independently verifiable evidence and no secret leakage.
 | Device A authorization on device B | Refused by identity and cryptographic bindings |
 | Compromised OS requests arbitrary signing or root export | Refused through every exposed interface |
 | Input changed after approval | Refused; final bytes remain bound to authorization |
-| Old bundle, authority policy, updater, or recovery image | Obsolete policy cannot reopen signing or protected operation; test already signed images separately |
+| Old bundle, authority policy, updater, or recovery image | Obsolete authorization cannot reopen root signing; already signed images may operate offline under the selected fleet policy, but must not expose or misuse the root |
 | TPM bypass branch, object substitution, reset, clear | No unauthorized signature; documented availability/recovery outcome |
-| Network unavailable or authorization replayed | No freshness bypass; controlled maintenance outcome |
+| Network unavailable or authorization replayed | No signing-authorization bypass; defer the update safely while preserving normal offline operation |
 | Power cut at each write and epoch transition | Verified recovery or explicit quarantine; no guessed success or blind retry |
 | Root material/TPM/storage lost | Demonstrated chosen recovery or replacement process |
 | Update authority rotated/revoked | New authority works; revoked authority cannot authorize new root operations |

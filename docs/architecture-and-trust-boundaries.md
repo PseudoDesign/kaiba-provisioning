@@ -67,11 +67,18 @@ request to the privileged guard.
 
 The browser simulation and live-interface foundation are different programs
 and assets. The simulation is loopback-only, in-memory, and has no live
-backend. The exported `kaiba-provision-station` also binds only to loopback,
-installs a disabled backend, rejects `--enable-mutations`, and does not fall
-back to simulation. A deployment-specific authority/hardware integration is
-not exported. See the [station interface guide](provisioning-station-kiosk.md)
-and proposed [production-station architecture](provisioning-station-production.md).
+backend. The exported `kaiba-provision-station` also binds only to loopback.
+With complete observer configuration it reads one transaction through mTLS;
+without that configuration it retains the disabled foundation. Both modes
+reject `--enable-mutations` and never fall back to simulation. The observer
+projects recorded operations and retains only a visibly stale in-memory view
+during outages; it never submits control commands or performs hardware operations.
+Its station credential retains the authority's existing station/lane policy;
+this slice adds no server-side read-only credential role. See the
+[station interface guide](provisioning-station-kiosk.md)
+for the current integration boundary. The broader
+[production-station proposal](archive/provisioning-station-production.md) is
+archived as deferred design material; it is not an additional delivery plan.
 
 ## Fixed development campaign
 

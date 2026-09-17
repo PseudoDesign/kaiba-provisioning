@@ -63,43 +63,51 @@ chmod 0555 "$package_on_disk" "$package_on_disk/bin" "$package_on_disk/share" "$
   --staging-root "$stage" \
   --static
 
-# Exercise the independently selected verifier-only runtime without changing
-# the existing provisioner fixture used by the remaining deployment tests.
-verifier_stage="$temporary_directory/verifier-root"
-verifier_package_on_disk="$verifier_stage$package_path"
-mkdir -p "$verifier_stage/nix/store"
-cp -a "$package_on_disk" "$verifier_package_on_disk"
-chmod 0755 "$verifier_package_on_disk/bin"
-mv "$verifier_package_on_disk/bin/kaiba-rpi5-stable-campaign-signing" \
-  "$verifier_package_on_disk/bin/kaiba-rpi5-stable-verifier-signing"
-chmod 0555 "$verifier_package_on_disk/bin"
-"$deployment/install.sh" --package "$package_path" --staging-root "$verifier_stage"
-"$verifier_stage/usr/local/sbin/kaiba-signing-gate-preflight" \
-  --staging-root "$verifier_stage" --static
-[[ ! -e "$verifier_stage/run/kaiba-provision-signing-credentials/yubikey-pin" ]] ||
-  fail "verifier installer created a PIN source"
-[[ ! -e "$verifier_stage/run/kaiba-provision-signing/signing.sock" ]] ||
-  fail "verifier installer created a signing socket"
-[[ ! -e "$verifier_stage/etc/systemd/system/multi-user.target.wants/kaiba-provision-signing-gate.service" ]] ||
-  fail "verifier installer enabled the signing gate"
+# Exercise every closed runtime and reject each pair without changing the
+# provisioner fixture used by the remaining deployment boundary tests.
+for profile in stable-verifier native-offline; do
+  profile_stage="$temporary_directory/$profile-root"
+  profile_package_on_disk="$profile_stage$package_path"
+  mkdir -p "$profile_stage/nix/store"
+  cp -a "$package_on_disk" "$profile_package_on_disk"
+  chmod 0755 "$profile_package_on_disk/bin"
+  mv "$profile_package_on_disk/bin/kaiba-rpi5-stable-campaign-signing" \
+    "$profile_package_on_disk/bin/kaiba-rpi5-$profile-signing"
+  chmod 0555 "$profile_package_on_disk/bin"
+  "$deployment/install.sh" --package "$package_path" --staging-root "$profile_stage"
+  "$profile_stage/usr/local/sbin/kaiba-signing-gate-preflight" \
+    --staging-root "$profile_stage" --static
+  [[ ! -e "$profile_stage/run/kaiba-provision-signing-credentials/yubikey-pin" ]] ||
+    fail "$profile installer created a PIN source"
+  [[ ! -e "$profile_stage/run/kaiba-provision-signing/signing.sock" ]] ||
+    fail "$profile installer created a signing socket"
+  [[ ! -e "$profile_stage/etc/systemd/system/multi-user.target.wants/kaiba-provision-signing-gate.service" ]] ||
+    fail "$profile installer enabled the signing gate"
 
-chmod 0755 "$verifier_package_on_disk/bin"
-cp "$verifier_package_on_disk/bin/kaiba-rpi5-stable-verifier-signing" \
-  "$verifier_package_on_disk/bin/kaiba-rpi5-stable-campaign-signing"
-chmod 0555 "$verifier_package_on_disk/bin"
-if "$deployment/install.sh" --package "$package_path" --staging-root "$verifier_stage" \
-  >"$temporary_directory/mixed-install.log" 2>&1; then
-  fail "installer accepted both closed signing command profiles"
-fi
-grep -Fq 'exactly one closed provisioner or verifier signing command' \
-  "$temporary_directory/mixed-install.log" || fail "mixed-profile installer refusal has the wrong cause"
-if "$verifier_stage/usr/local/sbin/kaiba-signing-gate-preflight" \
-  --staging-root "$verifier_stage" --static \
-  >"$temporary_directory/mixed-preflight.log" 2>&1; then
-  fail "preflight accepted both closed signing command profiles"
-fi
-grep -Fq 'exactly one closed provisioner or verifier signing command' \
-  "$temporary_directory/mixed-preflight.log" || fail "mixed-profile preflight refusal has the wrong cause"
+  for extra_profile in stable-campaign stable-verifier native-offline; do
+    [[ "$extra_profile" != "$profile" ]] || continue
+    chmod 0755 "$profile_package_on_disk/bin"
+    cp "$profile_package_on_disk/bin/kaiba-rpi5-$profile-signing" \
+      "$profile_package_on_disk/bin/kaiba-rpi5-$extra_profile-signing"
+    chmod 0555 "$profile_package_on_disk/bin"
+    if "$deployment/install.sh" --package "$package_path" --staging-root "$profile_stage" \
+      >"$temporary_directory/mixed-install.log" 2>&1; then
+      fail "installer accepted $profile with $extra_profile"
+    fi
+    grep -Fq 'exactly one closed provisioner, verifier, or native offline signing command' \
+      "$temporary_directory/mixed-install.log" || fail "mixed-profile installer refusal has the wrong cause"
+    if "$profile_stage/usr/local/sbin/kaiba-signing-gate-preflight" \
+      --staging-root "$profile_stage" --static \
+      >"$temporary_directory/mixed-preflight.log" 2>&1; then
+      fail "preflight accepted $profile with $extra_profile"
+    fi
+    grep -Fq 'exactly one closed provisioner, verifier, or native offline signing command' \
+      "$temporary_directory/mixed-preflight.log" || fail "mixed-profile preflight refusal has the wrong cause"
+    chmod 0755 "$profile_package_on_disk/bin"
+    rm "$profile_package_on_disk/bin/kaiba-rpi5-$extra_profile-signing"
+    chmod 0555 "$profile_package_on_disk/bin"
+  done
+done
 
 unit="$stage/etc/systemd/system/kaiba-provision-signing-gate.service"
 config="$stage/etc/kaiba-provisioning/signing-gate-deployment.conf"

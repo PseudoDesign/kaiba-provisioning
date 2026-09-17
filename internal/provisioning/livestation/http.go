@@ -117,6 +117,10 @@ func (handler *HTTPHandler) ServeHTTP(response http.ResponseWriter, request *htt
 }
 
 func (handler *HTTPHandler) serveAsset(response http.ResponseWriter, request *http.Request, name, contentType string) {
+	serveAsset(response, request, name, contentType)
+}
+
+func serveAsset(response http.ResponseWriter, request *http.Request, name, contentType string) {
 	if request.Method != http.MethodGet {
 		methodNotAllowed(response, http.MethodGet)
 		return
@@ -304,6 +308,12 @@ func ValidateListenAddress(address string) error {
 }
 
 func ListenAndServe(ctx context.Context, address string, orchestrator Orchestrator) error {
+	return listenAndServe(ctx, address, func(expectedHost string) (http.Handler, error) {
+		return NewHandler(orchestrator, expectedHost)
+	}, 10*time.Second)
+}
+
+func listenAndServe(ctx context.Context, address string, newHandler func(string) (http.Handler, error), writeTimeout time.Duration) error {
 	if err := ValidateListenAddress(address); err != nil {
 		return err
 	}
@@ -311,14 +321,14 @@ func ListenAndServe(ctx context.Context, address string, orchestrator Orchestrat
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
-	handler, err := NewHandler(orchestrator, listener.Addr().String())
+	handler, err := newHandler(listener.Addr().String())
 	if err != nil {
 		_ = listener.Close()
 		return err
 	}
 	server := &http.Server{
 		Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second,
-		WriteTimeout: 10 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 16 * 1024,
+		WriteTimeout: writeTimeout, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 16 * 1024,
 	}
 	result := make(chan error, 1)
 	go func() { result <- server.Serve(listener) }()

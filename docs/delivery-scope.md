@@ -39,10 +39,19 @@ nor freezing scope authorizes hardware writes or another signing attempt.
 
 Fleet admission must mean compliance with the selected, explicitly approved
 security profile. The current development policy stops at `security_applied`
-and blocks enrollment while anti-rollback is unimplemented. Resolve that
-specific admission gap explicitly; do not relabel development success as
-production security or silently remove an agreed requirement. The existing
-[readiness assessment](production-readiness.md) remains applicable.
+and blocks enrollment while anti-rollback is unimplemented. On 2026-09-16 the
+user explicitly selected a fleet profile that does not require rejection of
+older, correctly signed software while offline. Carry that decision into the
+fleet policy without relabeling development success as production security or
+clearing unrelated blockers. The existing [readiness assessment](production-readiness.md)
+still describes the implemented development boundary.
+
+The [fleet admission draft](fleet-admission-policy.md) records the concrete
+acceptance proposal and the user's subsequent requirements for offline normal
+operation and protection against copied storage, with offline rollback
+prevention explicitly not required. The earlier online-only production
+proposal must be reconciled with those choices before implementing fleet
+admission; the draft does not itself change the approved hardware policy.
 
 ## Next milestone and limits
 
@@ -51,6 +60,12 @@ components. The remaining work is to finish the existing physical path,
 implement the minimum fleet enrollment handoff, and connect the live UI.
 Confirm the fleet's backing service and device-identity interface before
 implementing enrollment; the current transaction store is not already a fleet.
+
+Follow the [implementation staging plan](implementation-staging.md) for the
+first two parallel slices: real station status with restart recovery, and
+native offline boot with protected-storage feasibility. Resolve provisional
+choices at the operations they affect; final profile approval gates admission,
+not every implementation step. Missing admission conditions remain blocking.
 
 Retain completed signing, builds and evidence. Collect only missing evidence
 or evidence invalidated by a relevant change. The retained campaign currently

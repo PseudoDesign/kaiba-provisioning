@@ -21,7 +21,7 @@ construction, audited execution, and operator-facing workflows.
 | Lane execution | Compile the fixed operation sequence, collect explicit acknowledgement, and execute one bound physical action at a time | `kaiba-provision-lane-workflow`, `kaiba-provision-lane-operator`, `kaiba-provision-lane-guard` |
 | Signing and releases | Gate YubiKey-backed signing behind immutable approvals and verify complete signed releases offline | `kaiba-provision-signing-gate`, `kaiba-provision-sign-boot`, `kaiba-provision-sign-eeprom`, `kaiba-provision-finalize-release` |
 | Media construction | Bind a release to an exact storage layout, write it through a configured device-specific package, and verify it independently | `kaiba-provision-media-device-stager`, `kaiba-provision-media-device-verifier`, `kaiba-provision-media-contract` |
-| Operator interfaces | Provide a loopback live-interface foundation with a disabled backend and a separate in-memory simulation | `kaiba-provision-station`, `kaiba-provision-station-demo` |
+| Operator interfaces | Observe one authenticated transaction through a read-only loopback UI, or run the separate in-memory simulation | `kaiba-provision-station`, `kaiba-provision-station-demo` |
 
 Generic hardware-facing binaries and `kaiba-provision-sign-boot` are
 intentionally unconfigured and fail closed. The exported
@@ -79,9 +79,10 @@ nix build .#kaiba-provision-station-pages
   outcomes enter reconciliation or quarantine and never become blind retries.
 - Signing keys and PINs are runtime-only. The repository contains public trust
   anchors and signed inputs, not private keys or credentials.
-- The exported live-interface foundation has a disabled backend and rejects
-  mutation enablement. It never falls back to the browser simulation, and the
-  simulation never calls a live backend.
+- The live station observes one configured transaction without submitting
+  control commands or performing enrollment. Its unconfigured foundation keeps a disabled backend.
+  Neither mode falls back to the browser simulation, and the simulation never
+  calls a live backend.
 - Raw device observations remain outside the repository. Only validated,
   whitelist-redacted qualification evidence belongs under
   [`tests/evidence/`](tests/evidence/).
@@ -118,12 +119,14 @@ language used throughout the guides so that implemented code, software tests,
 checked evidence, and proposed production controls are not conflated.
 
 - [Architecture and trust boundaries](docs/architecture-and-trust-boundaries.md)
+- [Fleet admission policy and verification plan](docs/fleet-admission-policy.md)
 - [Raspberry Pi 5 secure-boot model](docs/raspberry-pi-5-secure-boot.md)
-- [Development execution plan](docs/raspberry-pi-5-secure-boot-execution-plan.md)
 - [Production readiness](docs/production-readiness.md)
-- [Production security follow-on](docs/raspberry-pi-5-production-security-follow-on.md)
-- [Production-station architecture](docs/provisioning-station-production.md)
 - [Contracts reference](docs/contracts-reference.md)
+
+Superseded and deferred roadmaps are in the [documentation archive](docs/archive/README.md).
+The existing online-verifier candidate is documented separately in the index;
+its server-required boot policy is not the selected offline fleet behavior.
 
 Operator workflows cover [hardware qualification](docs/raspberry-pi-5-provisioning-probe.md),
 [release signing](docs/raspberry-pi-5-signed-boot-workflow.md),

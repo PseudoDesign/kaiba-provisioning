@@ -1,4 +1,4 @@
-# Provisioning-station interface demo
+# Provisioning-station interfaces
 
 `kaiba-provision-station-demo` is a deterministic, loopback-only interface for
 reviewing the Raspberry Pi 5 operator workflow. The same interface assets can
@@ -33,9 +33,12 @@ evidence, failed recovery, or failed acceptance test ends in
 Reaching the modeled `enrollment_ready` state does not generate a device key,
 issue a certificate, activate a credential, or authorize production access.
 The current development implementation has a stricter real boundary: it stops
-at `security_applied` because independently monotonic anti-rollback is not yet
-implemented. See the [secure-boot design](raspberry-pi-5-secure-boot.md) and
-[architecture and trust boundaries](architecture-and-trust-boundaries.md).
+at `security_applied`, with an existing guard recording unimplemented
+anti-rollback. That runtime guard and the demo's rollback scenario predate the
+selected [fleet admission policy](fleet-admission-policy.md), which does not
+require offline rollback prevention. Updating the real enrollment path and
+its UI requires explicit integration; a demo transition is not an admission
+decision. See [architecture and trust boundaries](architecture-and-trust-boundaries.md).
 
 ## Run locally
 
@@ -183,13 +186,99 @@ shell access, and remote debugging. Displaying this interface is never a reason
 to grant the operator raw USB, GPIO, UART, signing, bridge-socket, or lane-guard
 access.
 
-## Path to a live interface
+## Read-only live station
 
-The exported `kaiba-provision-station` is a live-interface foundation, not a
-configured live station. It binds only to an explicit loopback address, uses a
-`DisabledBackend`, and rejects `--enable-mutations`. It therefore cannot read
-the control plane, submit authority transitions, or invoke hardware in its
-current form. The static demo is a separate in-memory program.
+The exported `kaiba-provision-station` can observe one existing transaction
+through the authenticated control service. Its browser listener remains
+loopback-only. The station reads recorded state; it cannot submit authority
+transitions, acquire or renew claims, invoke hardware, or enroll a device.
+`--enable-mutations` remains rejected. The static demo is a separate program
+and is never a fallback for live observation.
+
+Configure all five observer inputs together: transaction ID, control HTTPS
+origin, station client certificate, client private key, and exclusive control
+server CA. Partial configuration is an error. Without observer inputs, the
+original foundation with `DisabledBackend` remains available.
+
+The following example uses placeholder service and transaction identities;
+replace them with the station's configured values and runtime credential
+paths. The certificate's canonical station/lane URI must match the two flags.
+The authority still independently authenticates and authorizes each read.
+
+```console
+nix --accept-flake-config run .#kaiba-provision-station -- \
+  --listen 127.0.0.1:8081 \
+  --station-id station-1 \
+  --lane-id lane-1 \
+  --transaction-id transaction-reviewed-1 \
+  --control-url https://control.example:8443 \
+  --tls-cert /run/credentials/station.crt \
+  --tls-key /run/credentials/station.key \
+  --control-server-ca /run/credentials/control-ca.crt \
+  --rpiboot-sysfs /sys/bus/usb/devices/1-1 \
+  --uart /dev/serial/by-id/kaiba-target-uart
+```
+
+Open `http://127.0.0.1:8081/` from that host. Keep credentials outside Git and
+the Nix store. The browser receives neither credential paths nor private keys.
+The authority permits transaction reads to the active station/lane claimant
+or, after release, the latest historical claimant. An unclaimed or inaccessible
+transaction remains denied; the viewer does not obtain a claim to bypass that
+rule. This slice adds no transaction picker or listing API.
+
+Preserve the same startup configuration across service restarts. The configured
+transaction ID restores the selection; a fresh authority read restores its
+progress. No workflow is replayed and no transaction snapshot is saved to disk.
+Before the first successful read, the view contains no transaction details.
+
+The browser refreshes five seconds after the previous request finishes and
+also offers manual refresh. Authority update time and the last successful
+read time are separate. During an authority outage, the last successful
+snapshot remains in memory with a stale warning. A browser-to-station failure
+also marks the displayed view stale. Denied access, a missing transaction, or
+an invalid response clears the details. Reconnection requires a new successful
+read; restarting during an outage cannot restore the previous snapshot.
+
+### What the view establishes
+
+The seven operation rows reflect coordinator records, including missing,
+pending-intent, failed, uncertain and reconciled outcomes. They do not infer
+completion from a later UI phase. An intent without an outcome is not a reason
+to retry; reconciliation and quarantine remain external reviewed procedures.
+
+Recorded customer-key prestate is the observation at target binding, not the
+current owned key. Expected key and image digests are intended bindings.
+Receipt IDs and result digests are recorded references, not independent audit
+verification. Current secure-boot, JTAG and EEPROM-protection state remain
+unknown where the transaction supplies no direct observation. Development
+`security_applied` does not establish fleet admission; offline rollback
+prevention is not added as a fleet requirement by this view.
+
+Local observations only inspect the configured USB sysfs presence/identifiers
+and UART-node presence. They do not open the UART, run a probe, load RPIBOOT
+code, change power or qualify a board. USB visibility cannot authenticate the
+bound device. No RPIBOOT device during normal boot is not a qualification
+failure, and the already-owned Pi never enters fresh-board qualification.
+
+### Repeatable real-service check
+
+Run on either supported native architecture:
+
+```console
+nix develop --command scripts/check.sh contracts station-observation-integration
+```
+
+The check starts the packaged control and station binaries on loopback using
+temporary development mTLS credentials and a disposable durable control store.
+Fixture setup creates, claims and binds a clearly labeled test transaction
+through normal authenticated commands. Viewer interactions then demonstrate
+transaction retrieval, station restart, authority outage/restart, stale-state
+recovery, and rejection of workflow actions. The check compares authority-store
+bytes and filesystem metadata to detect any viewer mutation. It cleans up its
+processes and temporary credentials and never contacts a deployed authority.
+These are real-service software results, not physical provisioning evidence.
+
+## Remaining live workflow integration
 
 Do not evolve the HTTP demo into a process with direct hardware privileges. A
 live UI should submit narrowly typed actions to a separate orchestrator and
@@ -208,6 +297,8 @@ arbitrary commands, executable paths, payload paths, profiles, device nodes, or
 key selectors. The static graph must remain a public demonstration and must
 never become fallback behavior for a live station.
 
-The host, service, and network boundaries required before that integration can
-be production-capable are defined in the proposed
-[production-station architecture](provisioning-station-production.md).
+The current [architecture](architecture-and-trust-boundaries.md) and
+[fleet admission mapping](fleet-admission-policy.md#how-to-establish-the-conditions)
+define the integration work for this milestone. The broader
+[production-station proposal](archive/provisioning-station-production.md) is
+deferred reference material, not a requirement to build another station platform.

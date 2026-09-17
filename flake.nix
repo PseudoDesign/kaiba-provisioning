@@ -136,6 +136,7 @@
         provisioning-signing-gate = import ./nix/modules/provisioning-signing-gate.nix;
         provisioning-station-demo = import ./nix/modules/provisioning-station-demo.nix;
         secure-boot-target = import ./nix/modules/secure-boot-target.nix;
+        device-secret-experiment = import ./nix/modules/device-secret-experiment.nix;
         stable-verifier-spike = import ./nix/modules/stable-verifier-spike.nix;
       };
 
@@ -236,6 +237,63 @@
           inherit lib provisionerSystem;
           buildPkgs = import nixpkgs { system = buildPlatformSystem; };
         };
+
+      nativeOfflineSystem =
+        import ./nix/rpi5-native-offline-system.nix
+          {
+            nixosRaspberryPi = nixos-raspberrypi;
+            secureBootTargetModule = modules.secure-boot-target;
+          }
+          {
+            expectedCustomerKeyHash = stableCampaignExpectedCustomerKeyHash;
+            sourceRevision = stableCampaignSourceRevision;
+          };
+      nativeOfflineCandidate = import ./nix/rpi5-native-offline-artifacts.nix {
+        inherit lib;
+        buildPkgs = import nixpkgs { system = "aarch64-linux"; };
+        candidateSystem = nativeOfflineSystem;
+      };
+      mkRpi5DeviceSecretExperiment = import ./nix/device-secret-experiment.nix {
+        inherit lib nixpkgs;
+        nixosRaspberryPi = nixos-raspberrypi;
+        secureBootTargetModule = modules.secure-boot-target;
+      };
+      deviceSecretExperimentFixture = mkRpi5DeviceSecretExperiment {
+        experiment = import ./tests/device-secret-target/fixture-config.nix;
+        expectedCustomerKeyHash = stableCampaignExpectedCustomerKeyHash;
+        sourceRevision = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+      };
+      nativeOfflineReview = import ./nix/rpi5-native-offline-review.nix {
+        pkgs = import nixpkgs { system = "aarch64-linux"; };
+        candidate = nativeOfflineCandidate;
+        platformRevision = nixos-raspberrypi.rev;
+        platformNarHash = nixos-raspberrypi.narHash;
+        lockFile = ./flake.lock;
+      };
+
+      nativeOfflineFactories =
+        system:
+        import ./nix/native-offline-handoff.nix {
+          inherit lib;
+          pkgs = import nixpkgs { inherit system; };
+          built = packagesBySystem.${system};
+        };
+      deviceSecretExecutionFactories =
+        system:
+        import ./nix/device-secret-execution.nix {
+          inherit lib;
+          pkgs = import nixpkgs { inherit system; };
+          built = packagesBySystem.${system};
+          platformRevision = nixos-raspberrypi.rev;
+          platformNarHash = nixos-raspberrypi.narHash;
+          lockFile = ./flake.lock;
+        };
+      nativeOfflineSigningPlan = (nativeOfflineFactories "aarch64-linux").mkSigningPlan {
+        candidate = nativeOfflineCandidate;
+        review = nativeOfflineReview;
+        sourceRevision = stableCampaignSourceRevision;
+        sourceDateEpoch = self.lastModified or 1;
+      };
 
       mkRpi5StableCampaignProvisionerSignedBootFilesystem =
         (import ./nix/rpi5-stable-campaign-provisioner-signed-boot-filesystem.nix {
@@ -434,6 +492,26 @@
           { system, ... }@args:
           packagesBySystem.${system}.mkRpi5VerifiedSignedRelease (builtins.removeAttrs args [ "system" ]);
 
+        mkRpi5VerifiedNativeOfflineSigning =
+          { system, ... }@args:
+          (nativeOfflineFactories system).mkVerified (builtins.removeAttrs args [ "system" ]);
+        inherit mkRpi5DeviceSecretExperiment;
+        mkRpi5DeviceSecretSigningPlan =
+          { system, ... }@args:
+          (deviceSecretExecutionFactories system).mkSigningPlan (builtins.removeAttrs args [ "system" ]);
+        mkRpi5DeviceSecretExecutionPacket =
+          { system, ... }@args:
+          (deviceSecretExecutionFactories system).mkPacket (builtins.removeAttrs args [ "system" ]);
+        mkRpi5DeviceSecretReport =
+          { system, ... }@args:
+          (deviceSecretExecutionFactories system).mkReport (builtins.removeAttrs args [ "system" ]);
+        mkRpi5DeviceSecretMediaExecutor =
+          { system, ... }@args:
+          (deviceSecretExecutionFactories system).mkExecutor (builtins.removeAttrs args [ "system" ]);
+        mkRpi5NativeOfflineMediaHandoff =
+          { system, ... }@args:
+          (nativeOfflineFactories system).mkMedia (builtins.removeAttrs args [ "system" ]);
+
         mkRpi5ReleaseIntent =
           { system, ... }@args:
           packagesBySystem.${system}.mkRpi5ReleaseIntent (builtins.removeAttrs args [ "system" ]);
@@ -476,8 +554,17 @@
         let
           built = packagesBySystem.${system};
           provisioning = provisioningBySystem.${system};
+          deviceSecret = import ./nix/rpi5-fwcrypto.nix { pkgs = import nixpkgs { inherit system; }; };
+          deviceSecretRunner = import ./nix/device-secret-runner.nix {
+            pkgs = import nixpkgs { inherit system; };
+          };
         in
         {
+          kaiba-rpi5-fwcrypto = deviceSecret.library;
+          kaiba-device-secret-capabilities = deviceSecret.probe;
+          kaiba-device-secret-runner = deviceSecretRunner.package;
+          kaiba-device-secret-target =
+            (import ./nix/device-secret-target.nix { pkgs = import nixpkgs { inherit system; }; }).package;
           default = built.provision;
           kaiba-provision-audit = built.audit;
           kaiba-provision-authority-bridge = built.authorityBridge;
@@ -542,6 +629,11 @@
         // lib.optionalAttrs (system == "aarch64-linux") {
           kaiba-rpi5-self-kexec-diagnostic = built.rpi5SelfKexecDiagnostic;
         }
+        // lib.optionalAttrs (system == "aarch64-linux" && self ? rev) {
+          kaiba-rpi5-native-offline-unsigned = nativeOfflineCandidate.unsignedArtifacts;
+          kaiba-rpi5-native-offline-review = nativeOfflineReview;
+          kaiba-rpi5-native-offline-signing-plan = nativeOfflineSigningPlan;
+        }
         # The signing workstation is independent of the Pi image builder.
         // lib.optionalAttrs (self ? rev) {
           kaiba-rpi5-stable-campaign-development-signing = built.mkDevelopmentYubiKeySigning {
@@ -568,6 +660,19 @@
             signerPolicyDigest =
               assets.signers.developmentPrototype.independentReview.public_bindings.signer_policy_digest;
             stableVerifierOnly = true;
+            tokenSerial = assets.signers.developmentPrototype.independentReview.token.serial;
+          };
+          kaiba-rpi5-native-offline-development-signing = built.mkDevelopmentYubiKeySigning {
+            name = "kaiba-rpi5-native-offline-development-signing";
+            cohortID = "cohort:prototype";
+            expectedCustomerKeyHash = stableCampaignExpectedCustomerKeyHash;
+            publicKeyFingerprint =
+              assets.signers.developmentPrototype.independentReview.public_bindings.public_key_fingerprint;
+            publicKeyPEM = assets.signers.developmentPrototype.reviewedBootPublicKey;
+            signerID = "signer:prototype";
+            signerPolicyDigest =
+              assets.signers.developmentPrototype.independentReview.public_bindings.signer_policy_digest;
+            nativeOfflineOnly = true;
             tokenSerial = assets.signers.developmentPrototype.independentReview.token.serial;
           };
         }
@@ -695,12 +800,54 @@
             )).success;
         in
         {
+          native-offline-handoff = import ./tests/native-offline-handoff.nix {
+            inherit pkgs lib;
+            built = packagesBySystem.${system};
+          };
+          native-offline-eval = import ./tests/native-offline-eval.nix {
+            inherit pkgs lib;
+            candidate = nativeOfflineCandidate;
+          };
           asset-api = import ./tests/assets.nix { inherit assets pkgs; };
           boot-image-hash-decoder = bootImageHashDecoderCheck;
           public-input-key-scan = import ./tests/public-input-key-scan.nix { inherit lib pkgs; };
           unit = provisioning.goUnitTests;
           unit-static = provisioning.staticGoTests;
           development-yubikey-signing = provisioning.developmentYubiKeySigningContract;
+          device-secret-execution-vm = import ./tests/device-secret-execution-vm.nix {
+            inherit pkgs;
+            fixture =
+              (import ./nix/device-secret-execution-tests.nix {
+                factories = deviceSecretExecutionFactories system;
+                inherit pkgs;
+                fixtureMedia =
+                  (import ./tests/native-offline-handoff.nix {
+                    inherit pkgs lib;
+                    built = packagesBySystem.${system};
+                  }).media;
+              }).fixture;
+          };
+          device-secret-execution = import ./nix/device-secret-execution-tests.nix {
+            inherit pkgs;
+            factories = deviceSecretExecutionFactories system;
+            fixtureMedia =
+              (import ./tests/native-offline-handoff.nix {
+                inherit pkgs lib;
+                built = packagesBySystem.${system};
+              }).media;
+          };
+          device-secret-runner = (import ./nix/device-secret-runner.nix { inherit pkgs; }).check;
+          device-secret-target = (import ./nix/device-secret-target.nix { inherit pkgs; }).check;
+          device-secret-target-luks-vm = import ./tests/device-secret-target-vm.nix { inherit pkgs; };
+          device-secret-target-eval = import ./tests/device-secret-target-eval.nix {
+            inherit pkgs lib;
+            candidate = deviceSecretExperimentFixture;
+            baseline = nativeOfflineCandidate;
+          };
+          device-secret-capabilities = import ./tests/device-secret-capabilities.nix {
+            inherit pkgs;
+            crypto = import ./nix/rpi5-fwcrypto.nix { inherit pkgs; };
+          };
           device-profile-schema = provisioning.deviceProfileSchema;
           rpi5-development-posture = provisioning.developmentPostureContract;
           module-eval = provisioning.moduleEval;
@@ -1265,6 +1412,16 @@
             inherit pkgs;
           };
           ubuntu-signing-gate-deployment = mkUbuntuSigningGateDeployment { inherit system; };
+          station-observation-integration = import ./tests/station-observation.nix {
+            deployment = mkUbuntuProvisioningAuthorityDeployment {
+              inherit system;
+              listenAddress = "127.0.0.1";
+              controlPort = 38093;
+              auditPort = 38094;
+            };
+            inherit pkgs;
+            station = built.liveStation;
+          };
           station-ui =
             pkgs.runCommand "kaiba-provisioning-station-ui-check"
               {
@@ -1292,7 +1449,24 @@
                 printf '%s\n' 'provisioning station UI: pass' > "$out/results.txt"
               '';
         }
+        // lib.optionalAttrs (system == "aarch64-linux") {
+          device-secret-signing-plan = (deviceSecretExecutionFactories "aarch64-linux").mkSigningPlan {
+            candidate = deviceSecretExperimentFixture;
+            sourceDateEpoch = 1786968000;
+          };
+          device-secret-target-artifacts = import ./tests/device-secret-target-artifacts.nix {
+            inherit pkgs;
+            candidate = deviceSecretExperimentFixture;
+          };
+          native-offline-signing-plan = nativeOfflineSigningPlan;
+          native-offline-artifacts = import ./tests/native-offline-artifacts.nix {
+            inherit pkgs;
+            candidate = nativeOfflineCandidate;
+            review = nativeOfflineReview;
+          };
+        }
         // lib.optionalAttrs (system == "x86_64-linux") {
+          native-offline-verity-vm = import ./tests/native-offline-verity-vm.nix { inherit pkgs; };
           stable-campaign-staging-vm = import ./tests/campaign-staging-vm.nix {
             inherit pkgs;
             source = built.goSource;

@@ -283,6 +283,8 @@ Never include private keys, PINs, OTP secrets, raw device-private keys,
 derived storage secrets, active credentials, or unrestricted raw probe data.
 
 `security_applied` means only that this development campaign's seven records
-were accepted. It does not prove production anti-rollback, device enrollment,
-or production readiness. Those are defined in the
-[production follow-on](raspberry-pi-5-production-security-follow-on.md).
+were accepted. It does not prove device enrollment or fleet readiness. The
+[fleet admission policy](fleet-admission-policy.md) defines the selected
+requirements, including offline operation and copied-storage protection;
+offline rollback prevention is not required. Current authority remains
+mandatory for station mutations even though normal device operation is offline.

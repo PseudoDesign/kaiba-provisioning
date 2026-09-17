@@ -1,30 +1,43 @@
 # Raspberry Pi 5 production security follow-on
 
+> **Archived 2026-09-16.** Superseded production proposal: it requires online authorization before protected operation and rejects offline operation. Those requirements conflict with the selected first-fleet policy. Its mechanisms and qualification notes are retained as design history, not the current delivery checklist.
+>
+> Current direction: [delivery scope](../delivery-scope.md) and [fleet admission policy](../fleet-admission-policy.md). The text below is historical; archiving does not grant authority, erase evidence, or mark any gate passed.
+
 ## Status and scope
+
+**First-fleet decision update, 2026-09-16:** the user requires normal offline
+operation and copied-storage protection, and does not require rejection of
+older, correctly signed software while offline. The fresh-server gate before
+protected operation described below is therefore not a requirement of the
+selected first-fleet profile. Retain this document as the earlier design
+proposal; use the [fleet admission draft](../fleet-admission-policy.md) for those
+explicit product choices. This update does not change the implemented
+development policy or establish production readiness.
 
 This document proposes the path from the sacrificial Raspberry Pi 5 development foundation to a production appliance, preserving native secure boot and dm-verity while adding production key separation, encrypted state, release freshness, identity, updates, recovery, and operations.
 
 > [!IMPORTANT]
 > This is a proposal and roadmap, not a description of implemented production
-> behavior. The checked-in evidence under [`tests/evidence/`](../tests/evidence/)
+> behavior. The checked-in evidence under [`tests/evidence/`](../../tests/evidence)
 > records a read-only qualification of one sacrificial board. It does not show
 > that an irreversible customer-key ceremony ran, that an owned board booted a
 > signed release, or that the fixed 33-run/37-planned-claim verifier campaign
 > completed.
 >
 > The machine-readable
-> [development posture](../policies/raspberry-pi-5-development-posture-v1alpha1.json)
+> [development posture](../../policies/raspberry-pi-5-development-posture-v1alpha1.json)
 > remains authoritative for the implemented cohort. It terminates at
 > `security_applied`, sets `enrollment_ready` to false, and does not authorize
 > mutation. The public material under
-> [`releases/rpi5-v0.1.6/`](../releases/rpi5-v0.1.6/) is a development release,
+> [`releases/rpi5-v0.1.6/`](../../releases/rpi5-v0.1.6) is a development release,
 > not a production release.
 
-The [secure-boot model](raspberry-pi-5-secure-boot.md) defines the existing
+The [secure-boot model](../raspberry-pi-5-secure-boot.md) defines the existing
 native boot boundary and the development campaign. This document begins at
 that boundary and deliberately does not weaken it.
 
-The newer [per-device boot-root plan](per-device-boot-root-plan.md) proposes
+The newer [per-device boot-root plan](../per-device-boot-root-plan.md) proposes
 unique device roots, authorized local firmware signing, and a TPM evaluation
 for the next hardware revision. It explicitly tracks the changes needed to
 the external root-custody model below; neither path is production-qualified.
@@ -305,7 +318,7 @@ Enrollment must:
 
 This proves key control and one verifier-enforced fresh decision, not
 hardware-rooted proof of all running software. See
-[Device identity](device-identity.md).
+[Device identity](../device-identity.md).
 
 ## Signed A/B updates
 
@@ -542,7 +555,7 @@ tag, record the review date, and turn the relevant behavior into a local test
 before treating any external implementation as an engineering dependency. The
 linked NixOS integration is an unmerged pull request, not a platform contract.
 
-- [Raspberry Pi 5 secure-boot model](raspberry-pi-5-secure-boot.md)
+- [Raspberry Pi 5 secure-boot model](../raspberry-pi-5-secure-boot.md)
 - [Secure-boot execution plan](raspberry-pi-5-secure-boot-execution-plan.md)
 - [Raspberry Pi secure-boot documentation](https://github.com/raspberrypi/usbboot/blob/master/docs/secure-boot.md)
 - [Raspberry Pi firmware cryptography API](https://github.com/raspberrypi/utils/blob/master/rpifwcrypto/rpifwcrypto.h)

@@ -1,5 +1,9 @@
 # Production provisioning-station architecture
 
+> **Archived 2026-09-16.** Deferred station architecture: this broad platform proposal is not the first-fleet implementation plan and includes the earlier online-only device-boot assumption. Current transaction authority, signing, physical safety, and reconciliation boundaries remain in the active component guides.
+>
+> Current direction: [delivery scope](../delivery-scope.md) and [fleet admission policy](../fleet-admission-policy.md). The text below is historical; archiving does not grant authority, erase evidence, or mark any gate passed.
+
 ## Status and scope
 
 This document proposes the architecture for a dedicated production
@@ -23,11 +27,11 @@ current Raspberry Pi 5 development foundations.
 > provisioning authority.
 
 The current implementation and its authority boundaries are described in
-[Architecture and trust boundaries](architecture-and-trust-boundaries.md),
-[Live provisioning](raspberry-pi-5-live-provisioning.md), and
-[Production readiness](production-readiness.md). The device enrollment and
+[Architecture and trust boundaries](../architecture-and-trust-boundaries.md),
+[Live provisioning](../raspberry-pi-5-live-provisioning.md), and
+[Production readiness](../production-readiness.md). The device enrollment and
 credential model used here is the proposed
-[device identity lifecycle](device-identity.md).
+[device identity lifecycle](../device-identity.md).
 
 ## Why production uses a dedicated station
 
@@ -63,7 +67,7 @@ A production implementation must preserve all of these rules:
   fence epoch, and deadlines are immutable before execution.
 - Public release authorization is never interpreted as per-device execution
   authorization. See the
-  [signed-boot workflow](raspberry-pi-5-signed-boot-workflow.md).
+  [signed-boot workflow](../raspberry-pi-5-signed-boot-workflow.md).
 - A configured hardware selector identifies where an authorized action may be
   attempted; it is not device authentication or attestation.
 - The station requests enrollment, issuance, verification, and activation, but
@@ -223,7 +227,7 @@ The interface sends only typed actions with the current state revision. It
 cannot accept arbitrary commands, executable or payload paths, device nodes,
 profiles, certificate names, or key selectors. Browser content never receives
 raw device access. The simulation and live-interface foundations described in
-the [station-interface guide](provisioning-station-kiosk.md) remain separate;
+the [station-interface guide](../provisioning-station-kiosk.md) remain separate;
 the static transition graph is never fallback behavior for a live station.
 
 The orchestrator validates station admission, resolves the approved plan,
@@ -257,7 +261,7 @@ It rejects multiple eligible targets, replacement or disappearance, an
 unexpected device class, stale authority, out-of-order work, and any plan
 change. The current repository's fixed development campaign and execute-once
 journal demonstrate part of this shape; they do not qualify the proposed
-production station. See [Live provisioning](raspberry-pi-5-live-provisioning.md).
+production station. See [Live provisioning](../raspberry-pi-5-live-provisioning.md).
 
 ### Journal and audit exporter
 
@@ -528,14 +532,14 @@ This repository currently supplies useful development pieces of the proposed
 shape:
 
 - strict, versioned contracts and a read-only
-  [Raspberry Pi 5 probe](raspberry-pi-5-provisioning-probe.md);
+  [Raspberry Pi 5 probe](../raspberry-pi-5-provisioning-probe.md);
 - development control, audit, authority-bridge, workflow, and lane-guard
   implementations;
 - an inert
-  [Ubuntu authority deployment](../deploy/ubuntu-provisioning-authority/README.md)
+  [Ubuntu authority deployment](../../deploy/ubuntu-provisioning-authority/README.md)
   using development PKI;
 - public signed-release construction and verification boundaries;
-- plan-specialized [target-media](target-media-staging-prototype.md) writer and
+- plan-specialized [target-media](../target-media-staging-prototype.md) writer and
   verifier factories; and
 - separate live-interface foundations and authority-free browser simulations.
 

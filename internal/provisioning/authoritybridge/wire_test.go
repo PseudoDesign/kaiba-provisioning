@@ -80,7 +80,7 @@ func TestUnixBridgeSharedGroupSocketPermissions(t *testing.T) {
 			DirectoryMode: 0o750, SocketMode: 0o660, Binder: &binder, ErrorLog: io.Discard,
 		})
 	}()
-	waitForSocket(t, socketPath, result)
+	waitForSocket(t, socketPath, 0o660, result)
 	info, err := os.Lstat(socketPath)
 	if err != nil {
 		t.Fatal(err)
@@ -315,7 +315,7 @@ func startBridgeServer(t *testing.T, binder Binder) (string, func()) {
 			DirectoryMode: 0o700, SocketMode: 0o600, Binder: &binder, ErrorLog: io.Discard,
 		})
 	}()
-	waitForSocket(t, socketPath, result)
+	waitForSocket(t, socketPath, 0o600, result)
 	stop := func() {
 		cancel()
 		select {
@@ -407,12 +407,19 @@ func shortTempDir(t *testing.T) string {
 	return directory
 }
 
-func waitForSocket(t *testing.T, socketPath string, result <-chan error) {
+func waitForSocket(t *testing.T, socketPath string, mode os.FileMode, result <-chan error) {
 	t.Helper()
 	deadline := time.Now().Add(2 * time.Second)
 	for {
-		if info, err := os.Lstat(socketPath); err == nil && info.Mode()&os.ModeSocket != 0 {
-			return
+		if info, err := os.Lstat(socketPath); err == nil && info.Mode()&os.ModeSocket != 0 && info.Mode().Perm() == mode {
+			// bind creates the path before listen is ready; Serve also sets
+			// its final permissions after ListenUnix returns. File presence
+			// alone lets callers race both initialization steps.
+			connection, err := net.DialTimeout("unix", socketPath, 100*time.Millisecond)
+			if err == nil {
+				_ = connection.Close()
+				return
+			}
 		}
 		select {
 		case err := <-result:
@@ -420,7 +427,7 @@ func waitForSocket(t *testing.T, socketPath string, result <-chan error) {
 		default:
 		}
 		if time.Now().After(deadline) {
-			t.Fatal("authority bridge socket did not appear")
+			t.Fatal("authority bridge socket did not become ready")
 		}
 		time.Sleep(time.Millisecond)
 	}

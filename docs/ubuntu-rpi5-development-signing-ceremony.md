@@ -4,6 +4,12 @@ This document preserves the separation-of-duties, key-handling, and evidence
 requirements for signing a Raspberry Pi 5 development release on the dedicated
 Ubuntu 24.04 signing host.
 
+This is the **five-input full-release** integration reference. It is not the
+one-image stable-verifier ceremony, which has a separate
+[signing route](stable-verifier-signing.md). Use the route matching the exact
+artifact; neither this document nor a scope change authorizes repeating a
+completed signing request.
+
 > [!CAUTION]
 > This is not currently an executable end-to-end runbook from the standalone
 > root flake. The ceremony helper's `prepare-public` phase expects six
