@@ -169,7 +169,8 @@ The [automation plan and host runner](device-secret-automation.md) reduce the
 operator session to prepared execution and physical steps. The passive runner
 and software rehearsal are implemented. The [target harness and unsigned image
 constructor](device-secret-target-harness.md) are now implemented and tested in
-software; the exact staging/execution packet and physical run remain planned. Neither a capture plan nor a matched
+software. The [packet and staging/recovery tooling](device-secret-execution-packet.md)
+is also implemented; selecting its exact physical inputs and executing the run remain pending. Neither a capture plan nor a matched
 target report grants execution authority or qualifies this mechanism.
 
 Prepare a signed test image and an exact operation/slot plan after the baseline.

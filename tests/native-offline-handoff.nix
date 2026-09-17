@@ -110,6 +110,7 @@ let
 in
 pkgs.runCommand "native-offline-handoff-check"
   {
+    passthru = { inherit media; };
     nativeBuildInputs = [
       pkgs.python3
       pkgs.gptfdisk

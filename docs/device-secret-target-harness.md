@@ -189,8 +189,8 @@ creation and reopening across VM restarts, wrong simulated board key, closure
 failures, consumed intents and removal of mappings. They do not exercise real
 firmware or establish copied-media protection on comparable hardware.
 
-Next, prepare the immutable image and one-shot staging/recovery executor with
-exact extents and backups, resolve slot/image suitability, and present the
-concrete execution packet. Physical mechanism results and any failed assumptions
+The [execution-packet constructors and one-shot staging/recovery executor](device-secret-execution-packet.md)
+now prepare the file-only handoff. Next, resolve slot/image suitability, select the
+exact immutable image and present its concrete execution packet and backup scope. Physical mechanism results and any failed assumptions
 then determine the feasibility decision described in the
 [active mechanism plan](device-secret-feasibility.md#bounded-mechanism-experiment).

@@ -28,9 +28,12 @@ let
         ];
       };
 in
-import ./rpi5-native-offline-artifacts.nix {
+(import ./rpi5-native-offline-artifacts.nix {
   inherit lib;
   buildPkgs = import nixpkgs { system = "aarch64-linux"; };
   candidateSystem = system;
   artifactName = "kaiba-rpi5-device-secret-experiment-unsigned";
+})
+// {
+  deviceSecretExperiment = experiment;
 }

@@ -240,6 +240,8 @@ jobs:
           nix --accept-flake-config build -L --no-link \
             .#checks.aarch64-linux.device-secret-target-luks-vm
           nix --accept-flake-config build -L --no-link \
+            .#checks.aarch64-linux.device-secret-execution-vm
+          nix --accept-flake-config build -L --no-link \
             .#checks.aarch64-linux.stable-campaign-provisioner-unsigned-artifacts
           nix --accept-flake-config build -L --no-link \
             .#checks.aarch64-linux.device-secret-target-artifacts
