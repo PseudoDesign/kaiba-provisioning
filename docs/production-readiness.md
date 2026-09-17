@@ -25,7 +25,8 @@ claims.
 | Media construction | Implemented, tested | Deterministic GPT/FAT/root/verity plans, host-bound selectors, writer/readback, and independent verification contracts | No checked-in qualification proves a complete live production-media and cold-power cycle |
 | Read-only root design | Implemented, tested | `secure-boot-target.nix` requires `/dev/mapper/root`, dm-verity, tmpfs mutable state, no swap, volatile journal, and no core dumps | The posture explicitly records physical enforcement as unqualified |
 | Owned-board boot/handoff diagnostics | Observed within a narrow scope | [Development Pi file-handoff observations](stable-verifier-spike.md#development-pi-file-handoff-observations) record signed diagnostic and SMP results | These do not establish complete boot/root enforcement, the seven-operation campaign, or fleet admission |
-| Native offline boot/local action | Observed within a narrow scope | [2026-09-16 native positive and SD return](observations/2026-09-16-native-offline-positive.md) bind the signed image, independent media readback, network/time observations and retained capture hashes | Physical corruption enforcement, device-secret feasibility, protected state and fleet admission remain open |
+| Native offline boot/local action | Observed within a narrow scope | [2026-09-16 native positive and SD return](observations/2026-09-16-native-offline-positive.md) bind the signed image, independent media readback, network/time observations and retained capture hashes | Device-secret feasibility, protected state and fleet admission remain open |
+| Native root-corruption rejection | Observed within a narrow scope | [2026-09-17 startup/late-read negatives, restoration and positive control](observations/2026-09-17-native-verity.md) bind the same candidate; late-read UART interleaving is explicitly reviewed | Two selected altered-block cases do not qualify the complete production boot, update or recovery path |
 
 ## Explicit production blockers
 
@@ -81,8 +82,11 @@ PARTUUID. Mutable state is tmpfs-only; swap, persistent journal, core dumps, and
 persistent device secrets are disabled. The missing claim is live physical
 enforcement across the complete production boot path. The [pristine native
 positive](observations/2026-09-16-native-offline-positive.md) observed the expected
-read-only verity root and local action; physical altered-block rejection remains
-unperformed for that candidate.
+read-only verity root and local action. The [2026-09-17 physical procedure](observations/2026-09-17-native-verity.md)
+observed startup-block and late-read rejection, followed by verified restoration
+and a positive control. Its explicit console-interleaving review and candidate
+limits remain part of the result; full production-path qualification and
+protected persistent state remain open.
 
 ### Development terminal policy and rollback decision
 

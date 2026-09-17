@@ -3,8 +3,11 @@
 This is the execution package for the [native offline candidate](native-offline-candidate.md)
 in [Slice B](implementation-staging.md). It prepares signing and media inputs.
 The [2026-09-16 observation](observations/2026-09-16-native-offline-positive.md)
-records one pristine native offline boot and verified return to inspection SD;
-physical corruption enforcement and device-secret feasibility remain pending.
+records one pristine native offline boot and verified return to inspection SD.
+The [2026-09-17 verity procedure](observations/2026-09-17-native-verity.md) adds the
+two scoped corruption results, pristine restoration, positive control and SD
+return, including an explicit late-read console-interleaving review. Device-secret
+feasibility and full fleet qualification remain pending.
 Nothing here admits the device to a fleet or repeats fresh-board qualification.
 
 ## Separate, single-image signing scope
