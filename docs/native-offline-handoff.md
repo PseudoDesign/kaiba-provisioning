@@ -65,6 +65,26 @@ from the same selected clean commit, retain their exact store paths and hashes,
 and review the host replacement before installation. Installation remains inert;
 it creates neither an approval nor a PIN source and does not start the gate.
 
+### Diagnosing a failed signing command
+
+If the gate reports a failed YubiKey command, retain the stopped attempt and
+read its service journal. The wrapper reports the child exit status when
+available and allowlisted PKCS#11 reason names from the pinned provider's error
+records. It withholds raw stdout/stderr, runner error text, paths and credential
+values. Unrecognized or malformed diagnostics remain `pkcs11=unclassified`.
+These codes describe what the provider reported; they do not prove which
+physical action failed or whether private-key use occurred. A token error can
+remain ambiguous even when the operator touched the key.
+
+Read-only token metadata may establish the selected public key, PIN/touch
+policies and remaining PIN attempts. It cannot recover a discarded diagnostic
+or authorize another signature. Do not use a test-signature or PIN-verification
+command as a diagnostic retry. A retained intent continues to block its grant.
+After resolving or documenting the failure, another attempt requires a new
+independently approved one-image grant. Do not delete durable state or reinstall
+the failed grant. A diagnostic runtime update needs its own reviewed host
+replacement; the accepted candidate image and signing intent can remain fixed.
+
 ## Verified outer FAT and exact media spans
 
 `lib.mkRpi5VerifiedNativeOfflineSigning` accepts the typed signing plan plus
