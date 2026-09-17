@@ -3,7 +3,9 @@
 This is the protected-storage mechanism investigation in
 [Slice B](implementation-staging.md). Offline-image work proceeds independently.
 No device secret has been programmed, read, derived or qualified by this change.
-Persistent state and copied-media protection remain unimplemented.
+Production persistent state and copied-media protection remain unimplemented.
+An [experimental target harness](device-secret-target-harness.md) now supplies
+software for a disposable two-boot LUKS test; it has not run on the Pi.
 
 ## Pinned inputs and established software work
 
@@ -135,14 +137,18 @@ slot or repeat customer-root ownership programming. Key generation and OTP
 usage writes need a separate irreversible-action plan; neither is included in
 the read-only probe.
 
-The proposed derivation message is the ASCII domain
-`kaiba:protected-state:luks2:v1`, one NUL separator, and exactly 32 random public
-per-volume nonce bytes. Store the nonce as public volume metadata. It is not a
-secret, and neither the board serial nor a disk ID replaces the OTP secret.
-Pass the 32-byte HMAC output directly to a future LUKS2 keyslot operation through
-a private descriptor; LUKS generates its own independent volume key. No derived
-value belongs in argv, environment, files on removable media, logs, receipts,
-the Nix store, or Git. There is no LUKS implementation in this PR.
+The experimental implementation selects `kaiba-firmware-hmac-counter-v1`,
+reusing the pinned upstream one-block counter KDF. Its salt is the ASCII purpose
+`kaiba:protected-state:luks2:v1`, one NUL separator and 32 random public per-volume
+nonce bytes. The [harness document](device-secret-target-harness.md#reuse-and-derivation-decision)
+specifies the complete byte encoding. This explicitly replaces the earlier
+proposed direct purpose/nonce HMAC for the experiment; production profile
+adoption remains a decision. Existing host keyslots are unchanged.
+
+The 32-byte firmware result passes directly in memory to libcryptsetup; LUKS
+generates an independent volume key. No derived value belongs in argv,
+environment, files on removable media, logs, receipts, the Nix store, or Git.
+A public nonce, board serial or disk ID does not replace the OTP secret.
 
 The signed early-boot experiment must set `lock_device_private_key=1` and
 `lock_device_key_write=1` before untrusted userspace. After the needed derivation,
@@ -161,8 +167,9 @@ waive the storage boundary. No production identity is used in this experiment.
 
 The [automation plan and host runner](device-secret-automation.md) reduce the
 operator session to prepared execution and physical steps. The passive runner
-and software rehearsal are implemented; the signed target harness and exact
-staging/execution packet remain planned. Neither a capture plan nor a matched
+and software rehearsal are implemented. The [target harness and unsigned image
+constructor](device-secret-target-harness.md) are now implemented and tested in
+software; the exact staging/execution packet and physical run remain planned. Neither a capture plan nor a matched
 target report grants execution authority or qualifies this mechanism.
 
 Prepare a signed test image and an exact operation/slot plan after the baseline.

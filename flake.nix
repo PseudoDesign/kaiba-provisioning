@@ -136,6 +136,7 @@
         provisioning-signing-gate = import ./nix/modules/provisioning-signing-gate.nix;
         provisioning-station-demo = import ./nix/modules/provisioning-station-demo.nix;
         secure-boot-target = import ./nix/modules/secure-boot-target.nix;
+        device-secret-experiment = import ./nix/modules/device-secret-experiment.nix;
         stable-verifier-spike = import ./nix/modules/stable-verifier-spike.nix;
       };
 
@@ -251,6 +252,16 @@
         inherit lib;
         buildPkgs = import nixpkgs { system = "aarch64-linux"; };
         candidateSystem = nativeOfflineSystem;
+      };
+      mkRpi5DeviceSecretExperiment = import ./nix/device-secret-experiment.nix {
+        inherit lib nixpkgs;
+        nixosRaspberryPi = nixos-raspberrypi;
+        secureBootTargetModule = modules.secure-boot-target;
+      };
+      deviceSecretExperimentFixture = mkRpi5DeviceSecretExperiment {
+        experiment = import ./tests/device-secret-target/fixture-config.nix;
+        expectedCustomerKeyHash = stableCampaignExpectedCustomerKeyHash;
+        sourceRevision = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
       };
       nativeOfflineReview = import ./nix/rpi5-native-offline-review.nix {
         pkgs = import nixpkgs { system = "aarch64-linux"; };
@@ -474,6 +485,7 @@
         mkRpi5VerifiedNativeOfflineSigning =
           { system, ... }@args:
           (nativeOfflineFactories system).mkVerified (builtins.removeAttrs args [ "system" ]);
+        inherit mkRpi5DeviceSecretExperiment;
         mkRpi5NativeOfflineMediaHandoff =
           { system, ... }@args:
           (nativeOfflineFactories system).mkMedia (builtins.removeAttrs args [ "system" ]);
@@ -529,6 +541,8 @@
           kaiba-rpi5-fwcrypto = deviceSecret.library;
           kaiba-device-secret-capabilities = deviceSecret.probe;
           kaiba-device-secret-runner = deviceSecretRunner.package;
+          kaiba-device-secret-target =
+            (import ./nix/device-secret-target.nix { pkgs = import nixpkgs { inherit system; }; }).package;
           default = built.provision;
           kaiba-provision-audit = built.audit;
           kaiba-provision-authority-bridge = built.authorityBridge;
@@ -779,6 +793,13 @@
           unit-static = provisioning.staticGoTests;
           development-yubikey-signing = provisioning.developmentYubiKeySigningContract;
           device-secret-runner = (import ./nix/device-secret-runner.nix { inherit pkgs; }).check;
+          device-secret-target = (import ./nix/device-secret-target.nix { inherit pkgs; }).check;
+          device-secret-target-luks-vm = import ./tests/device-secret-target-vm.nix { inherit pkgs; };
+          device-secret-target-eval = import ./tests/device-secret-target-eval.nix {
+            inherit pkgs lib;
+            candidate = deviceSecretExperimentFixture;
+            baseline = nativeOfflineCandidate;
+          };
           device-secret-capabilities = import ./tests/device-secret-capabilities.nix {
             inherit pkgs;
             crypto = import ./nix/rpi5-fwcrypto.nix { inherit pkgs; };
@@ -1385,6 +1406,10 @@
               '';
         }
         // lib.optionalAttrs (system == "aarch64-linux") {
+          device-secret-target-artifacts = import ./tests/device-secret-target-artifacts.nix {
+            inherit pkgs;
+            candidate = deviceSecretExperimentFixture;
+          };
           native-offline-signing-plan = nativeOfflineSigningPlan;
           native-offline-artifacts = import ./tests/native-offline-artifacts.nix {
             inherit pkgs;

@@ -9,8 +9,8 @@ fresh-board seven-operation workflow. This plan grants no hardware authority.
 
 | Piece | Deliverable and acceptance | Status |
 | --- | --- | --- |
-| 1. Host capture runner | Passive UART collection, boot-relative observation windows, private durable checkpoints, two-phase ordering, simulation isolation, restart/failure tests, and native packages. | Implemented in this change; exercised with synthetic transcripts and pseudo-terminals, not the Pi. |
-| 2. Signed target harness | Reuse the pinned derivation and LUKS integration; implement exact target observations, a disposable volume, key cleanup and approved lock checks; create then reopen across isolated cold boots. | Planned; no target image or firmware operation is implemented by the host runner. |
+| 1. Host capture runner | Passive UART collection, boot-relative observation windows, private durable checkpoints, two-phase ordering, simulation isolation, restart/failure tests, and native packages. | Implemented; exercised with synthetic transcripts and pseudo-terminals, not the Pi. |
+| 2. Signed target harness | Reuse the pinned derivation and LUKS integration; implement exact target observations, a disposable volume, key cleanup and approved lock checks; create then reopen across isolated cold boots. | [Implemented in the target harness](device-secret-target-harness.md); software and VM tests only. Image selection, signing and physical operation remain pending. |
 | 3. Execution packet and staging | Exact artifacts, selected target/slot/volume, separate authority scopes, backups, one-shot privileged staging/readback, recovery route, capture plan and reviewed report projection. | Planned; complete and review this before live execution. |
 
 The later copied-media demonstration uses the original and a functioning
@@ -28,22 +28,23 @@ is available in its pinned `nixos-raspberrypi` dependency at
 [`d3360e0b`](https://github.com/ams-tech/nixos-raspberrypi/tree/d3360e0b4b9ed0f7ccba5120cecb36dc886864e2).
 This is source review, not an observation of those running hosts.
 
-Before adapting that code:
+The [target harness](device-secret-target-harness.md) now adapts that code with these explicit decisions and remaining gates:
 
-- Resolve its `key_id < num_keys` check against the actual one-based API and
+- Replace its `key_id < num_keys` check with the actual one-based API, matching
   our [one-slot observation](observations/2026-09-17-device-secret-metadata.md).
-  Add the one-slot/slot-1 regression case; mocks returning two slots do not cover it.
-- Pin the firmware API and derivation encoding. Decide how the existing
-  versioned counter KDF and purpose/context inputs satisfy Kaiba's proposed
-  domain/nonce contract. Do not silently change a scheme on existing volumes.
+  The new helper and whole-workflow VM test accept count 1 with slot 1.
+- Pin the firmware API and use `kaiba-firmware-hmac-counter-v1`: the upstream
+  one-block counter encoding with purpose/NUL/nonce as its public salt. This is
+  an explicit experiment scheme; it does not change existing host keyslots.
 - Resolve slot suitability and the allowed signed-image/recovery set before
   programming a usable secret. Preserve occupied slots and existing hosts.
-- Integrate raw-read and key-write restrictions, post-unlock HMAC/signing
-  closure, and key-buffer lifetime. The existing module's raw-read-lock default
-  does not implement the whole experiment.
+- The target module requires raw-read and key-write boot restrictions and adds
+  memory-only derivation plus HMAC/signing closure. Generation and usage-write
+  lock bits are observed; irreversible negative-write probes are not implemented.
 
-These decisions block the target image and secret operations. They do not block
-development of passive capture, state handling or software rehearsals.
+Slot and authorized-image decisions still block selection/signing of a hardware
+experiment and secret operations. Software harness and image-constructor work
+proceeds without choosing an eligible physical board.
 
 ## Bounded hardware session, once prepared and approved
 
@@ -149,8 +150,8 @@ The target harness must derive the observations from actual checks; merely
 echoing expected plan values cannot establish them. Boot-image observations
 must use runtime facts rather than embedding a self-referential image hash.
 
-The planned target harness must suppress competing console output during its
-bounded record writes. The host accepts ordinary console prefixes and CRLF,
+The target image suppresses competing console output during its bounded record
+writes; actual UART behavior remains to be observed. The host accepts ordinary console prefixes and CRLF,
 but malformed/interleaved records, duplicate fields/events, changed bindings,
 failed or missing checks, a repeated boot UUID, byte exhaustion or cleanup
 failure stop the run. It does not silently reconstruct a success marker.
