@@ -1,9 +1,16 @@
-{ pkgs, lib, candidate, baseline }:
+{
+  pkgs,
+  lib,
+  candidate,
+  baseline,
+}:
 let
   c = candidate.nixosSystem.config;
   service = c.systemd.services.kaiba-device-secret-experiment.serviceConfig;
 in
-assert lib.assertMsg (lib.all (a: a.assertion) c.assertions) "device-secret image assertions failed";
+assert lib.assertMsg (lib.all (
+  a: a.assertion
+) c.assertions) "device-secret image assertions failed";
 assert c.nixpkgs.buildPlatform.system == "aarch64-linux";
 assert c.nixpkgs.hostPlatform.system == "aarch64-linux";
 assert c.hardware.raspberry-pi.config.all.options.lock_device_private_key.value == 1;
