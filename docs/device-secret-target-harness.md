@@ -23,7 +23,7 @@ bytes are discarded and wiped. No production identity or existing LUKS volume
 is used.
 
 The current inventory reports slot 1 with undefined usage. That does not establish
-slot suitability or whether a usable key is present. Reviewing the occupied slot
+slot suitability or whether a usable key is present. Reviewing the selected slot
 and the allowed older/recovery images remains necessary before selecting a board
 or authorizing secret operations. No such selection is made here.
 
@@ -67,6 +67,10 @@ The flake exports `lib.mkRpi5DeviceSecretExperiment`, taking `experiment`,
 boot/dm-verity image construction and returns unsigned artifacts. There is no
 default selected experiment image, new signing grant or media handoff. The
 signing/staging packet is the next piece of work.
+
+The [September EEPROM candidate](rpi5-eeprom-crypto-update.md) supplies the
+upstream-declared fine-grained locks. Its signing, installation and physical
+qualification remain pending; the old May candidate predates these locks.
 
 The default-disabled `device-secret-experiment` module enables boot-time
 `lock_device_private_key=1` and `lock_device_key_write=1`. It retains a read-only
@@ -168,7 +172,7 @@ The legacy mapping and error conventions come from the pinned
 [Pi 5 device tree](https://github.com/raspberrypi/linux/blob/c8c7494100e99ee05b11aaa4f0588a223a63d1af/arch/arm64/boot/dts/broadcom/bcm2712-rpi.dtsi),
 [nvmem driver](https://github.com/raspberrypi/linux/blob/c8c7494100e99ee05b11aaa4f0588a223a63d1af/drivers/nvmem/raspberrypi-otp.c),
 [mailbox driver](https://github.com/raspberrypi/linux/blob/c8c7494100e99ee05b11aaa4f0588a223a63d1af/drivers/char/broadcom/vcio.c), and
-[EEPROM history](https://github.com/raspberrypi/rpi-eeprom/blob/05d94be4554ce44a057bfce8d0dd37d951703dab/firmware-2712/release-notes.md).
+[EEPROM history](https://github.com/raspberrypi/rpi-eeprom/blob/2fee426f27b6c54d3f5b6f36efd9a2fe1286a45d/firmware-2712/release-notes.md).
 
 ## Software verification and next gate
 

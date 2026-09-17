@@ -12,17 +12,20 @@ software for a disposable two-boot LUKS test; it has not run on the Pi.
 | Input | Selected source | What remains to observe |
 | --- | --- | --- |
 | Pi platform | `nixos-raspberrypi` `7e39508bcf9c1da82cf11c1e22f74f9d9fd0fe10` | Exact running kernel and mailbox device availability/permissions |
-| EEPROM candidate | `rpi-eeprom` `05d94be4554ce44a057bfce8d0dd37d951703dab`, Pi 5 image `2026-05-26`, revision `086b83e3` | Installed EEPROM identity and actual API/lock behavior |
+| EEPROM candidate | `rpi-eeprom` `2fee426f27b6c54d3f5b6f36efd9a2fe1286a45d`, Pi 5 image `2026-09-12`, revision `a8698392` | Installed EEPROM identity and actual API/lock behavior |
 | Firmware crypto | `raspberrypi/utils` `292dbe7e35296e556d839a0b9ae2ca957ac8c961` | Hardware support for every required operation |
 
-The EEPROM release history contains the crypto API, key usage, raw-OTP lock
-fix and invalid-HMAC-key fix. That is source support, not a board result. The
+The [EEPROM update](rpi5-eeprom-crypto-update.md) replaces the May candidate,
+which predates the June 17 fine-grained locks required by the harness. Signing,
+installation and hardware qualification remain pending. The selected history
+contains the crypto API, key usage, raw-OTP lock fix, invalid-HMAC-key fix and
+fine-grained read/generate/sign/HMAC/usage locks. That is source support, not a board result. The
 separate boot-firmware bundle revision is not an EEPROM version observation.
 The platform's general utils package lacks GnuTLS and can omit the crypto
 subdirectory. `kaiba-rpi5-fwcrypto` explicitly builds that pinned subdirectory
 with GnuTLS, including its library and upstream CLI.
 
-Sources: [pinned EEPROM history](https://github.com/raspberrypi/rpi-eeprom/blob/05d94be4554ce44a057bfce8d0dd37d951703dab/firmware-2712/release-notes.md),
+Sources: [pinned EEPROM history](https://github.com/raspberrypi/rpi-eeprom/blob/2fee426f27b6c54d3f5b6f36efd9a2fe1286a45d/firmware-2712/release-notes.md),
 [pinned crypto documentation](https://github.com/raspberrypi/utils/blob/292dbe7e35296e556d839a0b9ae2ca957ac8c961/rpifwcrypto/README.md),
 [API definitions](https://github.com/raspberrypi/utils/blob/292dbe7e35296e556d839a0b9ae2ca957ac8c961/rpifwcrypto/rpifwcrypto.h).
 

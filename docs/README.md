@@ -44,6 +44,7 @@ first-fleet applicability is determined by the admission policy.
 | [Live provisioning](raspberry-pi-5-live-provisioning.md) | Required seven-operation fresh-device sequence, approvals, and reconciliation |
 | [Station interface](provisioning-station-kiosk.md) | Simulation and authenticated read-only transaction view; hardware actions and enrollment remain unavailable |
 | [Development target access](raspberry-pi-5-development-target-access.md) | Optional root-equivalent development access; excluded from fleet images |
+| [EEPROM crypto-lock update](rpi5-eeprom-crypto-update.md) | September firmware pin, public signing/recovery inputs and pending physical update |
 | [Device-secret feasibility](device-secret-feasibility.md) | Pinned firmware-crypto package, non-secret capability probe and pending physical mechanism investigation |
 | [Device-secret experiment automation](device-secret-automation.md) | Staged plan, passive host capture runner and software rehearsal |
 | [Device-secret execution packet](device-secret-execution-packet.md) | File-only packet, bounded staging/restore executor and private report projection; selected hardware session pending |

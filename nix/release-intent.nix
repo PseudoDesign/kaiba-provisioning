@@ -256,8 +256,9 @@ let
         } | sha256sum | cut -d ' ' -f 1)"
         test "$actual_unsigned_artifact_set_digest" = "$unsigned_artifact_set_digest"
 
-        test "$(jq -r .schema_version "$eepromReleaseInput/release.json")" = \
-          'kaiba.provisioning.rpi5-eeprom-release/v1alpha1'
+        jq -e '.schema_version == "kaiba.provisioning.rpi5-eeprom-release/v1alpha1"
+          or .schema_version == "kaiba.provisioning.rpi5-eeprom-release/v1alpha2"' \
+          "$eepromReleaseInput/release.json" > /dev/null
         eeprom_release_manifest_digest="sha256:$(
           sha256sum "$eepromReleaseInput/release.json" | cut -d ' ' -f 1
         )"

@@ -613,6 +613,23 @@
           rpi5-physical-lane-guard-fixture = provisioning.physicalLaneGuardFixture;
           rpi5-probe-bundle = built.rpi5ProbeBundle;
           rpi5-eeprom-release = built.rpi5EEPROMRelease;
+          rpi5-eeprom-release-signing-inputs = built.mkRpi5EEPROMReleaseSigningInputs {
+            eepromRelease = built.rpi5EEPROMRelease;
+            bootConfig = assets.configuration.prototypeEEPROMBoot;
+          };
+          # The old public release remains replayable with its original pin.
+          rpi5-eeprom-release-2026-05-26 =
+            (import ./nix/packages.nix {
+              inherit lib;
+              pkgs = import nixpkgs { inherit system; };
+              eepromReleaseVersion = "2026-05-26";
+            }).rpi5EEPROMRelease;
+          kaiba-provision-sign-eeprom-2026-05-26 =
+            (import ./nix/packages.nix {
+              inherit lib;
+              pkgs = import nixpkgs { inherit system; };
+              eepromReleaseVersion = "2026-05-26";
+            }).eepromSigningTool;
           kaiba-provision-yubikey-wrapper-foundation = built.yubiKeyWrapperFoundation;
           ubuntu-provisioning-authority-deployment = mkUbuntuProvisioningAuthorityDeployment {
             inherit system;
