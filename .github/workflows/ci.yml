@@ -238,7 +238,11 @@ jobs:
           nix --accept-flake-config build -L --no-link \
             .#checks.aarch64-linux.stable-handoff-aarch64-kexec-file-vm
           nix --accept-flake-config build -L --no-link \
+            .#checks.aarch64-linux.device-secret-target-luks-vm
+          nix --accept-flake-config build -L --no-link \
             .#checks.aarch64-linux.stable-campaign-provisioner-unsigned-artifacts
+          nix --accept-flake-config build -L --no-link \
+            .#checks.aarch64-linux.device-secret-target-artifacts
 
       # Public configured outputs need realization coverage beyond fixtures.
       # A PR's synthetic merge revision is an integration input, not the source

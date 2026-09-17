@@ -2,6 +2,7 @@
   buildPkgs,
   lib,
   candidateSystem,
+  artifactName ? "kaiba-rpi5-native-offline-unsigned-artifacts",
 }:
 
 let
@@ -126,7 +127,7 @@ let
     rootImage = candidateSystem.rootImage;
     rootDeviceBinding = "gpt-partuuid";
     sourceRevision = candidateSystem.sourceRevision;
-    name = "kaiba-rpi5-native-offline-unsigned-artifacts";
+    name = artifactName;
   };
 in
 candidateSystem

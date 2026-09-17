@@ -1,5 +1,9 @@
 { nixosRaspberryPi, secureBootTargetModule }:
-{ expectedCustomerKeyHash, sourceRevision }:
+{
+  expectedCustomerKeyHash,
+  sourceRevision,
+  extraModules ? [ ],
+}:
 
 let
   hostname = "kaiba-rpi5-offline";
@@ -151,7 +155,8 @@ let
           };
         }
       )
-    ];
+    ]
+    ++ extraModules;
   };
 in
 {
