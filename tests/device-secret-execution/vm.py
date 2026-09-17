@@ -17,7 +17,7 @@ with image.open('xb') as f:
     f.truncate(p['capacity_bytes'])
 subprocess.run(['mkfs.ext4', '-q', '-F', str(image)], check=True)
 path = subprocess.check_output(['losetup', '--find', '--show', str(image)], text=True).strip()
-mount = Path('/mnt/original'); mount.mkdir()
+mount = Path('/mnt/original'); mount.mkdir(parents=True)
 subprocess.run(['mount', path, str(mount)], check=True)
 (mount/'test-record').write_text('original-fixture-data')
 dev = os.stat(path).st_rdev
