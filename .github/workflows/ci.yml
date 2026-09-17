@@ -260,6 +260,14 @@ jobs:
       - name: Build remaining ARM64 checks and operator-facing packages
         run: nix --accept-flake-config flake check -L
 
+      - name: Rehearse the native unsigned device-secret export
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python3 .github/scripts/device_secret_candidate.py rehearse \
+            --repository . --output "$RUNNER_TEMP/device-secret-export-rehearsal"
+          cat "$RUNNER_TEMP/device-secret-export-rehearsal/SUMMARY.md" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Export the tested native read-only metadata companion
         run: |
           test "$(uname -m)" = aarch64
