@@ -118,6 +118,15 @@ rejected queries, malformed replies, unavailable fields and command rejection.
 They do not call hardware or establish secret/lock behavior. No secret operation
 is authorized by building, downloading or running this metadata companion.
 
+## Recorded read-only inventory
+
+The [2026-09-17 observation report](observations/2026-09-17-device-secret-metadata.md)
+and [public JSON projection](observations/2026-09-17-device-secret-metadata.json)
+record successful count, status and usage queries on the owned development Pi 5
+through the metadata companion. The metadata-access blocker is resolved without
+a kernel patch. Slot suitability, the authorized-image boundary, HMAC and lock
+behavior, and protected-storage qualification remain pending.
+
 ## Proposed mechanism and authority gate
 
 Use a dedicated device key only after reviewing the slot's current status,
