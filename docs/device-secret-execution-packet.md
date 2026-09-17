@@ -39,7 +39,9 @@ keys, backup bytes or raw captures in the Nix store.
    correctness or grant execution authority.
 6. Build `lib.mkRpi5DeviceSecretMediaExecutor { system; packet; }` and
    `lib.mkRpi5DeviceSecretReport { system; packet; }`. Retain their exact immutable
-   store paths. Review the generated `review.md`, `packet.json`, and the executor's
+   store paths using persistent `--out-link` locations (GC roots), including the
+   packet and signing outputs. A text copy of a store path does not prevent garbage
+   collection. Review the generated `review.md`, `packet.json`, and the executor's
    `describe` output before authorizing any device operation.
 
 [The composition example](../examples/device-secret-handoff.nix) exposes the unsigned

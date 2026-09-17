@@ -78,6 +78,10 @@ class Records:
         trusted_path(root/'.lock', False)
         fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         self.sync()
+        # Persist the state directory's own name before any device mutation.
+        parent = os.open(root.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+        try: os.fsync(parent)
+        finally: os.close(parent)
 
     def sync(self):
         fd = os.open(self.root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
