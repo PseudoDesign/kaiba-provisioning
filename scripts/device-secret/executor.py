@@ -157,6 +157,28 @@ def inactive(numbers):
         require(f'{os.major(device)}:{os.minor(device)}' not in numbers, 'target-swap')
 
 
+def check_disk_identity(base, props, host):
+    # ATA pass-through enclosures can report ID_BUS=ata while exposing the
+    # drive's ATA serial and a separate USB enclosure identity. Require both
+    # reviewed identities and their actual USB ancestry, not the bus label alone.
+    require(props.get('ID_BUS') in ('usb', 'ata'), 'disk-identity')
+    expected = dict(ID_SERIAL_SHORT=host['disk_serial'], ID_USB_SERIAL_SHORT=host['enclosure_serial'],
+                    ID_USB_VENDOR_ID=host['usb_vendor'], ID_USB_MODEL_ID=host['usb_product'])
+    require(all(props.get(k) == v for k, v in expected.items()), 'disk-identity')
+    for parent in base.resolve(strict=True).parents:
+        if (parent/'subsystem').resolve() == Path('/sys/bus/usb'):
+            event = dict(line.split('=', 1) for line in (parent/'uevent').read_text().splitlines() if '=' in line)
+            require(event.get('DEVTYPE') in ('usb_interface', 'usb_device'), 'usb-parent-type')
+            if event['DEVTYPE'] == 'usb_interface': continue
+            # The nearest USB device must match. Never fall back to a matching
+            # upstream hub when this enclosure is different or incomplete.
+            expected = dict(idVendor=host['usb_vendor'], idProduct=host['usb_product'],
+                            serial=host['enclosure_serial'])
+            require(all((parent/k).read_text().strip() == v for k, v in expected.items()), 'usb-parent-identity')
+            return
+    raise Rejected('usb-parent-required')
+
+
 class Disk:
     def __init__(self, p):
         self.p, self.fd, self.sequence = p, None, None
@@ -182,9 +204,7 @@ class Disk:
     def check(self, fd=None, readonly=1):
         h = self.p['host']
         props = dict(line.split('=', 1) for line in command('udevadm', 'info', '--query=property', '--name='+self.path).splitlines() if '=' in line)
-        expected = dict(ID_BUS='usb', ID_SERIAL_SHORT=h['disk_serial'], ID_USB_SERIAL_SHORT=h['enclosure_serial'],
-                        ID_USB_VENDOR_ID=h['usb_vendor'], ID_USB_MODEL_ID=h['usb_product'])
-        require(all(props.get(k) == v for k,v in expected.items()), 'disk-identity')
+        check_disk_identity(self.base, props, h)
         entries = [os.stat(h[k]) for k in ('disk_by_id', 'enclosure_by_id')]
         st = os.stat(self.path, follow_symlinks=False)
         require(stat.S_ISBLK(st.st_mode) and st.st_uid == 0 and

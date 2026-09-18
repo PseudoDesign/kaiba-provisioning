@@ -115,6 +115,13 @@ and runtime-masked, and the disk must start read-only. The executor changes neit
 service configuration nor mount state. It does not open the Pi, UART, network,
 firmware or signing interfaces.
 
+USB ATA pass-through enclosures may report `ID_BUS=ata`. Both `ata` and `usb`
+are accepted only with the exact drive and USB enclosure udev identifiers and a
+matching nearest USB-device ancestor in sysfs (vendor, product and enclosure
+serial). An internal ATA disk or matching upstream hub is insufficient. The
+privileged wrapper disables Python bytecode writes and rejects a pre-existing
+source cache before loading its reviewed source.
+
 Each action has a durable exclusive intent written before it starts. An action
 with an intent cannot run again, even after process or host restart or renewed
 authority. Stage writes payloads first and GPT last, with synchronization; that is

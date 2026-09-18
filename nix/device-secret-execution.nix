@@ -103,7 +103,8 @@ let
           echo 'Choose exactly one: describe, status, backup, stage, verify, restore' >&2
           exit 2
         fi
-        exec ${pkgs.python3}/bin/python3 -I ${source}/executor.py ${packet} "$1"
+        test ! -e ${source}/__pycache__
+        exec ${pkgs.python3}/bin/python3 -I -B ${source}/executor.py ${packet} "$1"
       '';
       derivationArgs.passthru = { inherit packet; };
     };

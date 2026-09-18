@@ -101,6 +101,74 @@ class FileDisk:
     def close(self): os.close(self.fd)
 
 
+class IdentityTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        self.usb = self.root/'usb1'/'1-1'
+        self.usb.mkdir(parents=True)
+        (self.usb/'subsystem').symlink_to('/sys/bus/usb')
+        (self.usb/'uevent').write_text('DEVTYPE=usb_device\n')
+        for key, value in dict(idVendor='1234', idProduct='5678', serial='SYNTHETIC_USB').items():
+            (self.usb/key).write_text(value+'\n')
+        interface = self.usb/'1-1:1.0'
+        interface.mkdir()
+        (interface/'subsystem').symlink_to('/sys/bus/usb')
+        (interface/'uevent').write_text('DEVTYPE=usb_interface\n')
+        self.base = interface/'host0'/'target0:0:0'/'0:0:0:0'/'block'/'sda'
+        self.base.mkdir(parents=True)
+        self.props = dict(ID_BUS='usb', ID_SERIAL_SHORT='SYNTHETIC_DISK',
+                          ID_USB_SERIAL_SHORT='SYNTHETIC_USB', ID_USB_VENDOR_ID='1234', ID_USB_MODEL_ID='5678')
+    def tearDown(self): self.temp.cleanup()
+    def test_usb_and_ata_pass_through_with_both_exact_identities(self):
+        for bus in ('usb', 'ata'):
+            with self.subTest(bus=bus):
+                e.check_disk_identity(self.base, dict(self.props, ID_BUS=bus), host())
+    def test_internal_disk_rejected_even_with_matching_udev_fields(self):
+        internal = self.root/'pci'/'ata1'/'block'/'sda'
+        internal.mkdir(parents=True)
+        for bus in ('usb', 'ata'):
+            with self.subTest(bus=bus), self.assertRaisesRegex(e.Rejected, 'usb-parent-required'):
+                e.check_disk_identity(internal, dict(self.props, ID_BUS=bus), host())
+    def test_missing_or_mismatched_udev_identity_rejected(self):
+        for key in self.props:
+            for remove in (False, True):
+                props = self.props.copy()
+                if remove: del props[key]
+                else: props[key] = 'wrong'
+                with self.subTest(key=key, remove=remove), self.assertRaisesRegex(e.Rejected, 'disk-identity'):
+                    e.check_disk_identity(self.base, props, host())
+    def test_changed_usb_parent_rejected_on_next_check(self):
+        e.check_disk_identity(self.base, self.props, host())
+        for name in ('idVendor', 'idProduct', 'serial'):
+            path = self.usb/name; original = path.read_text()
+            path.write_text('different\n')
+            with self.subTest(name=name), self.assertRaisesRegex(e.Rejected, 'usb-parent-identity'):
+                e.check_disk_identity(self.base, self.props, host())
+            path.write_text(original)
+    def test_matching_hub_cannot_substitute_for_wrong_enclosure(self):
+        hub = self.usb.parent
+        (hub/'subsystem').symlink_to('/sys/bus/usb')
+        (hub/'uevent').write_text('DEVTYPE=usb_device\n')
+        for key in ('idVendor', 'idProduct', 'serial'):
+            (hub/key).write_text((self.usb/key).read_text())
+        (self.usb/'serial').write_text('wrong-enclosure\n')
+        with self.assertRaisesRegex(e.Rejected, 'usb-parent-identity'):
+            e.check_disk_identity(self.base, self.props, host())
+    def test_missing_enclosure_fields_do_not_fall_back_to_hub(self):
+        hub = self.usb.parent
+        (hub/'subsystem').symlink_to('/sys/bus/usb')
+        (hub/'uevent').write_text('DEVTYPE=usb_device\n')
+        for key in ('idVendor', 'idProduct', 'serial'):
+            (hub/key).write_text((self.usb/key).read_text())
+        for name in ('idVendor', 'idProduct', 'serial', 'uevent'):
+            path = self.usb/name; original = path.read_text()
+            path.unlink()
+            with self.subTest(name=name), self.assertRaises(OSError):
+                e.check_disk_identity(self.base, self.props, host())
+            path.write_text(original)
+
+
 class ExecutionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
