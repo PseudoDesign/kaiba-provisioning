@@ -37,7 +37,12 @@ The [secure-boot model](../raspberry-pi-5-secure-boot.md) defines the existing
 native boot boundary and the development campaign. This document begins at
 that boundary and deliberately does not weaken it.
 
-The design evaluated here does not add a TPM. It uses the BCM2712
+The newer [per-device boot-root plan](../per-device-boot-root-plan.md) proposes
+unique device roots, authorized local firmware signing, and a TPM evaluation
+for the next hardware revision. It explicitly tracks the changes needed to
+the external root-custody model below; neither path is production-qualified.
+
+The baseline design evaluated here does not add a TPM. It uses the BCM2712
 device-private-key OTP region and Raspberry Pi firmware cryptography for an
 automatic LUKS unlock, while giving device authentication a separate role. It
 can provide verified boot, offline-storage confidentiality, and online-gated
