@@ -1,6 +1,10 @@
 # Device-secret experiment automation
 
-The next Slice B work is a bounded two-boot experiment, reusing the existing
+Firmware API iteration should first use the [remote development helper](device-secret-development.md)
+on the existing signed inspection system. This avoids repeating image signing
+and media transfers for helper changes. It does not supply qualification evidence.
+
+The offline qualification work is a bounded two-boot experiment, reusing the existing
 OTP-derived LUKS implementation and keeping human actions at physical and
 execution-authority boundaries. The existing owned Pi does not enter the
 fresh-board seven-operation workflow. This plan grants no hardware authority.

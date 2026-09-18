@@ -9,6 +9,7 @@ tools and retain Go's normal local build and test cache.
 | Edit a Go component | `scripts/check.sh go ./internal/provisioning/campaignmedia ./cmd/kaiba-rpi5-stable-campaign-gpt-inspect` | Exercise the affected packages without images or signing plans |
 | Edit station assets | `scripts/check.sh ui` | Python asset contracts and JavaScript behavior |
 | Prepare a candidate | `scripts/check.sh fast` | Formatting, complete Go suite, UI checks, and inert deployment smoke test |
+| Edit the remote firmware helper | `scripts/check.sh contracts device-secret-development device-secret-target device-secret-runner` | Standalone helper, remote orchestration and shared mailbox regression coverage |
 | Change a Nix contract | `scripts/check.sh contracts CHECK...` | Realize named checks on the current native architecture |
 | Finish a PR | `scripts/check.sh full` | Complete native Nix checks; CI covers both supported architectures |
 

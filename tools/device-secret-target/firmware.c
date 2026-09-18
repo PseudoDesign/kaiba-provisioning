@@ -4,7 +4,7 @@
  * the pinned restricted node omits usage and legacy reads. All returned bytes
  * stay in locked process memory and are wiped, including malformed responses.
  */
-#include "harness.h"
+#include "firmware.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -22,6 +22,9 @@ static enum fw_result last_outcome = FW_INVALID;
 static uint32_t last_mailbox_tag;
 static int last_mailbox_errno;
 static enum fw_result outcome(enum fw_result r) { last_outcome = r; return r; }
+struct fw_diagnostic fw_snapshot(void) {
+    return (struct fw_diagnostic){last_outcome, last_mailbox_tag, last_mailbox_errno};
+}
 const char *fw_last_outcome(void) {
     static const char *names[] = { "success", "key-locked", "transport-failure", "malformed-reply", "firmware-rejected" };
     return names[last_outcome];
@@ -87,6 +90,7 @@ static enum fw_result scalar(uint32_t tag, uint32_t id, uint32_t value, uint32_t
 enum fw_result fw_count(uint32_t *v) { return scalar(0x0003008f, 0, 0, v); }
 enum fw_result fw_status(uint32_t id, uint32_t *v) { return scalar(0x00030090, id, 0, v); }
 enum fw_result fw_usage(uint32_t id, uint32_t *v) { return scalar(0x0003009c, id, 0, v); }
+enum fw_result fw_error(uint32_t *v) { return scalar(0x0003008e, 0, 0, v); }
 enum fw_result fw_set_locks(uint32_t id, uint32_t v) { return scalar(0x00038090, id, v, NULL); }
 
 static bool unchanged_or_zero(const void *actual, const void *request, size_t n) {

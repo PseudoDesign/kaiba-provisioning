@@ -7,6 +7,11 @@ Production persistent state and copied-media protection remain unimplemented.
 An [experimental target harness](device-secret-target-harness.md) now supplies
 software for a disposable two-boot LUKS test; it has not run on the Pi.
 
+For firmware API debugging, use the [remote development workflow](device-secret-development.md)
+before selecting another full-image experiment. Its runtime lock checks and HMAC
+comparisons remain development observations, with final boot/storage qualification
+separate.
+
 ## Pinned inputs and established software work
 
 | Input | Selected source | What remains to observe |
