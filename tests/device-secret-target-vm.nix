@@ -64,6 +64,16 @@ let
           machine.succeed("test $(readlink -f /dev/disk/by-partuuid/${fixtureConfig.partition_uuid}) = /dev/vdb1")
           machine.succeed("test $(blockdev --getsize64 /dev/vdb1) = 68157440")
 
+      def mappings_removed():
+          # Check kernel state first: waiting for udev must not hide a failed
+          # removal. Device-node events may still be queued after the ioctl.
+          names = machine.succeed("dmsetup info --columns --noheadings -o name")
+          assert "kaiba-secret-experiment-open" not in names, names
+          assert "kaiba-secret-experiment-container" not in names, names
+          machine.succeed("udevadm settle --timeout=10")
+          machine.succeed("test ! -e /dev/mapper/kaiba-secret-experiment-open")
+          machine.succeed("test ! -e /dev/mapper/kaiba-secret-experiment-container")
+
       def records(phase):
           output = machine.succeed("cat /run/target-events")
           values = [json.loads(line.split("=", 1)[1]) for line in output.splitlines()]
@@ -77,8 +87,7 @@ let
           observer.feed(output.replace("KAIBA_DEVICE_SECRET_TEST_EVENT=", "KAIBA_DEVICE_SECRET_EVENT=").encode())
           observer.finish()
           prior_boots.append(values[0]["boot_id"])
-          machine.succeed("test ! -e /dev/mapper/kaiba-secret-experiment-open")
-          machine.succeed("test ! -e /dev/mapper/kaiba-secret-experiment-container")
+          mappings_removed()
           return values[0]["boot_id"]
 
       # Use real GPT/udev discovery, matching the production PARTUUID contract.
@@ -111,6 +120,7 @@ let
       # Independent negative fixtures, prepared by the VM test, never a target
       # reset/retry feature. The production helper has no journal-reset command.
       for fault, expected in [("other-board", "volume_reopened"), ("private-returned", "raw_read_blocked"),
+                              ("raw-ioctl-invalid", "raw_read_blocked"),
                               ("legacy-zeros", "legacy_read_blocked"), ("clearable-locks", "locks_cannot_clear")]:
           machine.succeed("dd if=/var/lib/device-secret-created.img of=/dev/vdb1 bs=1M conv=fsync status=none")
           machine.succeed("rm -f /run/kaiba-device-secret-attempted")
@@ -122,8 +132,13 @@ let
           assert failed and failed[-1]["check"] == expected and not failed[-1]["passed"], output + errors
           assert not any(v["check"] == "complete" for v in failed)
           assert "5a"*32 not in output
-          machine.succeed("test ! -e /dev/mapper/kaiba-secret-experiment-open")
-          machine.succeed("test ! -e /dev/mapper/kaiba-secret-experiment-container")
+          assert f"KAIBA_DEVICE_SECRET_STOP={expected} hardware_qualified=false" in errors, output + errors
+          if fault == "raw-ioctl-invalid":
+              diagnostic = "KAIBA_DEVICE_SECRET_DIAGNOSTIC=check:raw_read_blocked last_firmware_outcome:transport-failure last_mailbox_tag:0x00030094 last_mailbox_errno:22"
+              assert diagnostic in output, output
+              assert output.index(diagnostic) < output.index('"check":"raw_read_blocked"'), output
+              assert "KAIBA_DEVICE_SECRET_STOP=raw_read_blocked" in errors, errors
+          mappings_removed()
           machine.succeed("sha256sum /dev/vdb1 > /run/failed.sha256")
           # Even after an explicitly reset boot-local marker, the on-media intent
           # prevents a retry and preserves the failed candidate byte-for-byte.

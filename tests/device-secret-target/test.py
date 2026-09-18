@@ -1,4 +1,5 @@
 import hashlib
+import errno
 import json
 import os
 from pathlib import Path
@@ -17,10 +18,11 @@ def config():
         board_serial_sha256='e'*64, disk_serial_sha256='f'*64, nonce_hex=bytes(range(32)).hex(), slot_id=1, expected_usage=8)
 
 class TargetTests(unittest.TestCase):
-    def invoke(self, operation, fault=None):
+    def invoke(self, operation, fault=None, diagnostics=False):
         env = os.environ.copy()
         if fault: env['KAIBA_TEST_FAULT'] = fault
-        result = subprocess.run([CHECK, operation], env=env, capture_output=True, text=True, check=True)
+        args = [CHECK, operation] + (['--diagnostics'] if diagnostics else [])
+        result = subprocess.run(args, env=env, capture_output=True, text=True, check=True)
         self.assertEqual(result.stderr, '')
         return result.stdout.strip()
 
@@ -41,6 +43,22 @@ class TargetTests(unittest.TestCase):
     def test_transport_failure_is_not_a_lock(self):
         for operation in ['raw', 'legacy', 'hmac', 'sign', 'count']:
             with self.subTest(operation=operation): self.assertEqual(self.invoke(operation, 'ioctl-denied'), '2 0')
+
+    def test_failure_diagnostics_preserve_errno_and_tag_without_response_bytes(self):
+        for fault, code in [('ioctl-denied', errno.EPERM), ('raw-ioctl-invalid', errno.EINVAL),
+                            ('ioctl-timeout', errno.ETIMEDOUT)]:
+            with self.subTest(fault=fault):
+                lines = self.invoke('raw', fault, diagnostics=True).splitlines()
+                self.assertCountEqual(lines, ['2 0', 'KAIBA_DEVICE_SECRET_DIAGNOSTIC=check:synthetic-check '
+                    f'last_firmware_outcome:transport-failure last_mailbox_tag:0x00030094 last_mailbox_errno:{code}'])
+        lines = self.invoke('raw', 'locked-with-secret', diagnostics=True).splitlines()
+        self.assertCountEqual(lines, ['3 0', 'KAIBA_DEVICE_SECRET_DIAGNOSTIC=check:synthetic-check '
+            'last_firmware_outcome:malformed-reply last_mailbox_tag:0x00030094 last_mailbox_errno:0'])
+
+    def test_successful_exchange_does_not_reuse_previous_errno(self):
+        lines = self.invoke('legacy-then-hmac', diagnostics=True).splitlines()
+        self.assertCountEqual(lines, ['0 0', 'KAIBA_DEVICE_SECRET_DIAGNOSTIC=check:synthetic-check '
+            'last_firmware_outcome:success last_mailbox_tag:0x00030092 last_mailbox_errno:0'])
 
     def test_malformed_headers_and_short_hmac_fail_closed(self):
         self.assertEqual(self.invoke('hmac', 'bad-header'), '3 0')

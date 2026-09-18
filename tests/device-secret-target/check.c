@@ -1,9 +1,10 @@
 #include "harness.h"
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 int main(int argc, char **argv) {
-    if (argc != 2) return 2;
+    if (argc != 2 && !(argc == 3 && !strcmp(argv[2], "--diagnostics"))) return 2;
     if (!strcmp(argv[1], "message")) {
         uint8_t nonce[32], message[128]; size_t n; char out[257];
         for (unsigned i = 0; i < 32; ++i) nonce[i] = (uint8_t)i;
@@ -19,6 +20,10 @@ int main(int argc, char **argv) {
     if (!strcmp(argv[1], "raw")) r = fw_raw_read(1);
     if (!strcmp(argv[1], "legacy")) r = fw_legacy_read();
     if (!strcmp(argv[1], "hmac")) r = fw_hmac(1, (const uint8_t *)"public", 6, out);
+    if (!strcmp(argv[1], "legacy-then-hmac")) {
+        if (fw_legacy_read() != FW_LOCKED) return 3;
+        r = fw_hmac(1, (const uint8_t *)"public", 6, out);
+    }
     if (!strcmp(argv[1], "sign")) r = fw_sign(1);
     if (!strcmp(argv[1], "close")) {
         if (fw_set_locks(1, DEVICE_TYPE | ALL_LOCKS) != FW_OK) return 3;
@@ -26,6 +31,7 @@ int main(int argc, char **argv) {
     }
     fw_close();
     printf("%u %u\n", (unsigned)r, value);
+    if (argc == 3) fw_diagnostic(STDOUT_FILENO, "synthetic-check");
     for (size_t i = 0; i < sizeof(out); ++i) if (r != FW_OK && out[i]) return 4;
     explicit_bzero(out, sizeof(out));
     return 0;

@@ -174,6 +174,14 @@ The legacy mapping and error conventions come from the pinned
 [mailbox driver](https://github.com/raspberrypi/linux/blob/c8c7494100e99ee05b11aaa4f0588a223a63d1af/drivers/char/broadcom/vcio.c), and
 [EEPROM history](https://github.com/raspberrypi/rpi-eeprom/blob/2fee426f27b6c54d3f5b6f36efd9a2fe1286a45d/firmware-2712/release-notes.md).
 
+A failed check emits a diagnostic line before its failed event. It contains the
+fixed check name, last firmware outcome, most recent mailbox tag and that call's
+numeric `errno` (zero when the call did not fail). These transport fields help
+distinguish permission, invalid-request and timeout errors; they are not proof of
+a firmware lock. Diagnostics issue no additional mailbox request and include no
+request/response buffers, keys or derived outputs. The helper still stops and
+performs its bounded cleanup after a failed check; another attempt requires review.
+
 ## Software verification and next gate
 
 ```console

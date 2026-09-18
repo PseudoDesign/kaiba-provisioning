@@ -48,6 +48,7 @@ enum fw_result fw_raw_read(uint32_t);
 enum fw_result fw_legacy_read(void);
 enum fw_result fw_sign(uint32_t);
 const char *fw_last_outcome(void);
+void fw_diagnostic(int, const char *);
 
 bool storage_open(struct storage *, const struct config *, const struct observation *);
 bool storage_intent(struct storage *, const struct observation *);

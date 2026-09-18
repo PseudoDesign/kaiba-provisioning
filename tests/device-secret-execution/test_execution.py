@@ -332,5 +332,35 @@ class ExecutionTests(unittest.TestCase):
         value=copy.deepcopy(self.plan); value['command']='dd'
         with self.assertRaises(e.Rejected): p.validate(value)
 
+    def test_private_projection_of_failed_check_keeps_original_capture_blocked(self):
+        spec = importlib.util.spec_from_file_location('report', SOURCE/'report.py')
+        report = importlib.util.module_from_spec(spec); spec.loader.exec_module(report)
+        state = self.root/'failed-capture'
+        store = p.capture.Store(state)
+        plan = self.plan['capture_plan']
+        store.initialize(plan, 'simulation')
+        boot = str(uuid.uuid4()); frames = []
+        for index, check in enumerate(('started', 'raw_read_blocked'), 1):
+            frame = dict(schema_version=p.capture.EVENT_SCHEMA,
+                         **{k: plan[k] for k in p.capture.BINDINGS},
+                         phase='create', boot_id=boot, sequence=index, check=check, passed=index == 1)
+            frames.append(p.capture.PREFIX+p.canonical(frame))
+        tape = dict(schema_version=p.capture.TAPE_SCHEMA, phase='create',
+                    chunks=[dict(at_seconds=1, base64=base64.b64encode(b''.join(frames)).decode())])
+        @contextlib.contextmanager
+        def source(plan, phase):
+            yield p.capture.Simulation(tape, phase)
+        store.observe(source, lambda _: None)
+        store.close()
+        before = {f.name: f.read_bytes() for f in state.iterdir()}
+        result = report.project(self.bundle, state)
+        self.assertEqual(result['stop_reason'], 'target-check-failed:raw_read_blocked')
+        self.assertTrue(result['needs_review'])
+        self.assertEqual(result['phases'], [])
+        self.assertEqual(result['mode'], 'simulation')
+        self.assertFalse(result['hardware_qualified'])
+        self.assertFalse(result['publication_authorized'])
+        self.assertEqual({f.name: f.read_bytes() for f in state.iterdir()}, before)
+
 
 if __name__ == '__main__': unittest.main()
