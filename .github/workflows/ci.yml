@@ -181,6 +181,7 @@ jobs:
     needs:
       - x86_64_core
       - aarch64
+      - device-secret-development
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
@@ -189,9 +190,10 @@ jobs:
         env:
           CORE_RESULT: ${{ needs.x86_64_core.result }}
           ARM_RESULT: ${{ needs.aarch64.result }}
+          DEVELOPMENT_RESULT: ${{ needs.device-secret-development.result }}
         run: |
-          if [ "$CORE_RESULT" != success ] || [ "$ARM_RESULT" != success ]; then
-            echo "::error::core=$CORE_RESULT arm=$ARM_RESULT"
+          if [ "$CORE_RESULT" != success ] || [ "$ARM_RESULT" != success ] || [ "$DEVELOPMENT_RESULT" != success ]; then
+            echo "::error::core=$CORE_RESULT arm=$ARM_RESULT development=$DEVELOPMENT_RESULT"
             exit 1
           fi
 
@@ -305,6 +307,59 @@ jobs:
         with:
           name: device-secret-metadata-${{ github.sha }}-aarch64-linux
           path: ${{ runner.temp }}/device-secret-metadata/
+          if-no-files-found: error
+          retention-days: 30
+
+  device-secret-development:
+    name: Native ARM64 remote development helper
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Nix
+        uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342 # v31.11.0
+        with:
+          enable_kvm: false
+      - name: Configure binary caches (read-only)
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: kaiba-provisioning
+          extraPullNames: nixos-raspberrypi
+          skipPush: true
+      - name: Check and export the standalone development helper
+        run: |
+          test "$(uname -m)" = aarch64
+          nix --accept-flake-config build -L --no-link .#checks.aarch64-linux.device-secret-development
+          export HELPER_PACKAGE="$(nix --accept-flake-config build --no-link --print-out-paths .#kaiba-device-secret-development-helper)"
+          export HELPER_EXPORT="$RUNNER_TEMP/device-secret-development"
+          python3 - <<'PYTHON'
+          import hashlib, json, os, pathlib, shutil, subprocess
+          output = pathlib.Path(os.environ["HELPER_EXPORT"])
+          output.mkdir()
+          source = pathlib.Path(os.environ["HELPER_PACKAGE"]) / "bin/kaiba-device-secret-development"
+          target = output / source.name
+          shutil.copyfile(source, target)
+          target.chmod(0o555)
+          (output / "build.json").write_text(json.dumps({
+              "source_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "run_id": os.environ["GITHUB_RUN_ID"],
+              "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "system": "aarch64-linux",
+              "store_path": str(source),
+              "sha256": hashlib.sha256(target.read_bytes()).hexdigest(),
+              "hardware_observation": False,
+              "requires_boot_image_signing": False,
+          }, indent=2) + "\n")
+          PYTHON
+      - name: Upload the standalone development helper
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: device-secret-development-${{ github.sha }}-aarch64-linux
+          path: ${{ runner.temp }}/device-secret-development/
           if-no-files-found: error
           retention-days: 30
 

@@ -5,13 +5,10 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <jansson.h>
-#include <rpifwcrypto.h>
+#include "firmware.h"
 
 #define STORAGE_BYTES (UINT64_C(65) * 1024 * 1024)
 #define DATA_START (UINT64_C(1024) * 1024)
-#define EARLY_LOCKS (ARM_CRYPTO_KEY_STATUS_READ_LOCKED | ARM_CRYPTO_KEY_STATUS_GEN_LOCKED | ARM_CRYPTO_KEY_STATUS_USAGE_LOCKED)
-#define ALL_LOCKS (EARLY_LOCKS | ARM_CRYPTO_KEY_STATUS_SIGN_LOCKED | ARM_CRYPTO_KEY_STATUS_HMAC_LOCKED)
-#define DEVICE_TYPE ARM_CRYPTO_KEY_STATUS_TYPE_DEVICE_PRIVATE_KEY
 #define SCHEME "kaiba-firmware-hmac-counter-v1"
 
 struct config {
@@ -22,7 +19,6 @@ struct config {
 };
 struct observation { char boot_id[37], boot_hash[65], root_hash[65], nonce_hash[65]; };
 struct storage { int fd; bool linear, opened; unsigned phase; uint8_t binding[32]; char prior_boot[37]; };
-enum fw_result { FW_OK, FW_LOCKED, FW_IO, FW_INVALID, FW_REJECTED };
 
 bool hash256(const void *, size_t, uint8_t[32]);
 bool unhex(const char *, uint8_t *, size_t);
@@ -36,19 +32,6 @@ int events_open(void);
 bool event_emit(int, const struct config *, const struct observation *, unsigned, const char *, unsigned, bool);
 bool derive_message(const char *, const uint8_t[32], uint8_t *, size_t *);
 bool constant_same(const uint8_t[32], const uint8_t[32]);
-
-bool fw_open(void);
-void fw_close(void);
-enum fw_result fw_count(uint32_t *);
-enum fw_result fw_status(uint32_t, uint32_t *);
-enum fw_result fw_usage(uint32_t, uint32_t *);
-enum fw_result fw_set_locks(uint32_t, uint32_t);
-enum fw_result fw_hmac(uint32_t, const uint8_t *, size_t, uint8_t[32]);
-enum fw_result fw_raw_read(uint32_t);
-enum fw_result fw_legacy_read(void);
-enum fw_result fw_sign(uint32_t);
-const char *fw_last_outcome(void);
-void fw_diagnostic(int, const char *);
 
 bool storage_open(struct storage *, const struct config *, const struct observation *);
 bool storage_intent(struct storage *, const struct observation *);

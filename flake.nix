@@ -563,6 +563,10 @@
           kaiba-rpi5-fwcrypto = deviceSecret.library;
           kaiba-device-secret-capabilities = deviceSecret.probe;
           kaiba-device-secret-runner = deviceSecretRunner.package;
+          kaiba-device-secret-development-helper =
+            (import ./nix/device-secret-development.nix { pkgs = import nixpkgs { inherit system; }; }).helper;
+          kaiba-device-secret-development-session =
+            (import ./nix/device-secret-development.nix { pkgs = import nixpkgs { inherit system; }; }).package;
           kaiba-device-secret-target =
             (import ./nix/device-secret-target.nix { pkgs = import nixpkgs { inherit system; }; }).package;
           default = built.provision;
@@ -854,6 +858,7 @@
               }).media;
           };
           device-secret-runner = (import ./nix/device-secret-runner.nix { inherit pkgs; }).check;
+          device-secret-development = (import ./nix/device-secret-development.nix { inherit pkgs; }).check;
           device-secret-target = (import ./nix/device-secret-target.nix { inherit pkgs; }).check;
           device-secret-target-luks-vm = import ./tests/device-secret-target-vm.nix { inherit pkgs; };
           device-secret-target-eval = import ./tests/device-secret-target-eval.nix {
