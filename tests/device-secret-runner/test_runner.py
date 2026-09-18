@@ -135,6 +135,40 @@ class RunnerTests(unittest.TestCase):
         with self.assertRaisesRegex(runner.Rejected, 'no-automatic-retry'):
             self.observe()
 
+    def test_failed_check_names_survive_restart_without_allowing_retry(self):
+        for phase in runner.PHASES:
+            for index, check in enumerate(runner.checks(phase)):
+                with self.subTest(phase=phase, check=check):
+                    path = self.root / (phase + '-' + check)
+                    store = runner.Store(path)
+                    try:
+                        store.initialize(plan(), 'simulation')
+                        if phase == 'reopen':
+                            store.observe(lambda p, current: simulation(tape()), lambda _: None)
+                        value = tape(phase, BOOT2, start=1)
+                        value['chunks'] = value['chunks'][:index + 2]
+                        failed = event(phase, index, BOOT2) | {'passed': False}
+                        value['chunks'][-1]['base64'] = base64.b64encode(line(failed)).decode()
+                        state = store.observe(lambda p, current: simulation(value), lambda _: None)
+                        self.assertEqual(state['blocked'], 'target-check-failed:' + check)
+                        store.close()
+                        before = {p.name: p.read_bytes() for p in path.iterdir()}
+                        store = runner.Store(path)
+                        self.assertEqual(store.load()[1], state)
+                        with self.assertRaisesRegex(runner.Rejected, 'no-automatic-retry'):
+                            store.observe(lambda p, current: self.fail('must not reopen source'), lambda _: None)
+                        self.assertEqual({p.name: p.read_bytes() for p in path.iterdir()}, before)
+                    finally:
+                        store.close()
+
+    def test_blocked_reason_still_rejects_unbounded_or_unsafe_text(self):
+        state = self.store.read('state.json')
+        for reason in ['', 'x' * 97, 'failed\ncontinued', 'failed with spaces', 'failed/other', 'failed\x00', 1]:
+            with self.subTest(reason=reason):
+                self.store.write('state.json', state | {'blocked': reason}, replace=True)
+                with self.assertRaisesRegex(runner.Rejected, 'invalid-blocked-state'):
+                    self.store.load()
+
     def test_missing_complete_event_never_passes(self):
         value = tape(); value['chunks'].pop()
         self.assertEqual(self.observe(value)['blocked'], 'missing-events')

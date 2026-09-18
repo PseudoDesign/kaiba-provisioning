@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
 
 #define CHECK(name, expression) do { \
     stop = name; bool passed = !interrupted && (expression); ++sequence; \
-    if (!passed) dprintf(fd, "KAIBA_DEVICE_SECRET_DIAGNOSTIC=check:%s last_firmware_outcome:%s\n", name, fw_last_outcome()); \
+    if (!passed) fw_diagnostic(fd, name); \
     if (!event_emit(fd, &c, &o, s.phase, name, sequence, passed) || !passed) goto done; \
 } while (0)
     CHECK("started", true);

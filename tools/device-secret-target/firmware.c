@@ -7,6 +7,7 @@
 #include "harness.h"
 #include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/file.h>
 #include <sys/ioctl.h>
@@ -18,10 +19,18 @@
 #define MBOX _IOWR(100, 0, char *)
 static int mailbox = -1;
 static enum fw_result last_outcome = FW_INVALID;
+static uint32_t last_mailbox_tag;
+static int last_mailbox_errno;
 static enum fw_result outcome(enum fw_result r) { last_outcome = r; return r; }
 const char *fw_last_outcome(void) {
     static const char *names[] = { "success", "key-locked", "transport-failure", "malformed-reply", "firmware-rejected" };
     return names[last_outcome];
+}
+void fw_diagnostic(int fd, const char *check) {
+    /* Only fixed operation names, result categories and transport metadata.
+     * Never include request/response buffers or perform another mailbox call. */
+    (void)dprintf(fd, "KAIBA_DEVICE_SECRET_DIAGNOSTIC=check:%s last_firmware_outcome:%s last_mailbox_tag:0x%08x last_mailbox_errno:%d\n",
+                  check, fw_last_outcome(), (unsigned)last_mailbox_tag, last_mailbox_errno);
 }
 struct message { uint32_t size, code, tag, capacity, response; uint32_t data[515]; uint32_t end; };
 
@@ -46,18 +55,21 @@ void fw_close(void) {
     mailbox = -1;
 }
 static enum fw_result exchange(struct message *m, uint32_t tag, uint32_t capacity, uint32_t request) {
+    last_mailbox_tag = tag;
+    last_mailbox_errno = 0;
     size_t size = capacity <= 8 ? 40 : (tag == 0x00030091 ? 160 : 24 + capacity);
     m->size = (uint32_t)size; m->tag = tag; m->capacity = capacity; m->response = request;
     /* End tag is directly after the selected capacity, not the arena's end. */
     uint32_t *end = (uint32_t *)((uint8_t *)m + size - 4);
     *end = 0;
-    if (mailbox < 0) return FW_IO;
+    if (mailbox < 0) { last_mailbox_errno = EBADF; return FW_IO; }
+    errno = 0;
 #ifdef KAIBA_TESTING
     int rc = test_exchange(m, size);
 #else
     int rc = ioctl(mailbox, MBOX, m);
 #endif
-    if (rc < 0) return FW_IO;
+    if (rc < 0) { last_mailbox_errno = errno; return FW_IO; }
     if (rc || m->size != size || m->code != DONE || m->tag != tag || m->capacity != capacity ||
         !(m->response & DONE) || (m->response & ~DONE) > capacity || *end) return FW_INVALID;
     return FW_OK;

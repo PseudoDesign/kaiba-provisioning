@@ -178,6 +178,11 @@ review; absent checks are not invented. Physical isolation, media readback and
 slot/image suitability remain separate review items, and hardware qualification,
 fleet admission and publication are never asserted by this command.
 
+Failed check names, including `target-check-failed:raw_read_blocked`, remain
+readable by status and report commands after restart. They retain the failed
+reason and require review; reading or reporting them does not reset the consumed
+phase, permit a retry or advance to the second boot.
+
 Review this private draft before publishing an explicit projection. Keep the
 original raw evidence and backups on malak as previously requested.
 

@@ -16,6 +16,8 @@ int test_exchange(void *arena, size_t size) {
     uint32_t *m = arena, *v = m+5, tag = m[2], capacity = m[3];
     if (m[0] != size || m[1] || m[4] & 0x80000000 || m[size/4-1] || size > 2084) abort();
     if (fault("ioctl-denied")) { errno = EPERM; return -1; }
+    if (fault("ioctl-timeout")) { errno = ETIMEDOUT; return -1; }
+    if (fault("raw-ioctl-invalid") && tag == 0x00030094) { errno = EINVAL; return -1; }
     m[1] = 0x80000000; m[4] = 0x80000000 | capacity;
     if (fault("bad-header")) m[0]++;
     switch (tag) {

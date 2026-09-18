@@ -399,7 +399,7 @@ class Store:
         expected_phase = PHASES[len(state['completed'])] if len(state['completed']) < 2 else None
         require(state['active_phase'] is None or state['active_phase'] == expected_phase, 'invalid-active-phase')
         require(state['blocked'] is None or (isinstance(state['blocked'], str) and
-                re.fullmatch(r'[a-z0-9:-]{1,96}', state['blocked'])), 'invalid-blocked-state')
+                re.fullmatch(r'[a-z0-9:_-]{1,96}', state['blocked'])), 'invalid-blocked-state')
         boot_ids = []
         for index, saved in enumerate(state['completed']):
             exact_fields(saved, ('phase', 'result_sha256'))
