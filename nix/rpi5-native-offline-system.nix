@@ -166,6 +166,9 @@ in
     sourceRevision
     expectedCustomerKeyHash
     ;
-  rootImage = nixosSystem.config.sdImage.rootFilesystemImage;
+  rootImage = import ./reproducible-ext4-image.nix {
+    inherit (nixosSystem.pkgs) lib;
+    image = nixosSystem.config.sdImage.rootFilesystemImage;
+  };
   system = nixosSystem.config.system.build.toplevel;
 }
