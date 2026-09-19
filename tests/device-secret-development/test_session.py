@@ -123,6 +123,26 @@ class SessionTests(unittest.TestCase):
             with self.assertRaises(d.Rejected):
                 d.validate_result(json.dumps(response() | change).encode(), self.config, 'inspect', BOOT, 0)
 
+    def test_hmac_transport_diagnostic_is_retained_and_blocks_reboot(self):
+        s = self.init()
+        observation = response('hmac')
+        observation.update(passed=False, stop='hmac-closed')
+        observation['steps'][-1].update(passed=False, outcome=2, mailbox_tag=0x30092, mailbox_errno=22)
+        observation['steps'].append(dict(name='last-error-after-transport-failure', passed=True,
+                                        outcome=0, mailbox_tag=0x3008e, mailbox_errno=0, value=4))
+        raw = json.dumps(observation).encode()
+        with patch.object(d, 'inspect', return_value={'boot_id': BOOT}), \
+             patch.object(d, 'remote', return_value=subprocess.CompletedProcess([], 3, raw, b'')):
+            result = s.run(self.helper, 'hmac')
+        self.assertEqual(result['status'], 'failed')
+        self.assertEqual(result['observation'], observation)
+        self.assertEqual((self.state/'0001.stdout').read_bytes(), raw)
+        self.assertTrue(result['observation']['cleanup_locks_closed'])
+        s.close(); s = d.Session(self.state); self.addCleanup(s.close)
+        with patch.object(d, 'inspect', side_effect=AssertionError('no further SSH')):
+            with self.assertRaisesRegex(d.Rejected, 'failed-attempt'): s.reboot()
+            with self.assertRaisesRegex(d.Rejected, 'failed-attempt'): s.run(self.helper, 'read-lock')
+
     def test_expiry_and_budget_enforced(self):
         s = self.init(); s.config['expires_at'] = '2000-01-01T00:00:00Z'
         with self.assertRaisesRegex(d.Rejected, 'expired'): s.allowed('inspect')

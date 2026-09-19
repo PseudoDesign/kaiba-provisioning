@@ -27,6 +27,18 @@ static bool record(const char *name, bool passed, bool has_value, uint32_t value
     steps[step_count++] = (struct step){name, passed, has_value, value, fw_snapshot()};
     return passed && !interrupted;
 }
+static bool record_crypto(const char *name, enum fw_result result, bool passed) {
+    bool matched = record(name, passed, false, 0);
+    /* Preserve the original transport error before any other mailbox call.
+     * A separate last-error query is diagnostic, never proof of rejection. */
+    if (result == FW_IO && !interrupted) {
+        uint32_t error = 0;
+        enum fw_result diagnostic = fw_error(&error);
+        record("last-error-after-transport-failure", diagnostic == FW_OK,
+               diagnostic == FW_OK, error);
+    }
+    return matched && !interrupted;
+}
 static bool decimal(const char *s, uint32_t *v, unsigned low, unsigned high) {
     if (!*s || (s[0] == '0' && s[1])) return false;
     for (const char *p = s; *p; ++p) if (*p < '0' || *p > '9') return false;
@@ -74,7 +86,7 @@ int main(int argc, char **argv) {
     }
     const char *stop = "memory-or-boot-preflight";
     bool passed = false, cleanup_needed = false, cleaned = false;
-    uint32_t count = 0, status = 0, usage = 0, error = 0;
+    uint32_t count = 0, status = 0, usage = 0;
     uint8_t a[32] = {0}, b[32] = {0};
     if (!protect(argv[7])) goto done;
     struct sigaction action = {.sa_handler = interrupt}; sigemptyset(&action.sa_mask);
@@ -84,6 +96,10 @@ int main(int argc, char **argv) {
 #define CHECK(name, expression) do { stop = name; if (interrupted || !record(name, (expression), false, 0)) goto done; } while (0)
 #define META(name, call, variable, predicate) do { stop = name; enum fw_result r = (call); \
     if (!record(name, r == FW_OK && (predicate), r == FW_OK, variable)) goto done; } while (0)
+#define HMAC(name, input, length, output, predicate) do { stop = name; \
+    if (interrupted) goto done; \
+    enum fw_result r = fw_hmac(slot, input, length, output); \
+    if (!record_crypto(name, r, r == FW_OK && (predicate))) goto done; } while (0)
     META("count", fw_count(&count), count, count >= slot && count <= 32);
     META("status", fw_status(slot, &status), status,
          (status & DEVICE_TYPE) && !(status & ~(DEVICE_TYPE | ALL_LOCKS)));
@@ -98,21 +114,13 @@ int main(int argc, char **argv) {
     if (!strcmp(argv[1], "read-lock")) {
         stop = "raw-read-blocked";
         enum fw_result result = fw_raw_read(slot);
-        bool blocked = record(stop, result == FW_LOCKED, false, 0);
-        /* Separate diagnostic query; NEVER promote EINVAL plus a last-error
-         * value to a successful lock test. Preserve the original result first. */
-        if (result == FW_IO && !interrupted) {
-            enum fw_result diagnostic = fw_error(&error);
-            record("last-error-after-transport-failure", diagnostic == FW_OK,
-                   diagnostic == FW_OK, error);
-        }
-        if (!blocked) goto done;
+        if (!record_crypto(stop, result, result == FW_LOCKED)) goto done;
     } else {
         static const uint8_t first[] = "kaiba:development:hmac:v1:control";
         static const uint8_t second[] = "kaiba:development:hmac:v1:separation";
-        CHECK("hmac-control", fw_hmac(slot, first, sizeof(first)-1, a) == FW_OK);
-        CHECK("hmac-repeat", fw_hmac(slot, first, sizeof(first)-1, b) == FW_OK && same(a, b));
-        CHECK("hmac-separation", fw_hmac(slot, second, sizeof(second)-1, b) == FW_OK && !same(a, b));
+        HMAC("hmac-control", first, sizeof(first)-1, a, true);
+        HMAC("hmac-repeat", first, sizeof(first)-1, b, same(a, b));
+        HMAC("hmac-separation", second, sizeof(second)-1, b, !same(a, b));
     }
     passed = true;
 done:
@@ -125,7 +133,8 @@ done:
         cleaned = set && r == FW_OK && status == (DEVICE_TYPE | ALL_LOCKS);
         record("closed-status", cleaned, r == FW_OK, status);
         if (passed && cleaned && !interrupted && !strcmp(argv[1], "hmac")) {
-            passed = record("hmac-closed", fw_hmac(slot, (const uint8_t *)"kaiba:development:closed", 24, b) == FW_LOCKED, false, 0);
+            r = fw_hmac(slot, (const uint8_t *)"kaiba:development:closed", 24, b);
+            passed = record_crypto("hmac-closed", r, r == FW_LOCKED);
             if (!passed) stop = "hmac-closed";
         }
         if (!cleaned) { passed = false; stop = "cleanup-locks"; }

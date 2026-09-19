@@ -1,10 +1,12 @@
 #include "firmware.h"
 #include <errno.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 static uint32_t locks = DEVICE_TYPE, error_code;
+static unsigned hmac_calls;
 static bool fault(const char *s) {
     const char *v = getenv("KAIBA_TEST_FAULT"); return v && !strcmp(v, s);
 }
@@ -21,7 +23,10 @@ int test_exchange(void *buffer, size_t size) {
     case 0x3008f: v[0] = fault("no-slots") ? 0 : 1; return 0;
     case 0x30090: v[0] = fault("preclosed") ? DEVICE_TYPE | ALL_LOCKS : locks; return 0;
     case 0x3009c: v[0] = fault("usage-mismatch") ? 9 : 8; return 0;
-    case 0x3008e: v[0] = error_code; return 0;
+    case 0x3008e:
+        if (fault("last-error-io")) { errno = EIO; return -1; }
+        if (fault("last-error-malformed")) m[0]++;
+        v[0] = fault("last-error-other") ? 8 : error_code; return 0;
     case 0x38090:
         if (v[0] != 1 || (v[1] != (DEVICE_TYPE | EARLY_LOCKS) && v[1] != (DEVICE_TYPE | ALL_LOCKS))) abort();
         if (!(fault("cleanup") && v[1] == (DEVICE_TYPE | ALL_LOCKS))) locks |= v[1];
@@ -34,6 +39,15 @@ int test_exchange(void *buffer, size_t size) {
         v[0] = 0x80000000; error_code = 4; return 0;
     case 0x30092:
         if (cap != 2060 || v[0] || v[1] != 1 || !v[2] || v[2] > 2048) abort();
+        ++hmac_calls;
+        const char *fail_call = getenv("KAIBA_TEST_HMAC_FAIL_CALL");
+        if (fail_call && hmac_calls == strtoul(fail_call, NULL, 10)) {
+            const char *failure = getenv("KAIBA_TEST_HMAC_ERRNO");
+            if (!failure) abort();
+            error_code = 4;
+            if (fault("hmac-interrupted")) raise(SIGTERM);
+            errno = (int)strtoul(failure, NULL, 10); return -1;
+        }
         if (locks & ARM_CRYPTO_KEY_STATUS_HMAC_LOCKED) {
             v[0] = 0x80000000; error_code = 4; return 0;
         }

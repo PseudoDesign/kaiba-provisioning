@@ -28,13 +28,21 @@ LUKS, or power command. Unexpected key material stays in locked process memory a
 is wiped without printing it. Swap/core dumps must be disabled. Results contain
 public metadata, boolean comparisons, typed outcomes and mailbox tag/errno only.
 
-The helper shares the qualification harness's mailbox implementation. In
-`read-lock`, a transport failure is recorded first, followed by one separate
-last-error query when possible. An `EINVAL` and even a subsequent `KEY_LOCKED`
-error do **not** turn the failed read into a successful protection check. The
-kernel may reject the whole property call without copying its response to user
-space; last-error state alone cannot distinguish that from all other failures.
-Unexpected/malformed responses remain failed, and cleanup success is separate.
+The helper shares the qualification harness's mailbox implementation. For the
+private-read probe and every HMAC call, a transport failure is recorded first,
+followed immediately by at most one separate last-error query when not
+interrupted. The query precedes any remaining cleanup mailbox calls. Results
+retain the original operation's outcome, tag and errno alongside the separate
+metadata result; a failed diagnostic query is recorded without a retry. No
+additional HMAC or private-read probe is issued.
+
+An `EINVAL` and even a subsequent `KEY_LOCKED` error do **not** turn the failed
+operation into a successful protection check. The kernel may reject the whole
+property call without copying its response to user space; last-error state alone
+cannot distinguish that from all other failures. Successful HMAC comparisons and
+lock-status readback remain individually visible even when the final rejection
+check fails. Unexpected/malformed responses remain failed, cleanup success is
+separate, and a failed session still blocks the next check or reboot.
 
 Locks persist within a boot. A second mutating check on an already closed slot
 stops. Start an explicitly authorized soft reboot between checks that need an
