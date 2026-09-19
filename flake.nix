@@ -829,6 +829,9 @@
             inherit pkgs lib;
             candidate = nativeOfflineCandidate;
           };
+          native-offline-root-reproducibility = import ./tests/reproducible-ext4-image.nix {
+            inherit pkgs lib;
+          };
           asset-api = import ./tests/assets.nix { inherit assets pkgs; };
           boot-image-hash-decoder = bootImageHashDecoderCheck;
           public-input-key-scan = import ./tests/public-input-key-scan.nix { inherit lib pkgs; };
