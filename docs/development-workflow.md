@@ -17,6 +17,11 @@ Go test flags can follow package names, for example `-run TestInitialGPT`.
 Use `-count=1` when fresh execution matters; routine editing should benefit from
 Go's test cache. A focused pass does not replace the finished candidate's full
 CI result. Run the native ARM checks in CI or on an approved native ARM builder.
+PR CI reuses the PR base's unchanged build inputs for the two older verifier
+boot-image checks: only changed derivations require their separate ARM jobs.
+All other checks remain mandatory. `main` and manual CI runs build both verifier
+variants; `scripts/check.sh full` remains unconditional. See the
+[CI and cache policy](../README.md#ci-cachix-and-github-pages).
 
 ## Test ownership
 

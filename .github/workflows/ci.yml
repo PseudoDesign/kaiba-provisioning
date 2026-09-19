@@ -15,7 +15,9 @@ env:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Let a running trusted build finish its Cachix upload. PR revisions can
+  # still replace obsolete runs; they never have cache write credentials.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   fast-checks:
@@ -44,6 +46,9 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: '1'
         run: python3 -m unittest discover -s tests/release-candidate -p 'test_*.py' -v
+
+      - name: Test CI selection and required-result handling
+        run: python3 -B -m unittest discover -s tests/ci -p 'test_*.py' -v
 
       - name: Check that the lock file is unchanged
         run: git diff --exit-code -- flake.lock
@@ -173,8 +178,69 @@ jobs:
         with:
           path: _site
 
-  # Preserve the existing required-check context while failing closed unless
-  # both x86 and ARM checks, including configured operator outputs, pass.
+  verifier-plan:
+    name: Select older verifier image checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      required: ${{ steps.plan.outputs.required }}
+      checks: ${{ steps.plan.outputs.checks }}
+    steps:
+      - name: Check out the repository and PR base
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Install Nix
+        uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342 # v31.11.0
+        with:
+          enable_kvm: false
+          github_access_token: ${{ github.token }}
+      - name: Compare complete verifier build inputs
+        id: plan
+        run: python3 -B .github/scripts/verifier_ci.py plan
+
+  verifier-images:
+    name: Older verifier image (${{ matrix.check }})
+    needs: verifier-plan
+    if: needs.verifier-plan.outputs.required == 'true'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        check: ${{ fromJSON(needs.verifier-plan.outputs.checks) }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Nix
+        uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342 # v31.11.0
+        with:
+          enable_kvm: false
+          github_access_token: ${{ github.token }}
+      - name: Configure binary caches (read-only)
+        if: github.event_name != 'push' || github.ref != 'refs/heads/main'
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: ${{ env.CACHIX_CACHE }}
+          extraPullNames: nixos-raspberrypi
+          skipPush: true
+      - name: Cache trusted verifier builds, including their kernels
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: ${{ env.CACHIX_CACHE }}
+          extraPullNames: nixos-raspberrypi
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - name: Build the selected verifier image check
+        env:
+          VERIFIER_CHECK: ${{ matrix.check }}
+        run: nix --accept-flake-config build -L --no-link ".#checks.aarch64-linux.$VERIFIER_CHECK"
+
+  # Preserve the required-check context. A verifier skip is valid only after
+  # successful input comparison explicitly established that neither changed.
   x86_64:
     name: x86_64 Nix checks
     if: always()
@@ -182,20 +248,26 @@ jobs:
       - x86_64_core
       - aarch64
       - device-secret-development
+      - verifier-plan
+      - verifier-images
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    permissions: {}
+    permissions:
+      contents: read
     steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Require the x86_64 and native ARM64 lanes
         env:
           CORE_RESULT: ${{ needs.x86_64_core.result }}
           ARM_RESULT: ${{ needs.aarch64.result }}
           DEVELOPMENT_RESULT: ${{ needs.device-secret-development.result }}
-        run: |
-          if [ "$CORE_RESULT" != success ] || [ "$ARM_RESULT" != success ] || [ "$DEVELOPMENT_RESULT" != success ]; then
-            echo "::error::core=$CORE_RESULT arm=$ARM_RESULT development=$DEVELOPMENT_RESULT"
-            exit 1
-          fi
+          PLAN_RESULT: ${{ needs.verifier-plan.result }}
+          VERIFIER_REQUIRED: ${{ needs.verifier-plan.outputs.required }}
+          VERIFIER_RESULT: ${{ needs.verifier-images.result }}
+        run: python3 -B .github/scripts/verifier_ci.py require-results
 
   aarch64:
     name: Native ARM64 checks and operator packages
@@ -235,7 +307,7 @@ jobs:
       # tests. Running the VM checks alongside kernel or filesystem-image
       # builds can starve the guest long enough to hit the test driver's fixed
       # shell-connect limit. Build the large ARM64 checks one at a time; the
-      # full check below then reuses the outputs.
+      # ordinary checks below then reuse the outputs.
       - name: Build large ARM64 checks without build contention
         run: |
           nix --accept-flake-config build -L --no-link \
@@ -266,7 +338,7 @@ jobs:
             .#packages.aarch64-linux.kaiba-rpi5-stable-campaign-provisioner-signing-plan
 
       - name: Build remaining ARM64 checks and operator-facing packages
-        run: nix --accept-flake-config flake check -L
+        run: python3 -B .github/scripts/verifier_ci.py build-ordinary
 
       - name: Rehearse the native unsigned device-secret export
         env:
@@ -333,7 +405,8 @@ jobs:
         run: |
           test "$(uname -m)" = aarch64
           nix --accept-flake-config build -L --no-link .#checks.aarch64-linux.device-secret-development
-          export HELPER_PACKAGE="$(nix --accept-flake-config build --no-link --print-out-paths .#kaiba-device-secret-development-helper)"
+          HELPER_PACKAGE="$(nix --accept-flake-config build --no-link --print-out-paths .#kaiba-device-secret-development-helper)"
+          export HELPER_PACKAGE
           export HELPER_EXPORT="$RUNNER_TEMP/device-secret-development"
           python3 - <<'PYTHON'
           import hashlib, json, os, pathlib, shutil, subprocess
