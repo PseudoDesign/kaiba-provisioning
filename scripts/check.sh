@@ -76,6 +76,7 @@ case "$command" in
     go test ./...
     run_ui
     tests/deployment/ubuntu_signing_gate_test.sh
+    python3 -B -m unittest discover -s tests/ci -p 'test_*.py' -v
     git diff --exit-code -- flake.lock
     ;;
   contracts)

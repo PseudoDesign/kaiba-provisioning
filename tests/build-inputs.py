@@ -24,7 +24,8 @@ PACKAGES = {
 }
 SYSTEMS = {"x86": "x86_64-linux", "arm": "aarch64-linux"}
 VMS = {"x86-vm", "arm-verifier-vm", "arm-handoff-vm"}
-RUNTIME = {f"{arch}-{name}" for arch in SYSTEMS for name in PACKAGES} | VMS
+VERIFIER_IMAGES = {"legacy-verifier-image", "file-verifier-image"}
+RUNTIME = {f"{arch}-{name}" for arch in SYSTEMS for name in PACKAGES} | VMS | VERIFIER_IMAGES
 
 
 def identities(source):
@@ -37,6 +38,8 @@ def identities(source):
         '"x86-vm" = flake.checks.x86_64-linux.stable-verifier-initramfs-vm.drvPath;',
         '"arm-verifier-vm" = flake.checks.aarch64-linux.stable-verifier-aarch64-kexec-vm.drvPath;',
         '"arm-handoff-vm" = flake.checks.aarch64-linux.stable-handoff-aarch64-kexec-file-vm.drvPath;',
+        '"legacy-verifier-image" = flake.checks.aarch64-linux.stable-verifier-rpi5-hardware-eval.drvPath;',
+        '"file-verifier-image" = flake.checks.aarch64-linux.stable-verifier-rpi5-file-live-fdt-hardware-eval.drvPath;',
         '"unit" = flake.checks.x86_64-linux.unit.drvPath;',
     ]
     expression = (
@@ -94,6 +97,16 @@ def main():
 
         check("documentation", [("README.md", "\nBuild-input identity probe.\n")], set(), False)
         check(
+            "remote-helper-only",
+            [("tools/device-secret-development/main.c", "\n/* identity probe */\n")],
+            set(), False,
+        )
+        check(
+            "verifier-kernel-patch",
+            [("nix/patches/arm64-kexec-file-require-in-place.patch", "\n")],
+            VERIFIER_IMAGES | {"arm-handoff-vm"}, False,
+        )
+        check(
             "unrelated-ui-and-command",
             [
                 ("internal/provisioning/stationui/web/styles.css", "\n/* identity probe */\n"),
@@ -114,12 +127,12 @@ def main():
         check(
             "handoff-implementation",
             [("internal/provisioning/stablehandoff/archive.go", "\n// identity probe\n")],
-            {"x86-verifier", "arm-verifier"} | VMS, True,
+            {"x86-verifier", "arm-verifier"} | VMS | VERIFIER_IMAGES, True,
         )
         check(
             "transitive-verifier-library",
             [("internal/provisioning/bundle/digest.go", "\n// identity probe\n")],
-            {"x86-verifier", "arm-verifier", "x86-inspector", "arm-inspector", "x86-vm", "arm-verifier-vm"},
+            {"x86-verifier", "arm-verifier", "x86-inspector", "arm-inspector", "x86-vm", "arm-verifier-vm"} | VERIFIER_IMAGES,
             True,
         )
         check(
