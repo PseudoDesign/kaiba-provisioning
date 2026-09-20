@@ -319,6 +319,8 @@ jobs:
           nix --accept-flake-config build -L --no-link \
             .#checks.aarch64-linux.device-secret-storage-development-vm
           nix --accept-flake-config build -L --no-link \
+            .#checks.aarch64-linux.device-secret-offline-storage-vm
+          nix --accept-flake-config build -L --no-link \
             .#checks.aarch64-linux.device-secret-execution-vm
           nix --accept-flake-config build -L --no-link \
             .#checks.aarch64-linux.stable-campaign-provisioner-unsigned-artifacts

@@ -152,3 +152,7 @@ authorized recovery images and copied-media confidentiality on a functioning
 comparable board remain separate qualification work. Keep development iteration
 on the existing inspection system; sign a qualification candidate after the
 implementation stabilizes.
+
+The [offline storage development runner](device-secret-offline-storage.md) adds
+a boot-time service and saved-capture assessment for a separately reviewed fresh
+experiment. It cannot resume this completed remote journal or qualify lock rejection.

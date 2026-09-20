@@ -137,6 +137,7 @@
         provisioning-station-demo = import ./nix/modules/provisioning-station-demo.nix;
         secure-boot-target = import ./nix/modules/secure-boot-target.nix;
         device-secret-experiment = import ./nix/modules/device-secret-experiment.nix;
+        device-secret-offline-storage = import ./nix/modules/device-secret-offline-storage.nix;
         stable-verifier-spike = import ./nix/modules/stable-verifier-spike.nix;
       };
 
@@ -260,6 +261,18 @@
       };
       deviceSecretExperimentFixture = mkRpi5DeviceSecretExperiment {
         experiment = import ./tests/device-secret-target/fixture-config.nix;
+        expectedCustomerKeyHash = stableCampaignExpectedCustomerKeyHash;
+        sourceRevision = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+      };
+      mkRpi5DeviceSecretOfflineStorage = import ./nix/device-secret-offline-storage.nix {
+        inherit lib nixpkgs;
+        nixosRaspberryPi = nixos-raspberrypi;
+        secureBootTargetModule = modules.secure-boot-target;
+      };
+      offlineStorageFixture = mkRpi5DeviceSecretOfflineStorage {
+        experiment = (import ./tests/device-secret-target/fixture-config.nix) // {
+          schema_version = "kaiba.device-secret-storage-offline-development/v1alpha1";
+        };
         expectedCustomerKeyHash = stableCampaignExpectedCustomerKeyHash;
         sourceRevision = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
       };
@@ -495,7 +508,7 @@
         mkRpi5VerifiedNativeOfflineSigning =
           { system, ... }@args:
           (nativeOfflineFactories system).mkVerified (builtins.removeAttrs args [ "system" ]);
-        inherit mkRpi5DeviceSecretExperiment;
+        inherit mkRpi5DeviceSecretExperiment mkRpi5DeviceSecretOfflineStorage;
         mkRpi5DeviceSecretSigningPlan =
           { system, ... }@args:
           (deviceSecretExecutionFactories system).mkSigningPlan (builtins.removeAttrs args [ "system" ]);
@@ -570,6 +583,12 @@
           kaiba-device-secret-storage-development-helper =
             (import ./nix/device-secret-storage-development.nix { pkgs = import nixpkgs { inherit system; }; })
             .helper;
+          kaiba-device-secret-offline-storage-helper =
+            (import ./nix/device-secret-storage-development.nix { pkgs = import nixpkgs { inherit system; }; })
+            .offlineHelper;
+          kaiba-offline-storage-assess =
+            (import ./nix/device-secret-storage-development.nix { pkgs = import nixpkgs { inherit system; }; })
+            .offlineAssessor;
           kaiba-device-secret-storage-session =
             (import ./nix/device-secret-storage-development.nix { pkgs = import nixpkgs { inherit system; }; })
             .package;
@@ -872,6 +891,14 @@
             (import ./nix/device-secret-storage-development.nix { inherit pkgs; }).check;
           device-secret-storage-development-vm = import ./tests/device-secret-storage-development-vm.nix {
             inherit pkgs;
+          };
+          device-secret-offline-storage-vm = import ./tests/device-secret-offline-storage-vm.nix {
+            inherit pkgs;
+          };
+          device-secret-offline-storage-eval = import ./tests/device-secret-offline-storage-eval.nix {
+            inherit pkgs lib;
+            candidate = offlineStorageFixture;
+            baseline = nativeOfflineCandidate;
           };
           device-secret-target = (import ./nix/device-secret-target.nix { inherit pkgs; }).check;
           device-secret-target-luks-vm = import ./tests/device-secret-target-vm.nix { inherit pkgs; };

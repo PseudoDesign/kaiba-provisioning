@@ -10,11 +10,19 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#define CONFIG_SCHEMA "kaiba.device-secret-storage-development/v1alpha1"
-#ifdef KAIBA_TESTING
-#define RESULT_MODE "synthetic-development"
+#ifdef KAIBA_STORAGE_OFFLINE
+#define CONFIG_SCHEMA "kaiba.device-secret-storage-offline-development/v1alpha1"
+#define RESULT_SCHEMA "kaiba.device-secret-storage-offline-result/v1alpha1"
+#define MODE_SUFFIX "offline-development"
 #else
-#define RESULT_MODE "development"
+#define CONFIG_SCHEMA "kaiba.device-secret-storage-development/v1alpha1"
+#define RESULT_SCHEMA "kaiba.device-secret-storage-result/v1alpha1"
+#define MODE_SUFFIX "development"
+#endif
+#ifdef KAIBA_TESTING
+#define RESULT_MODE "synthetic-" MODE_SUFFIX
+#else
+#define RESULT_MODE MODE_SUFFIX
 #endif
 static volatile sig_atomic_t interrupted;
 static void interrupt_run(int unused) { (void)unused; interrupted = 1; }
@@ -38,18 +46,27 @@ static bool storage_drivers_ready(void) {
 int main(int argc, char **argv) {
     if (argc == 2 && !strcmp(argv[1], "--version")) {
 #ifdef KAIBA_TESTING
-        puts("kaiba-device-secret-storage-development TEST FIRMWARE ONLY; hardware_qualified=false");
+        puts(CONFIG_SCHEMA " TEST FIRMWARE ONLY; hardware_qualified=false");
 #else
-        puts("kaiba-device-secret-storage-development/v1alpha1 " SCHEME "; development-only");
+        puts(CONFIG_SCHEMA " " SCHEME "; development-only");
 #endif
         return 0;
     }
     bool validate_only = argc == 3 && !strcmp(argv[1], "--check-config");
+#ifdef KAIBA_STORAGE_OFFLINE
+    if (!validate_only && !(argc == 3 && !strcmp(argv[1], "--run-reviewed-experiment"))) {
+        fputs("Usage: offline storage helper --version | --check-config CONFIG | --run-reviewed-experiment CONFIG\n", stderr);
+        return 2;
+    }
+    const char *phase = "unknown";
+#else
     if (!validate_only && !(argc == 5 && (!strcmp(argv[1], "create") || !strcmp(argv[1], "reopen")) &&
         !strcmp(argv[3], "--expected-boot-id") && uuid_valid(argv[4]))) {
         fputs("Usage: kaiba-device-secret-storage-development --version | --check-config CONFIG | create|reopen CONFIG --expected-boot-id UUID\n", stderr);
         return 2;
     }
+    const char *phase = argv[1];
+#endif
     struct config c = {0}; struct observation o = {0}; struct storage s = {.fd = -1};
     uint8_t key[32] = {0}, canary_key[32] = {0}, message[128] = {0}; size_t size = 0;
     uint32_t count = 0, status = 0, usage = 0;
@@ -59,20 +76,38 @@ int main(int argc, char **argv) {
     struct fw_diagnostic diagnostic = {FW_INVALID, 0, 0};
     if (!config_load_schema(argv[2], &c, CONFIG_SCHEMA)) goto done;
     if (validate_only) { json_decref(c.json); return 0; }
+#ifdef KAIBA_STORAGE_OFFLINE
+    stop = "console";
+    int console = events_open();
+    if (console < 0) goto done;
+    bool redirected = dup2(console, STDOUT_FILENO) >= 0;
+    if (close(console) || !redirected) goto done;
+#endif
     stop = "memory-protection";
     if (!memory_protect()) goto done;
     struct sigaction action = {.sa_handler = interrupt_run}; sigemptyset(&action.sa_mask);
     if (sigaction(SIGINT, &action, NULL) || sigaction(SIGTERM, &action, NULL) || sigaction(SIGALRM, &action, NULL)) goto done;
     alarm(180);
     stop = "runtime-identity";
+#ifdef KAIBA_STORAGE_OFFLINE
+    if (!runtime_observe(&c, &o)) goto done;
+#else
     if (!runtime_observe_development(&c, &o) || strcmp(o.boot_id, argv[4])) goto done;
+#endif
     stop = "same-boot-repeat";
     int once = open("/run/kaiba-device-secret-storage-attempted", O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
     if (once < 0) goto done;
     bool marked = write(once, o.boot_id, 36) == 36 && fsync(once) == 0;
     if (close(once) || !marked) goto done;
     stop = "storage-prestate";
-    if (!storage_open(&s, &c, &o) || s.phase != (unsigned)!strcmp(argv[1], "reopen")) goto done;
+    if (!storage_open(&s, &c, &o)) goto done;
+#ifdef KAIBA_STORAGE_OFFLINE
+    /* Only storage_open's validated, image-bound one-use journal selects a phase.
+     * Incomplete/completed journals fail before any firmware operation. */
+    phase = s.phase ? "reopen" : "create";
+#else
+    if (s.phase != (unsigned)!strcmp(argv[1], "reopen")) goto done;
+#endif
     stop = "storage-drivers";
     if (!storage_drivers_ready()) goto done;
     stop = "firmware-metadata";
@@ -116,15 +151,22 @@ done:
     alarm(0);
     if (interrupted) { passed = false; stop = "interrupted"; }
     json_t *result = json_pack("{s:s,s:s,s:s,s:s,s:s,s:s,s:s,s:s,s:b,s:s,s:b,s:b,s:b,s:b,s:b,s:b,s:i,s:i,s:i}",
-        "schema_version", "kaiba.device-secret-storage-result/v1alpha1", "mode", RESULT_MODE,
-        "phase", argv[1], "boot_id", o.boot_id, "boot_image_sha256", o.boot_hash, "verity_root_hash", o.root_hash,
+        "schema_version", RESULT_SCHEMA, "mode", RESULT_MODE,
+        "phase", phase, "boot_id", o.boot_id, "boot_image_sha256", o.boot_hash, "verity_root_hash", o.root_hash,
         "volume_uuid", c.volume ? c.volume : "", "nonce_sha256", o.nonce_hash,
         "passed", passed, "stop", passed ? "complete" : stop, "volume_verified", volume_verified,
         "runtime_locks_closed", locks_closed, "storage_closed", storage_closed, "journal_completed", complete,
         "hardware_qualified", 0, "lock_rejection_qualified", 0,
         "last_firmware_outcome", diagnostic.outcome, "last_mailbox_tag", (int)diagnostic.tag,
         "last_mailbox_errno", diagnostic.error);
-    bool emitted = result && json_dumpf(result, stdout, JSON_COMPACT | JSON_SORT_KEYS) == 0 && putchar('\n') != EOF;
+#ifdef KAIBA_STORAGE_OFFLINE
+    /* A dedicated console service supplies exclusive UART output. Capture still
+     * rejects missing, duplicated or interleaved records; this is not an audit. */
+    bool prefix = fputs("KAIBA_DEVICE_SECRET_STORAGE_RESULT=", stdout) >= 0;
+#else
+    bool prefix = true;
+#endif
+    bool emitted = prefix && result && json_dumpf(result, stdout, JSON_COMPACT | JSON_SORT_KEYS) == 0 && putchar('\n') != EOF;
     if (result) json_decref(result);
     if (c.json) json_decref(c.json);
     OPENSSL_cleanup(); munlockall();
