@@ -1,13 +1,13 @@
 import json,os,pathlib,subprocess,sys,tempfile,unittest
 BINARY=sys.argv.pop(1)
 class Loader(unittest.TestCase):
- def run_case(self,fault=None):
+ def run_case(self,fault=None,locks=False):
   with tempfile.TemporaryDirectory() as td:
    p=pathlib.Path(td);trace=p/'trace';helper=p/'helper'
-   helper.write_text('#!/bin/sh\necho helper >> "$TRACE"\nexit 3\n');helper.chmod(0o700)
+   helper.write_text('#!/bin/sh\ntest "$1" = '+('locks' if locks else 'hmac')+' || exit 124\necho helper >> "$TRACE"\nexit 3\n');helper.chmod(0o700)
    env=dict(os.environ,TRACE=str(trace));env.pop('FAULT',None)
    if fault:env['FAULT']=fault
-   run=subprocess.run([BINARY,'object',str(helper),'1','0','11111111-1111-4111-8111-111111111111'],env=env,capture_output=True,text=True,timeout=10)
+   run=subprocess.run([BINARY]+(['--lock-checks'] if locks else [])+['object',str(helper),'1','0','11111111-1111-4111-8111-111111111111'],env=env,capture_output=True,text=True,timeout=10)
    lines=trace.read_text().splitlines();payload=None
    if 'KAIBA_FIRMWARE_OBSERVER=' in run.stdout:payload=json.loads(run.stdout.split('KAIBA_FIRMWARE_OBSERVER=')[1])
    return run,lines,payload
@@ -15,6 +15,9 @@ class Loader(unittest.TestCase):
   r,lines,v=self.run_case();self.assertEqual(r.returncode,0,r.stderr)
   self.assertEqual(v['helper_exit'],3);self.assertTrue(v['complete']);self.assertFalse(v['hardware_qualified'])
   self.assertEqual(lines,['load','target','attach','attach','helper','detach','detach','close'])
+ def test_lock_mode_is_explicit_and_preserves_failure(self):
+  r,lines,v=self.run_case(locks=True);self.assertEqual(r.returncode,0,r.stderr)
+  self.assertEqual(v['helper_exit'],3);self.assertIn('helper',lines)
  def test_verify_only_never_forks_or_selects_target(self):
   with tempfile.TemporaryDirectory() as td:
    trace=pathlib.Path(td)/'trace'
