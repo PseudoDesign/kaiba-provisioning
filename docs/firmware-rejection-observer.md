@@ -29,10 +29,13 @@ process, then immediately detaches; it never starts a helper or issues a firmwar
 request. It validates kernel acceptance only.
 
 Before releasing a child process, the launcher loads both entry/return probes and
-sets their filter to that child's PID. The child runs only the existing development
+sets their filter to that child's PID. By default the child runs the existing development
 helper's `hmac` mode: three positive comparison calls, bounded volatile lock closure,
-and one negative HMAC call. It has no raw-read, signing, key-generation, media-write
-or reboot selection. The helper keeps its original result and exit status.
+and one negative HMAC call. The default mode has no raw-read, signing, key-generation, media-write
+or reboot selection. Explicit `--lock-checks` instead selects the separately built
+[remaining-lock helper](device-secret-lock-checks.md), with its own bounded
+read/signing/clearing probes and execution packet. The helper keeps its original
+result and exit status.
 
 The observer detaches before reaping the child, so its PID cannot be recycled
 while the filter is active. It bounds observation to 45 seconds, requests helper
@@ -44,7 +47,8 @@ exit releases unpinned BPF resources; no persistent service is installed.
 ## What is recorded
 
 The BPF programs inspect only the selected child's HMAC, crypto-read and signing
-shapes supported by the shared classifier; the launcher selects HMAC only.
+shapes supported by the shared classifier; the default launcher selects HMAC only; the explicit lock-checks mode selects
+the bounded remaining-lock sequence.
 Metadata requests are ignored. Invalid requests, concurrent pending calls and
 event overflow are counted as rejected observations. There is one pending call
 and at most 32 result slots. Missing return callbacks leave incomplete events;

@@ -1,6 +1,7 @@
 /* Development-only, RAM-resident checks using the SAME mailbox implementation
  * as the qualification harness. No block device, arbitrary message, key export,
- * generation, usage write, signing, or persistent installation interface. */
+ * generation, usage write, or persistent installation interface. The separately
+ * built KAIBA_LOCK_CHECKS variant adds fixed signing/legacy-read/lock-clear probes. */
 #include "firmware.h"
 #include <errno.h>
 #include <signal.h>
@@ -25,6 +26,11 @@ static size_t step_count;
 static bool record(const char *name, bool passed, bool has_value, uint32_t value) {
     if (step_count == sizeof(steps)/sizeof(steps[0])) abort();
     steps[step_count++] = (struct step){name, passed, has_value, value, fw_snapshot()};
+    /* Emit before cleanup or a diagnostic mailbox query can replace the reason.
+     * Step names and validation reasons are fixed program literals. JSON stays
+     * unchanged; the private executor already retains stderr separately. */
+    if (!passed && steps[step_count-1].diagnostic.outcome == FW_INVALID)
+        fprintf(stderr, "KAIBA_RESPONSE_VALIDATION step=%s reason=%s\n", name, fw_validation_reason());
     return passed && !interrupted;
 }
 static bool record_crypto(const char *name, enum fw_result result, bool passed) {
@@ -39,6 +45,20 @@ static bool record_crypto(const char *name, enum fw_result result, bool passed) 
     }
     return matched && !interrupted;
 }
+#ifdef KAIBA_LOCK_CHECKS
+/* A Linux error remains a failed operation record. An immediate KEY_LOCKED
+ * diagnostic permits the bounded sequence to continue for observation only;
+ * the kernel observer and offline assessor must validate the actual response. */
+static bool observe_denial(const char *name, const char *error_name, enum fw_result r) {
+    bool matched = record(name, r == FW_LOCKED, false, 0);
+    if (r == FW_LOCKED) return matched;
+    if (r != FW_IO || fw_snapshot().error != EINVAL || interrupted) return false;
+    uint32_t error = 0;
+    enum fw_result q = fw_error(&error);
+    return record(error_name, q == FW_OK && error == RPI_FW_CRYPTO_KEY_LOCKED,
+                  q == FW_OK, error);
+}
+#endif
 static bool decimal(const char *s, uint32_t *v, unsigned low, unsigned high) {
     if (!*s || (s[0] == '0' && s[1])) return false;
     for (const char *p = s; *p; ++p) if (*p < '0' || *p > '9') return false;
@@ -74,14 +94,28 @@ static bool same(const uint8_t a[32], const uint8_t b[32]) {
 }
 int main(int argc, char **argv) {
     if (argc == 2 && !strcmp(argv[1], "--version")) {
-        puts("kaiba-device-secret-development 0.1.0 transport=vcio development-only"); return 0;
+#ifdef KAIBA_LOCK_CHECKS
+        puts("kaiba-device-secret-lock-checks 0.1.0 transport=vcio development-only");
+#else
+        puts("kaiba-device-secret-development 0.1.0 transport=vcio development-only");
+#endif
+        return 0;
     }
+#ifdef KAIBA_LOCK_CHECKS
+    const bool lock_checks = true;
+    bool selected = argc > 1 && !strcmp(argv[1], "locks");
+#else
+    const bool lock_checks = false;
+    bool selected = argc > 1 && (!strcmp(argv[1], "inspect") || !strcmp(argv[1], "read-lock") || !strcmp(argv[1], "hmac"));
+#endif
     uint32_t slot, expected_usage;
-    if (argc != 8 || (strcmp(argv[1], "inspect") && strcmp(argv[1], "read-lock") && strcmp(argv[1], "hmac")) ||
+    if (argc != 8 || !selected ||
         strcmp(argv[2], "--slot-id") || !decimal(argv[3], &slot, 1, 32) ||
         strcmp(argv[4], "--expected-usage") || !decimal(argv[5], &expected_usage, 0, 14) ||
         (expected_usage > 0 && expected_usage < 8) || strcmp(argv[6], "--expected-boot-id") || !uuid(argv[7])) {
-        fputs("usage: kaiba-device-secret-development inspect|read-lock|hmac --slot-id ID --expected-usage USAGE --expected-boot-id UUID\n", stderr);
+        fputs(lock_checks
+              ? "usage: kaiba-device-secret-lock-checks locks --slot-id ID --expected-usage USAGE --expected-boot-id UUID\n"
+              : "usage: kaiba-device-secret-development inspect|read-lock|hmac --slot-id ID --expected-usage USAGE --expected-boot-id UUID\n", stderr);
         return 2;
     }
     const char *stop = "memory-or-boot-preflight";
@@ -111,6 +145,24 @@ int main(int argc, char **argv) {
     cleanup_needed = true;
     CHECK("apply-runtime-locks", fw_set_locks(slot, DEVICE_TYPE | EARLY_LOCKS) == FW_OK);
     META("runtime-locks", fw_status(slot, &status), status, status == (DEVICE_TYPE | EARLY_LOCKS));
+#ifdef KAIBA_LOCK_CHECKS
+    if (lock_checks) {
+        static const uint8_t control[] = "kaiba:development:locks:v1:control";
+        HMAC("hmac-control", control, sizeof(control)-1, a, true);
+        CHECK("sign-control", fw_sign(slot) == FW_OK);
+        stop = "raw-read-blocked";
+        if (!observe_denial(stop, "last-error-raw-read", fw_raw_read(slot))) goto done;
+        CHECK("legacy-read-blocked", fw_legacy_read() == FW_LOCKED);
+        CHECK("close-before-probes", fw_set_locks(slot, DEVICE_TYPE | ALL_LOCKS) == FW_OK);
+        META("closed-before-probes", fw_status(slot, &status), status, status == (DEVICE_TYPE | ALL_LOCKS));
+        stop = "sign-closed";
+        if (!observe_denial(stop, "last-error-sign-closed", fw_sign(slot))) goto done;
+        CHECK("attempt-clear-locks", fw_set_locks(slot, DEVICE_TYPE) == FW_OK);
+        META("locks-remain-closed", fw_status(slot, &status), status, status == (DEVICE_TYPE | ALL_LOCKS));
+        passed = true;
+        goto done;
+    }
+#endif
     if (!strcmp(argv[1], "read-lock")) {
         stop = "raw-read-blocked";
         enum fw_result result = fw_raw_read(slot);
@@ -141,10 +193,12 @@ done:
     }
     explicit_bzero(b, sizeof(b)); fw_close(); alarm(0);
     if (interrupted) { passed = false; stop = "interrupted"; }
-    printf("{\"schema_version\":\"kaiba.device-secret-development/v1alpha1\",\"mode\":\"development\","
+    printf("{\"schema_version\":\"%s\",\"mode\":\"development\","
            "\"check\":\"%s\",\"boot_id\":\"%s\",\"slot_id\":%u,\"expected_usage\":%u,"
-           "\"passed\":%s,\"stop\":\"%s\",\"cleanup_locks_closed\":%s,\"hardware_qualified\":false,\"steps\":[",
-           argv[1], argv[7], slot, expected_usage, passed ? "true" : "false", passed ? "complete" : stop,
+           "\"%s\":%s,\"stop\":\"%s\",\"cleanup_locks_closed\":%s,\"hardware_qualified\":false,\"steps\":[",
+           lock_checks ? "kaiba.device-secret-lock-checks/v1alpha1" : "kaiba.device-secret-development/v1alpha1",
+           argv[1], argv[7], slot, expected_usage, lock_checks ? "completed" : "passed",
+           passed ? "true" : "false", passed ? "complete" : stop,
            cleanup_needed ? (cleaned ? "true" : "false") : "null");
     for (size_t i = 0; i < step_count; ++i) {
         struct step *s = &steps[i];

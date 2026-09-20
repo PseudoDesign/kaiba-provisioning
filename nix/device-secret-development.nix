@@ -17,9 +17,22 @@ let
     '';
     meta.mainProgram = "kaiba-device-secret-development";
   };
+  lockHelper = helper.overrideAttrs (old: {
+    pname = "kaiba-device-secret-lock-checks";
+    meta = old.meta // {
+      mainProgram = "kaiba-device-secret-lock-checks";
+    };
+    buildPhase =
+      builtins.replaceStrings [ "-O2 -static" ] [ "-O2 -static -DKAIBA_LOCK_CHECKS" ]
+        old.buildPhase;
+    installPhase = ''
+      install -Dm0555 kaiba-device-secret-development "$out/bin/kaiba-device-secret-lock-checks"
+    '';
+  });
   scripts = pkgs.runCommand "kaiba-device-secret-development-scripts" { } ''
     mkdir -p "$out"
     cp ${../scripts/device-secret/development.py} "$out/development.py"
+    cp ${../scripts/device-secret/lock_checks.py} "$out/lock_checks.py"
     cp ${../scripts/device-secret/runner.py} "$out/runner.py"
   '';
   package = pkgs.writeShellApplication {
@@ -28,6 +41,13 @@ let
     text = ''
       exec ${pkgs.python3}/bin/python3 -I -c \
         'import runpy, sys; sys.path.insert(0, "${scripts}"); runpy.run_module("development", run_name="__main__")' "$@"
+    '';
+  };
+  lockAssessor = pkgs.writeShellApplication {
+    name = "kaiba-device-secret-lock-assess";
+    text = ''
+      exec ${pkgs.python3}/bin/python3 -I -c \
+        'import runpy, sys; sys.path.insert(0, "${scripts}"); runpy.run_module("lock_checks", run_name="__main__")' "$@"
     '';
   };
   check =
@@ -44,8 +64,21 @@ let
           -I${crypto.library}/include -I${firmware} ${source}/main.c ${firmware}/firmware.c \
           ${../tests/device-secret-development/firmware-fixture.c} -o fixture
         python3 ${../tests/device-secret-development/test_helper.py} ./fixture ${helper}/bin/kaiba-device-secret-development
+        $CC -std=c11 -Wall -Wextra -Werror -O2 -DKAIBA_TESTING -DKAIBA_LOCK_CHECKS \
+          -I${crypto.library}/include -I${firmware} ${source}/main.c ${firmware}/firmware.c \
+          ${../tests/device-secret-development/firmware-fixture.c} -o lock-fixture
+        python3 ${../tests/device-secret-development/test_locks.py} ./lock-fixture ${lockHelper}/bin/kaiba-device-secret-lock-checks
+        $CC -std=c11 -Wall -Wextra -Werror -O2 -DKAIBA_TESTING \
+          -I${crypto.library}/include -I${firmware} ${firmware}/firmware.c \
+          ${../tests/device-secret-development/validation-reasons.c} -o validation-reasons
+        ./validation-reasons
         export KAIBA_DEVELOPMENT_SCRIPTS=${scripts}
         python3 -B -m unittest discover -s ${../tests/device-secret-development} -p 'test_session.py' -v
+        KAIBA_LOCK_FIXTURE="$PWD/lock-fixture" python3 -B -m unittest discover -s ${../tests/device-secret-development} -p 'test_lock_assessment.py' -v
+        ${lockAssessor}/bin/kaiba-device-secret-lock-assess --help > lock-help.txt
+        readelf -l ${lockHelper}/bin/kaiba-device-secret-lock-checks > lock-segments
+        ! grep -q INTERP lock-segments
+
         ${package}/bin/kaiba-device-secret-development-session --help > help.txt
         readelf -l ${helper}/bin/kaiba-device-secret-development > segments
         ! grep -q INTERP segments
@@ -58,5 +91,11 @@ let
       '';
 in
 {
-  inherit helper package check;
+  inherit
+    helper
+    lockHelper
+    lockAssessor
+    package
+    check
+    ;
 }
