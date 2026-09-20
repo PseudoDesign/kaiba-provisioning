@@ -48,7 +48,7 @@ static bool digest_valid(const char *s, size_t n) {
     uint8_t data[32] = {0}, zero[32] = {0};
     return unhex(s, data, n) && memcmp(data, zero, n) != 0;
 }
-bool config_load(const char *path, struct config *c) {
+bool config_load_schema(const char *path, struct config *c, const char *expected_schema) {
     char bytes[8192]; size_t n = 0;
     if (!read_file(path, bytes, sizeof(bytes), &n)) return false;
     c->json = json_loadb(bytes, n, JSON_REJECT_DUPLICATES, NULL);
@@ -59,7 +59,7 @@ bool config_load(const char *path, struct config *c) {
     c->partition = string(c->json, "partition_uuid"); c->board_hash = string(c->json, "board_serial_sha256");
     c->disk_hash = string(c->json, "disk_serial_sha256");
     json_t *slot = json_object_get(c->json, "slot_id"), *usage = json_object_get(c->json, "expected_usage");
-    if (!schema || strcmp(schema, "kaiba.device-secret-target/v1alpha1") || !scheme || strcmp(scheme, SCHEME) ||
+    if (!schema || strcmp(schema, expected_schema) || !scheme || strcmp(scheme, SCHEME) ||
         !identifier(c->experiment) || !identifier(c->target) || !digest_valid(c->source, 20) ||
         !uuid_valid(c->volume) || !uuid_valid(c->partition) || !strcmp(c->volume, c->partition) ||
         !digest_valid(c->board_hash, 32) || !digest_valid(c->disk_hash, 32) ||
@@ -69,6 +69,10 @@ bool config_load(const char *path, struct config *c) {
         (json_integer_value(usage) < 8 || json_integer_value(usage) > 14))) return false;
     c->slot = 1; c->usage = (uint32_t)json_integer_value(usage);
     return true;
+}
+
+bool config_load(const char *path, struct config *c) {
+    return config_load_schema(path, c, "kaiba.device-secret-target/v1alpha1");
 }
 
 bool event_emit(int fd, const struct config *c, const struct observation *o, unsigned phase,

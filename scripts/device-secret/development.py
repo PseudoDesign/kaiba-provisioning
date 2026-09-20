@@ -237,7 +237,7 @@ def assess_hmac_observation(value):
 
 
 class Session:
-    def __init__(self, path, read_only=False):
+    def __init__(self, path, read_only=False, config_validator=validate):
         self.path = Path(path)
         require(self.path.is_absolute() and not self.path.is_symlink(), 'absolute-private-state-required')
         st = self.path.stat()
@@ -245,7 +245,7 @@ class Session:
         self.lock = (self.path / 'lock').open('rb' if read_only else 'ab')
         try:
             fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            self.config = validate(decode(regular_bytes(self.path / 'session.json')))
+            self.config = config_validator(decode(regular_bytes(self.path / 'session.json')))
             self.auth = decode(regular_bytes(self.path / 'initial.json'))
             require(self.auth['session_sha256'] == hashlib.sha256(canonical(self.config)).hexdigest(), 'changed-session')
             self.known = self.path / 'known_hosts'
@@ -371,8 +371,8 @@ class Session:
         return record
 
 
-def initialize(path, config):
-    c = validate(decode(regular_bytes(Path(config))))
+def initialize(path, config, config_validator=validate):
+    c = config_validator(decode(regular_bytes(Path(config))))
     require(now() < expiry(c['expires_at']) <= now() + datetime.timedelta(hours=24), 'session-window-exceeds-24-hours')
     known, fp = key_line(regular_bytes(Path(c['known_hosts'])), c['address'])
     p = Path(path)

@@ -53,7 +53,7 @@ done:
 }
 #endif
 
-bool runtime_observe(const struct config *c, struct observation *o) {
+static bool observe(const struct config *c, struct observation *o, bool require_isolation) {
     uint8_t digest[32], property[64], signed_bits[4]; size_t n;
     if (!hash256(c->nonce, 32, digest)) return false;
     hex(digest, 32, o->nonce_hash);
@@ -65,7 +65,7 @@ bool runtime_observe(const struct config *c, struct observation *o) {
     o->boot_id[36] = 0;
     if (!uuid_valid(o->boot_id)) return false;
 #ifdef KAIBA_TESTING
-    (void)property; (void)signed_bits;
+    (void)property; (void)signed_bits; (void)require_isolation;
     memset(o->boot_hash, 'b', 64); o->boot_hash[64] = 0;
     memset(o->root_hash, 'c', 64); o->root_hash[64] = 0;
     return true;
@@ -84,6 +84,7 @@ bool runtime_observe(const struct config *c, struct observation *o) {
     hex(digest, 32, serial_hash);
     if (strcmp(serial_hash, c->board_hash)) return false;
     if (!observed_root(o->root_hash)) return false;
+    if (!require_isolation) return true;
     DIR *net = opendir("/sys/class/net");
     if (!net) return false;
     bool isolated = true; struct dirent *entry;
@@ -96,6 +97,14 @@ bool runtime_observe(const struct config *c, struct observation *o) {
     if (closedir(net)) isolated = false;
     return isolated;
 #endif
+}
+
+bool runtime_observe(const struct config *c, struct observation *o) {
+    return observe(c, o, true);
+}
+
+bool runtime_observe_development(const struct config *c, struct observation *o) {
+    return observe(c, o, false);
 }
 
 int events_open(void) {
