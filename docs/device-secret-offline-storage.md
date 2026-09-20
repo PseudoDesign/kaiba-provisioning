@@ -4,7 +4,9 @@ The offline storage helper runs once at boot to create an encrypted private test
 record or reopen and authenticate it on the next boot. It reuses the remote
 storage helper's firmware-HMAC counter KDF, LUKS implementation, memory protection
 and cleanup. Its automatic boot service and saved-capture assessor are software
-capabilities; physical cold-power execution remains pending.
+capabilities. The [2026-09-20 physical observation](observations/2026-09-20-offline-storage.md)
+records original-device offline create/reopen across a guided cold-power cycle;
+lock rejection and copied-media protection remain pending.
 
 This is a **development experiment**, separate from the
 [qualification harness](device-secret-target-harness.md). It does not run raw-key

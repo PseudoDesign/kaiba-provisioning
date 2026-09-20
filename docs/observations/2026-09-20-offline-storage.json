@@ -1,0 +1,83 @@
+{
+  "record_kind": "scoped-offline-storage-engineering-observation",
+  "date": "2026-09-20",
+  "source_revision": "ccea2906c4ba0582132abb8827a354531fb5e017",
+  "merged_revision": "b4b23cd91c0338702a35cbf064d41968ee8b41d4",
+  "boot_image_sha256": "1c714e8e7758466f04d41ca005ac08f5aed732e7826f8200500098b05b8ecb4a",
+  "verity_root_hash": "7487ea312f5f9a2acadb4c4d39fb40531550eae6e420eddc40d922f6d7e11d23",
+  "platform": {
+    "model": "Raspberry Pi 5",
+    "kernel": "6.18.34",
+    "firmware": "a86983925695a7e63166327d7c002d64040ed31d"
+  },
+  "results": {
+    "create": "passed",
+    "cold_reopen": "passed",
+    "same_private_record_verified": true,
+    "distinct_boot_ids": true,
+    "runtime_lock_closure_reported": true,
+    "storage_closed": true,
+    "journal_completed": true,
+    "authenticated_inspection_return": "passed",
+    "inspection_verity": "V"
+  },
+  "physical_evidence": {
+    "cold_power": "operator confirmations with guided ten-second all-power-off wait",
+    "network_isolation": "operator confirmations; separate USB-C supply only",
+    "independently_instrumented": false
+  },
+  "limits": {
+    "hardware_qualified": false,
+    "lock_rejection_qualified": false,
+    "copied_media_confidentiality": "pending comparable-board test",
+    "fleet_admission": "unevaluated",
+    "execution_authority": false
+  },
+  "private_evidence": [
+    {
+      "role": "create.uart",
+      "bytes": 69790,
+      "sha256": "1131a9e00fdf62065d675c0715b1209b0edde96ed0f18edda03d5320870d7f5b"
+    },
+    {
+      "role": "reopen.uart",
+      "bytes": 69640,
+      "sha256": "ab1047a6c1d4d9c9518a1067be27aef08c0f05b54de3affe6e3d5b8d12e81f3d"
+    },
+    {
+      "role": "return-sd.uart",
+      "bytes": 71512,
+      "sha256": "8ef7a9291a634b82a869db5be62486bb3bced33e81aefb3c3551c5af53a1e195"
+    },
+    {
+      "role": "pair-assessment.json",
+      "bytes": 2125,
+      "sha256": "fab64b9e3c3da0282638d6329bf542ecb5746c97672d66b2589cc4f5e09623f9"
+    },
+    {
+      "role": "create-off.json",
+      "bytes": 184,
+      "sha256": "693c0594154803c65251acf2e508e380fbd97406fe1fc80eaa320de701547deb"
+    },
+    {
+      "role": "reopen-off.json",
+      "bytes": 184,
+      "sha256": "67a71be515df6b74acf81a240f3bc028d01ff5226716afaa01c84bbf6b655389"
+    },
+    {
+      "role": "return-sd-off.json",
+      "bytes": 184,
+      "sha256": "c6870cbc2c26061f815261ef3b2c8f165abc2b9939e7fb5556fb90e102ec79c6"
+    },
+    {
+      "role": "authenticated-return-check.json",
+      "bytes": 4437,
+      "sha256": "30fb7e83cb292223ed112e752f11a8789b72780b8f3774e28d104ba25067249c"
+    },
+    {
+      "role": "completion-verification.json",
+      "bytes": 2297,
+      "sha256": "f117e56c7614473873d8b4a1a00eb0b5c4398c31b1f37eb755f8aae782e2c79a"
+    }
+  ]
+}

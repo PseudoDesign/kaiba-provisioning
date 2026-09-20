@@ -6,7 +6,8 @@ outcomes and FA-01 through FA-08 remain authoritative. Slice A now has a
 read-only software implementation and repeatable real-service checks, described
 in the [station runbook](provisioning-station-kiosk.md#read-only-live-station).
 Slice B has a native candidate, a [pristine offline observation](observations/2026-09-16-native-offline-positive.md),
-and [scoped physical verity results](observations/2026-09-17-native-verity.md).
+[scoped physical verity results](observations/2026-09-17-native-verity.md), and an
+[original-device offline encrypted-state observation](observations/2026-09-20-offline-storage.md).
 Device-secret feasibility and the later milestones remain open. This document
 grants no fleet approval.
 
