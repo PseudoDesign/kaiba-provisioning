@@ -18,9 +18,16 @@ class Locks(unittest.TestCase):
    v=json.loads(r.stdout)
    self.assertEqual(r.returncode,3);self.assertEqual(v['stop'],'sign-control');self.assertTrue(v['cleanup_locks_closed'])
    expected=[f'KAIBA_RESPONSE_VALIDATION step=sign-control reason={reason}']
-   if fault=='sign-response-length':expected.append('KAIBA_SIGN_RESPONSE_LENGTHS step=sign-control tag_bytes=64 signature_bytes=64 metadata_bytes=8')
+   if fault=='sign-response-length':expected.append('KAIBA_SIGN_RESPONSE_LENGTHS step=sign-control tag_bytes=64 signature_bytes=70 metadata_bytes=8')
    self.assertEqual([x for x in r.stderr.splitlines() if not x.startswith('TAG ')],expected)
    self.assertEqual([int(x.split()[1],16) for x in r.stderr.splitlines() if x.startswith('TAG ')],[0x3008f,0x30090,0x3009c,0x38090,0x30090,0x30092,0x30091,0x38090,0x30090])
+ def test_compatibility_is_explicit_and_sequence_remains_bounded(self):
+  env=dict(os.environ,KAIBA_TEST_FAULT='sign-compat')
+  r=subprocess.run([HELPER,'locks','--slot-id','1','--expected-usage','8','--expected-boot-id',BOOT],env=env,capture_output=True,text=True)
+  v=json.loads(r.stdout);self.assertEqual(r.returncode,0);self.assertTrue(v['completed']);self.assertFalse(v['hardware_qualified'])
+  self.assertIn('KAIBA_SIGN_COMPAT step=sign-control rule=development-der-tag40 cryptographically_verified=false',r.stderr)
+  self.assertIn('tag_bytes=40 signature_bytes=70 metadata_bytes=8',r.stderr)
+  self.assertEqual(sum(x=='TAG 00030091' for x in r.stderr.splitlines()),2)
  def test_exact_bounded_sequence(self):
   v,tags=self.run_case();self.assertTrue(v['completed']);self.assertTrue(v['cleanup_locks_closed'])
   self.assertEqual(tags,[0x3008f,0x30090,0x3009c,0x38090,0x30090,0x30092,0x30091,0x30094,0x3008e,0x30024,0x30081,0x38090,0x30090,0x30091,0x3008e,0x38090,0x30090,0x38090,0x30090])

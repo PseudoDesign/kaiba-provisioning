@@ -57,12 +57,22 @@ int test_exchange(void *buffer, size_t size) {
             error_code = 4;
             if (fault("sign-einval")) { errno = EINVAL; return -1; }
             if (fault("sign-timeout")) { errno = ETIMEDOUT; return -1; }
-            if (fault("sign-unlocked")) { v[0]=0;v[1]=64;memset(v+2,0x5a,64);return 0; }
+            if (fault("sign-unlocked")) {
+                v[0]=0;v[1]=70;memset(v+2,0x5a,70);
+                unsigned char *sig=(unsigned char *)(v+2);
+                sig[0]=0x30;sig[1]=68;sig[2]=2;sig[3]=32;sig[36]=2;sig[37]=32;
+                return 0;
+            }
             v[0] = 0x80000000; return 0;
         }
         if (fault("interrupt-sign-control")) raise(SIGTERM);
         if (fault("sign-control")) { errno=EINVAL;return -1; }
         v[0]=0;v[1]=64;memset(v+2,0x5a,64);
+        /* Canonical P-256 DER with two positive 32-byte synthetic scalars. */
+        v[1]=70;
+        unsigned char *sig=(unsigned char *)(v+2);
+        sig[0]=0x30;sig[1]=68;sig[2]=2;sig[3]=32;sig[36]=2;sig[37]=32;
+        if (fault("sign-compat")) m[4]=0x80000000|40;
         if (fault("sign-status")) v[0]=1;
         if (fault("sign-length")) v[1]=0;
         if (fault("sign-response-length")) m[4]=0x80000000|64;

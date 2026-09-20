@@ -32,7 +32,9 @@ static bool record(const char *name, bool passed, bool has_value, uint32_t value
     if (!passed && steps[step_count-1].diagnostic.outcome == FW_INVALID)
         fprintf(stderr, "KAIBA_RESPONSE_VALIDATION step=%s reason=%s\n", name, fw_validation_reason());
     struct fw_sign_lengths lengths = fw_sign_response_lengths();
-    if (!passed && steps[step_count-1].diagnostic.outcome == FW_INVALID && lengths.present)
+    if (passed && !strcmp(fw_validation_reason(), "development-signature-length-compat"))
+        fprintf(stderr, "KAIBA_SIGN_COMPAT step=%s rule=development-der-tag40 cryptographically_verified=false\n", name);
+    if (lengths.present)
         fprintf(stderr, "KAIBA_SIGN_RESPONSE_LENGTHS step=%s tag_bytes=%u signature_bytes=%u metadata_bytes=8\n",
                 name, lengths.tag_bytes, lengths.signature_bytes);
     return passed && !interrupted;
