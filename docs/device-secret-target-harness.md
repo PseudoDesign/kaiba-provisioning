@@ -129,6 +129,11 @@ intent blocks prevent same-boot repetition, partial-format retries and a third
 experiment boot. An interrupted or inconsistent journal needs review; it is
 never reformatted automatically.
 
+Temporary linear-mapping removal tolerates transient busy-device responses using
+the pinned libdevmapper's bound of 25 waits of 200 ms. A persistent holder still
+fails cleanup. This teardown handling does not defer deletion or repeat firmware,
+format, unlock or write operations.
+
 This journal is an interruption guard under a trusted prepared image. It is not
 an offline rollback mechanism, authenticated audit log or admission authority.
 Independent staged-media readback and the later original/comparable-board test
@@ -203,7 +208,8 @@ enable this transport in the production binary.
 Software tests cover the one-slot case, counter encoding, typed rejections,
 malformed/short replies, unexpected key bytes, closed configuration, actual LUKS
 creation and reopening across VM restarts, wrong simulated board key, closure
-failures, consumed intents and removal of mappings. They do not exercise real
+failures, consumed intents and removal of mappings with transient and persistent
+readers. They do not exercise real
 firmware or establish copied-media protection on comparable hardware.
 
 The [execution-packet constructors and one-shot staging/recovery executor](device-secret-execution-packet.md)

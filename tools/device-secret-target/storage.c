@@ -193,7 +193,12 @@ bool storage_close(struct storage *s) {
     }
     if (s->linear) {
         struct dm_task *task = dm_task_create(DM_DEVICE_REMOVE);
-        if (!task || !dm_task_set_name(task, LINEAR) || !dm_task_run(task)) ok = false;
+        /* udev/blkid can briefly hold a newly created container, especially
+         * after a fast wrong-key rejection. The pinned libdevmapper bounds
+         * EBUSY-only REMOVE retries to 25 x 200 ms; it neither defers deletion
+         * nor retries format, unlock, writes or firmware calls. Persistent
+         * holders still fail cleanup and leave the attempt stopped. */
+        if (!task || !dm_task_set_name(task, LINEAR) || !dm_task_retry_remove(task) || !dm_task_run(task)) ok = false;
         else s->linear = false;
         if (task) dm_task_destroy(task);
         dm_task_update_nodes();

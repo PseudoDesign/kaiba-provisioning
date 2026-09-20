@@ -12,6 +12,12 @@ before selecting another full-image experiment. Its runtime lock checks and HMAC
 comparisons remain development observations, with final boot/storage qualification
 separate.
 
+The [remote storage helper](device-secret-storage-development.md) now supplies a
+bounded create/reboot/reopen development path with synthetic-firmware LUKS VM
+coverage. Its selected media, management boot/recovery route and physical
+execution remain pending. Storage functionality can be developed while the
+rejection-evidence qualification decision is reviewed separately.
+
 ## Pinned inputs and established software work
 
 | Input | Selected source | What remains to observe |

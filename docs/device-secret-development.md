@@ -144,9 +144,10 @@ The following are planned, not supplied by this helper:
    selecting management SD by default, with a reserved disposable NVMe partition.
    Stage and verify that partition from the Pi. Prove return to management with
    the drive present before retiring physical removal as the recovery route.
-3. **Remote LUKS development.** Add a bounded storage helper after mailbox/HMAC
-   behavior is established. Create/reopen only the reserved extent; keep backups
-   and failure reconciliation independent of the test filesystem.
+3. **Remote LUKS development.** The [bounded storage helper and session runner](device-secret-storage-development.md)
+   are implemented with software tests; physical execution remains pending.
+   Create/reopen only the reserved extent after the management/recovery route is
+   ready; keep backups and failure reconciliation independent of the test filesystem.
 4. **Remote cold-power and isolation.** Select a controller for a single power
    source and every data/network path. Account for USB/PoE and UART back-power.
    Establish observable power-off and recovery behavior before counting automated
