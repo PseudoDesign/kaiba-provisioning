@@ -82,6 +82,14 @@ mean that the resulting image uses the native Pi boot path without kexec.
 | [Preparation packet](stable-campaign-packet.md) | Public checks for the old candidate's first two runs |
 | [Self-kexec diagnostic](../scripts/diagnostics/rpi5-self-kexec/README.md) | Retained file-handoff/SMP observations and their narrow limits |
 
+## Future boot-root design
+
+The [per-device boot-root plan](per-device-boot-root-plan.md) covers authorized
+device-local firmware signing, current-Pi feasibility, and a TPM hardware
+revision. Its qualification gates are proposed for that design; they do not
+replace the selected first-fleet admission policy or require online normal
+operation.
+
 ## Archived plans
 
 The [archive](archive/README.md) retains four superseded or deferred plans:
