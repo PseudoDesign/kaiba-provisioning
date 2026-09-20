@@ -26,6 +26,11 @@ static size_t step_count;
 static bool record(const char *name, bool passed, bool has_value, uint32_t value) {
     if (step_count == sizeof(steps)/sizeof(steps[0])) abort();
     steps[step_count++] = (struct step){name, passed, has_value, value, fw_snapshot()};
+    /* Emit before cleanup or a diagnostic mailbox query can replace the reason.
+     * Step names and validation reasons are fixed program literals. JSON stays
+     * unchanged; the private executor already retains stderr separately. */
+    if (!passed && steps[step_count-1].diagnostic.outcome == FW_INVALID)
+        fprintf(stderr, "KAIBA_RESPONSE_VALIDATION step=%s reason=%s\n", name, fw_validation_reason());
     return passed && !interrupted;
 }
 static bool record_crypto(const char *name, enum fw_result result, bool passed) {

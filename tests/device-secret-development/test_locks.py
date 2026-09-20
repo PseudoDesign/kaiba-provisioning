@@ -6,11 +6,19 @@ class Locks(unittest.TestCase):
   env=dict(os.environ);env.pop('KAIBA_TEST_FAULT',None)
   if fault:env['KAIBA_TEST_FAULT']=fault
   r=subprocess.run([HELPER,'locks','--slot-id','1','--expected-usage','8','--expected-boot-id',BOOT],env=env,capture_output=True,text=True)
-  v=json.loads(r.stdout);tags=[int(x.split()[1],16) for x in r.stderr.splitlines()]
+  v=json.loads(r.stdout);tags=[int(x.split()[1],16) for x in r.stderr.splitlines() if x.startswith("TAG ")]
   self.assertEqual(r.returncode,0 if v['completed'] else 3)
   self.assertFalse(v['hardware_qualified']);self.assertNotIn('PRIVATE_MATERIAL',r.stdout)
   self.assertLessEqual(tags.count(0x38090),4);self.assertLessEqual(tags.count(0x30092),1);self.assertLessEqual(tags.count(0x30091),2)
   return v,tags
+ def test_validation_reason_survives_cleanup_without_extra_calls(self):
+  for fault,reason in [('sign-status','operation-status'),('sign-length','output-too-short'),('sign-response-length','output-outside-response')]:
+   env=dict(os.environ,KAIBA_TEST_FAULT=fault)
+   r=subprocess.run([HELPER,'locks','--slot-id','1','--expected-usage','8','--expected-boot-id',BOOT],env=env,capture_output=True,text=True)
+   v=json.loads(r.stdout)
+   self.assertEqual(r.returncode,3);self.assertEqual(v['stop'],'sign-control');self.assertTrue(v['cleanup_locks_closed'])
+   self.assertEqual([x for x in r.stderr.splitlines() if not x.startswith('TAG ')],[f'KAIBA_RESPONSE_VALIDATION step=sign-control reason={reason}'])
+   self.assertEqual([int(x.split()[1],16) for x in r.stderr.splitlines() if x.startswith('TAG ')],[0x3008f,0x30090,0x3009c,0x38090,0x30090,0x30092,0x30091,0x38090,0x30090])
  def test_exact_bounded_sequence(self):
   v,tags=self.run_case();self.assertTrue(v['completed']);self.assertTrue(v['cleanup_locks_closed'])
   self.assertEqual(tags,[0x3008f,0x30090,0x3009c,0x38090,0x30090,0x30092,0x30091,0x30094,0x3008e,0x30024,0x30081,0x38090,0x30090,0x30091,0x3008e,0x38090,0x30090,0x38090,0x30090])

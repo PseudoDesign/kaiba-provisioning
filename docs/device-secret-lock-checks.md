@@ -100,3 +100,21 @@ bounds/order, stopped controls, unexpected disclosure/success, transport failure
 stale/contradictory metadata, interruption, clearing failures with side effects,
 cleanup and strict pairing of helper and observer records. Neither these tests nor
 a successful build establish physical lock behavior.
+
+## Response-validation diagnostics
+
+A malformed reply still fails the operation and triggers the existing cleanup.
+The development helper additionally writes a fixed `KAIBA_RESPONSE_VALIDATION`
+line to stderr at the failed step, before cleanup can replace the diagnostic.
+Its `step` and `reason` are program literals; no response bytes, signature, key,
+raw status word or numeric response lengths are emitted. The JSON contract and
+assessor acceptance rules are unchanged. Executors must retain stderr alongside
+stdout; these diagnostics do not issue another mailbox call.
+
+Reasons distinguish message framing, tag metadata, completion marking, nonzero
+operation status, output length bounds, output extending beyond the reported
+response, changed error payload, and failure of the existing error query. They
+identify which validation predicate rejected a reply, not whether firmware or
+the helper's ABI assumption is wrong. Software tests exercise these cases and
+verify that later cleanup cannot erase the emitted reason. Physical diagnosis
+still requires a separately authorized experiment; no validation is relaxed.

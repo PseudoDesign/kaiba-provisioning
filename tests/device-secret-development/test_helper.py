@@ -24,7 +24,7 @@ class Helper(unittest.TestCase):
         self.assertFalse(result['hardware_qualified'])
         self.assertEqual(r.returncode, 0 if result['passed'] else 3)
         self.assertNotIn('PRIVATE_MATERIAL', r.stdout)
-        return result, [int(line.split()[1], 16) for line in r.stderr.splitlines()]
+        return result, [int(line.split()[1], 16) for line in r.stderr.splitlines() if line.startswith("TAG ")]
 
     def test_inspection_has_only_three_metadata_calls(self):
         r, tags = self.run_check('inspect')

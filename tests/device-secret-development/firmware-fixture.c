@@ -62,7 +62,11 @@ int test_exchange(void *buffer, size_t size) {
         }
         if (fault("interrupt-sign-control")) raise(SIGTERM);
         if (fault("sign-control")) { errno=EINVAL;return -1; }
-        v[0]=0;v[1]=64;memset(v+2,0x5a,64);return 0;
+        v[0]=0;v[1]=64;memset(v+2,0x5a,64);
+        if (fault("sign-status")) v[0]=1;
+        if (fault("sign-length")) v[1]=0;
+        if (fault("sign-response-length")) m[4]=0x80000000|64;
+        return 0;
 #endif
     case 0x30092:
         if (cap != 2060 || v[0] || v[1] != 1 || !v[2] || v[2] > 2048) abort();

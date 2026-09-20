@@ -68,6 +68,10 @@ let
           -I${crypto.library}/include -I${firmware} ${source}/main.c ${firmware}/firmware.c \
           ${../tests/device-secret-development/firmware-fixture.c} -o lock-fixture
         python3 ${../tests/device-secret-development/test_locks.py} ./lock-fixture ${lockHelper}/bin/kaiba-device-secret-lock-checks
+        $CC -std=c11 -Wall -Wextra -Werror -O2 -DKAIBA_TESTING \
+          -I${crypto.library}/include -I${firmware} ${firmware}/firmware.c \
+          ${../tests/device-secret-development/validation-reasons.c} -o validation-reasons
+        ./validation-reasons
         export KAIBA_DEVELOPMENT_SCRIPTS=${scripts}
         python3 -B -m unittest discover -s ${../tests/device-secret-development} -p 'test_session.py' -v
         KAIBA_LOCK_FIXTURE="$PWD/lock-fixture" python3 -B -m unittest discover -s ${../tests/device-secret-development} -p 'test_lock_assessment.py' -v

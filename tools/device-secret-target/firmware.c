@@ -21,6 +21,13 @@ static int mailbox = -1;
 static enum fw_result last_outcome = FW_INVALID;
 static uint32_t last_mailbox_tag;
 static int last_mailbox_errno;
+/* Closed vocabulary only: never return bytes, lengths or status-word values. */
+static const char *validation_reason = "none";
+const char *fw_validation_reason(void) { return validation_reason; }
+static enum fw_result invalid(const char *reason) {
+    validation_reason = reason;
+    return FW_INVALID;
+}
 static enum fw_result outcome(enum fw_result r) { last_outcome = r; return r; }
 struct fw_diagnostic fw_snapshot(void) {
     return (struct fw_diagnostic){last_outcome, last_mailbox_tag, last_mailbox_errno};
@@ -58,6 +65,7 @@ void fw_close(void) {
     mailbox = -1;
 }
 static enum fw_result exchange(struct message *m, uint32_t tag, uint32_t capacity, uint32_t request) {
+    validation_reason = "none";
     last_mailbox_tag = tag;
     last_mailbox_errno = 0;
     size_t size = capacity <= 8 ? 40 : (tag == 0x00030091 ? 160 : 24 + capacity);
@@ -73,8 +81,14 @@ static enum fw_result exchange(struct message *m, uint32_t tag, uint32_t capacit
     int rc = ioctl(mailbox, MBOX, m);
 #endif
     if (rc < 0) { last_mailbox_errno = errno; return FW_IO; }
-    if (rc || m->size != size || m->code != DONE || m->tag != tag || m->capacity != capacity ||
-        !(m->response & DONE) || (m->response & ~DONE) > capacity || *end) return FW_INVALID;
+    if (rc) return invalid("ioctl-return");
+    if (m->size != size) return invalid("message-size");
+    if (m->code != DONE) return invalid("message-code");
+    if (m->tag != tag) return invalid("tag-id");
+    if (m->capacity != capacity) return invalid("tag-capacity");
+    if (!(m->response & DONE)) return invalid("response-unmarked");
+    if ((m->response & ~DONE) > capacity) return invalid("response-over-capacity");
+    if (*end) return invalid("end-tag");
     return FW_OK;
 }
 static enum fw_result scalar(uint32_t tag, uint32_t id, uint32_t value, uint32_t *out) {
@@ -82,7 +96,7 @@ static enum fw_result scalar(uint32_t tag, uint32_t id, uint32_t value, uint32_t
     uint32_t bytes = tag == 0x00038090 ? 8 : 4;
     enum fw_result result = exchange(&m, tag, bytes, 0);
     if (result == FW_OK && m.response != (DONE | bytes) &&
-        !(tag == 0x00038090 && m.response == (DONE | 4))) result = FW_INVALID;
+        !(tag == 0x00038090 && m.response == (DONE | 4))) result = invalid("scalar-response-length");
     if (result == FW_OK && (m.data[0] & DONE)) result = FW_REJECTED;
     if (result == FW_OK && out) *out = m.data[0];
     explicit_bzero(&m, sizeof(m)); return outcome(result);
@@ -106,18 +120,22 @@ static enum fw_result crypto_result(struct message *m, enum fw_result result, ui
          * non-disclosure. Firmware may leave the public request or clear it. */
         uint32_t original_id;
         memcpy(&original_id, request, sizeof(original_id));
-        if ((m->data[1] != 0 && m->data[1] != original_id) ||
-            !unchanged_or_zero(m->data+2, (const uint8_t *)request+4, m->capacity-8)) return FW_INVALID;
+        if (m->data[1] != 0 && m->data[1] != original_id) return invalid("error-slot-changed");
+        if (!unchanged_or_zero(m->data+2, (const uint8_t *)request+4, m->capacity-8))
+            return invalid("error-payload-changed");
         uint32_t error = 0;
-        if (scalar(0x0003008e, 0, 0, &error) != FW_OK) return FW_INVALID;
+        if (scalar(0x0003008e, 0, 0, &error) != FW_OK) return invalid("error-query-failed");
         return error == RPI_FW_CRYPTO_KEY_LOCKED ? FW_LOCKED : FW_REJECTED;
     }
     uint32_t bytes = m->response & ~DONE;
-    if (m->data[0] || m->data[1] < minimum || m->data[1] > maximum || bytes < 8 + m->data[1]) return FW_INVALID;
+    if (m->data[0]) return invalid("operation-status");
+    if (m->data[1] < minimum) return invalid("output-too-short");
+    if (m->data[1] > maximum) return invalid("output-too-long");
+    if (bytes < 8 + m->data[1]) return invalid("output-outside-response");
     return FW_OK;
 }
 enum fw_result fw_hmac(uint32_t id, const uint8_t *input, size_t length, uint8_t out[32]) {
-    if (!length || length > 2048) return outcome(FW_INVALID);
+    if (!length || length > 2048) return outcome(invalid("input-length"));
     struct message m = {0}; m.data[1] = id; m.data[2] = (uint32_t)length;
     memcpy(m.data+3, input, length);
     uint8_t request[2056]; memcpy(request, m.data+1, sizeof(request));
