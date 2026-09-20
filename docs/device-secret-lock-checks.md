@@ -117,22 +117,50 @@ response, changed error payload, and failure of the existing error query. They
 identify which validation predicate rejected a reply, not whether firmware or
 the helper's ABI assumption is wrong. Software tests exercise these cases and
 verify that later cleanup cannot erase the emitted reason. Physical diagnosis
-still requires a separately authorized experiment; no validation is relaxed.
+still requires a separately authorized experiment. The development-only signing
+compatibility rule below does not change qualification-harness validation.
 
-For a signing-only `output-outside-response` failure, a second stderr line,
+For a signing-only `output-outside-response` result, a second stderr line,
 `KAIBA_SIGN_RESPONSE_LENGTHS`, retains `tag_bytes`, `signature_bytes` and the
 fixed `metadata_bytes=8`. It is emitted only after framing, completion, zero
 operation status and signature-length bounds have passed. The first two fields
 are bounded by the 128-byte signing ABI; they are lengths, never signature bytes.
 The fields are reset before the next exchange and retained before cleanup.
-Other malformed replies expose no numeric metadata. JSON and acceptance rules
+Other malformed replies expose no numeric metadata. JSON and assessor rules
 remain unchanged.
 
 The [pinned upstream signing implementation](https://github.com/raspberrypi/utils/blob/292dbe7e35296e556d839a0b9ae2ca957ac8c961/rpifwcrypto/rpifwcrypto.c)
 uses the inner signature length without requiring the outer tag length to cover
 it. The [general mailbox specification](https://github.com/raspberrypi/firmware/wiki/Mailbox-property-interface)
 defines the response length as the value length. Neither establishes a documented
-signing exception. These diagnostics permit comparing the actual lengths before
-proposing any compatibility rule; they do not accept a truncated response or
-verify the signature. Any future exception needs explicit bounds, rationale and
-negative tests. A new hardware call remains separately authorized.
+signing exception. The development rule below is a bounded engineering
+compatibility choice, not a claim of upstream ABI compliance.
+
+## Development-only signing compatibility
+
+Only the separately compiled `KAIBA_LOCK_CHECKS` binary may continue after
+`output-outside-response` when the advertised tag count is exactly 40. It must
+first pass all existing framing, completion, status and inner-length checks.
+It then validates the complete claimed signature in the allocated value buffer:
+8–72 bytes, an exact short-form DER sequence of two minimally encoded positive
+integers, each nonzero and below the P-256 group order. Trailing bytes within the
+claimed signature, truncation, negative/zero/over-order scalars, redundant padding
+and long-form encodings fail. Normal signing responses in this development
+binary also require the same DER checks. No other short advertised length is
+accepted; HMAC, private reads and all error/denial checks retain their rules.
+
+An accepted exception emits `KAIBA_SIGN_COMPAT` with the fixed rule name
+`development-der-tag40` and `cryptographically_verified=false`, alongside the
+bounded length metadata, before cleanup. Signature bytes remain in locked memory
+and are wiped. This only establishes response structure for a development
+positive control. It does not prove the signature verifies, establish identity,
+or qualify a protection profile. The strict qualification harness is compiled
+without this exception and still rejects insufficient reported coverage.
+
+The rationale is to let a bounded development observation validate the returned
+signature's independent DER structure within the allocated buffer, rather than
+rely on the shortened count. The rule does not repair firmware or infer a general
+ABI convention. Synthetic tests cover strict/development separation, exact count
+matching, DER and scalar boundaries, preceding failures, explicit diagnostics and
+unchanged operation bounds. Physical behavior remains pending a new reviewed
+one-use experiment; no extra mailbox operation is added.

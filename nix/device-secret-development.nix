@@ -72,6 +72,14 @@ let
           -I${crypto.library}/include -I${firmware} ${firmware}/firmware.c \
           ${../tests/device-secret-development/validation-reasons.c} -o validation-reasons
         ./validation-reasons
+        for mode in strict development; do
+          define=""
+          if test "$mode" = development; then define=-DKAIBA_LOCK_CHECKS; fi
+          $CC -std=c11 -Wall -Wextra -Werror -O2 -DKAIBA_TESTING $define \
+            -I${crypto.library}/include -I${firmware} ${firmware}/firmware.c \
+            ${../tests/device-secret-development/signature-compat.c} -o signature-$mode
+          ./signature-$mode
+        done
         export KAIBA_DEVELOPMENT_SCRIPTS=${scripts}
         python3 -B -m unittest discover -s ${../tests/device-secret-development} -p 'test_session.py' -v
         KAIBA_LOCK_FIXTURE="$PWD/lock-fixture" python3 -B -m unittest discover -s ${../tests/device-secret-development} -p 'test_lock_assessment.py' -v
