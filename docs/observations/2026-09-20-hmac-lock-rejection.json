@@ -1,0 +1,78 @@
+{
+  "record_kind": "scoped-firmware-hmac-rejection-engineering-observation",
+  "date": "2026-09-20",
+  "source_revision": "ef66ce160bd0e38943825afbd27d829666368785",
+  "software_pr": 50,
+  "inputs_sha256": {
+    "observer": "2ddf6c219cd3afe4c8e67fe0742f3ee0130d29ce8ae966bc5e25554d0fc77522",
+    "observer.bpf.o": "75f689023743267553d1bf182e3a7a3ffb8ebb18276062062e26054e8e3961de",
+    "helper": "4af202542f21f4ddc86e6a3e08ea870348436df853ead2c7d146e9a934880621"
+  },
+  "execution": {
+    "hmac_calls": 4,
+    "volatile_lock_writes": 2,
+    "raw_key_reads": 0,
+    "signing_operations": 0,
+    "otp_programming": 0,
+    "media_writes": 0,
+    "power_operations": 0
+  },
+  "results": {
+    "hmac_controls": "observed",
+    "runtime_lock_closure": "observed",
+    "kernel_return": -22,
+    "failed_call_response": {
+      "sequence": 3,
+      "complete": true,
+      "copy_failed": false,
+      "tag": 196754,
+      "result": -22,
+      "request_valid": true,
+      "reply_valid": true,
+      "response_marked": true,
+      "operation_error": true,
+      "payload_unchanged_or_zero": true
+    },
+    "separate_last_error": "KEY_LOCKED",
+    "firmware_error_payload": "tagged-error-no-new-payload",
+    "original_helper_passed": false,
+    "original_helper_exit": 3,
+    "final_inspection_verity": "V",
+    "same_inspection_boot": true
+  },
+  "limits": {
+    "hardware_qualified": false,
+    "lock_rejection_qualified": false,
+    "top_level_mailbox_code": "not observed",
+    "last_error_transaction_correlation": "not established",
+    "other_lock_operations": "not tested",
+    "execution_authority": false
+  },
+  "private_evidence": [
+    {
+      "role": "stdout",
+      "bytes": 2513,
+      "sha256": "b32d2c14836c4d1b561a7ff6dec15c49715ab41cd676c91ad482d59b2e61c6cd"
+    },
+    {
+      "role": "stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "role": "result.json",
+      "bytes": 282,
+      "sha256": "bdc027ebf0230be250009a14c1bc53caf99f6dd05de4c79219f980ab79cfd873"
+    },
+    {
+      "role": "assessment.json",
+      "bytes": 882,
+      "sha256": "7f1f27cd5bc47c3b06fd48eeeff9df1397ae95d0629ae0ca0fb8d73ce0ba85ca"
+    },
+    {
+      "role": "final-readonly-check.json",
+      "bytes": 2418,
+      "sha256": "85eb83630d0e750b44e75554ca1a3bd0cc6a89d9910fb04ad6ba365bedeabad8"
+    }
+  ]
+}
