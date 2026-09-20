@@ -50,6 +50,7 @@ first-fleet applicability is determined by the admission policy.
 | [Device-secret feasibility](device-secret-feasibility.md) | Pinned firmware-crypto package, non-secret capability probe and pending physical mechanism investigation |
 | [Remote device-secret development](device-secret-development.md) | RAM-resident firmware checks and authenticated SSH/reboot runner; no new image signature for helper changes |
 | [Remote LUKS development](device-secret-storage-development.md) | Bounded create/reboot/reopen helper and host runner; synthetic VM coverage, physical execution pending |
+| [Remaining device-secret lock checks](device-secret-lock-checks.md) | Bounded read/signing/lock-clear sequence and paired kernel assessment; physical execution pending |
 | [Passive firmware rejection observer](firmware-rejection-observer.md) | Bounded eBPF response diagnostics on the existing inspection kernel; hardware validation and qualification pending |
 | [Offline storage development](device-secret-offline-storage.md) | Boot-time create/reopen service and saved-capture assessment; physical cold-power execution pending |
 | [HMAC rejection evidence](device-secret-rejection-evidence.md) | Read-only assessment of saved results, Linux response-copy limits and the remaining qualification decision |
