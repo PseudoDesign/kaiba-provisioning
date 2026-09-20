@@ -580,6 +580,12 @@
           kaiba-rpi5-fwcrypto = deviceSecret.library;
           kaiba-device-secret-capabilities = deviceSecret.probe;
           kaiba-device-secret-runner = deviceSecretRunner.package;
+          kaiba-device-secret-lock-assess =
+            (import ./nix/device-secret-development.nix { pkgs = import nixpkgs { inherit system; }; })
+            .lockAssessor;
+          kaiba-device-secret-lock-checks =
+            (import ./nix/device-secret-development.nix { pkgs = import nixpkgs { inherit system; }; })
+            .lockHelper;
           kaiba-device-secret-development-helper =
             (import ./nix/device-secret-development.nix { pkgs = import nixpkgs { inherit system; }; }).helper;
           kaiba-device-secret-development-session =

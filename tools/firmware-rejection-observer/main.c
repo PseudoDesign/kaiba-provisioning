@@ -23,6 +23,8 @@ static const char *boolean(int b) { return b?"true":"false"; }
 int main(int argc,char **argv) {
  /* Both file paths are exact reviewed packet inputs; no mailbox parameters
   * other than the existing helper's bounded slot/usage/boot configuration. */
+ bool lock_checks=argc==7&&!strcmp(argv[1],"--lock-checks");
+ if (lock_checks) { argc--;argv++; }
  bool verify_only=argc==3&&!strcmp(argv[1],"--verify-only");
  if (!verify_only&&argc!=6) { fprintf(stderr,"usage: observer OBJECT HELPER SLOT USAGE BOOT_UUID\n");return 2; }
  struct utsname uts;
@@ -58,7 +60,7 @@ int main(int argc,char **argv) {
   char go=0;
   if (read(gate[0],&go,1)!=1 || go!='G') _exit(125);
   close(gate[0]);
-  execl(argv[2],argv[2],"hmac","--slot-id",argv[3],"--expected-usage",argv[4],"--expected-boot-id",argv[5],(char *)NULL);
+  execl(argv[2],argv[2],lock_checks?"locks":"hmac","--slot-id",argv[3],"--expected-usage",argv[4],"--expected-boot-id",argv[5],(char *)NULL);
   _exit(125);
  }
  close(gate[0]);
