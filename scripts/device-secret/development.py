@@ -186,13 +186,63 @@ def validate_result(raw, c, check, boot, rc):
     return value
 
 
+def assess_hmac_observation(value):
+    """Describe the recorded boundary; never change an operation's outcome."""
+    steps = value['steps']
+    names = [s['name'] for s in steps]
+    require(len(names) == len(set(names)), 'ambiguous-assessment-steps')
+
+    def step(name, tag, value=None, outcome=0, passed=True, error=0):
+        return dict(name=name, passed=passed, outcome=outcome,
+                    mailbox_tag=tag, mailbox_errno=error, value=value)
+
+    # Validate the positive controls and their metadata, not just passed=true.
+    controls = False
+    if len(steps) >= 8:
+        count, status = steps[0]['value'], steps[1]['value']
+        controls = (type(count) is int and value['slot_id'] <= count <= 32
+                    and type(status) is int and status & 1 == 1
+                    and not status & ~0x1f01 and not status & 0x0c00
+                    and steps[:8] == [
+                        step('count', 0x3008f, count), step('status', 0x30090, status),
+                        step('usage', 0x3009c, value['expected_usage']),
+                        step('apply-runtime-locks', 0x38090), step('runtime-locks', 0x30090, 0x1301),
+                        step('hmac-control', 0x30092), step('hmac-repeat', 0x30092),
+                        step('hmac-separation', 0x30092)])
+    closed = False
+    if 'close-runtime-locks' in names:
+        index = names.index('close-runtime-locks')
+        closed = value['cleanup_locks_closed'] is True and steps[index:index+2] == [
+            step('close-runtime-locks', 0x38090), step('closed-status', 0x30090, 0x1f01)]
+    boundary = 'not-established'
+    payload = 'not-established'
+    if controls and closed and names[8:10] == ['close-runtime-locks', 'closed-status']:
+        if (not value['passed'] and value['stop'] == 'hmac-closed' and steps[10:] == [
+                step('hmac-closed', 0x30092, outcome=2, passed=False, error=22),
+                step('last-error-after-transport-failure', 0x3008e, 4)]):
+            boundary = 'linux-error-with-immediate-key-locked'
+            payload = 'unavailable'
+        elif (value['passed'] and value['stop'] == 'complete' and steps[10:] == [
+                step('hmac-closed', 0x3008e, outcome=1)]):
+            boundary = 'helper-validated-locked-response'
+            payload = 'validated-by-helper'
+    return dict(
+        hmac_controls='observed' if controls else 'not-established',
+        runtime_lock_closure='observed' if closed else 'not-established',
+        post_closure_rejection=boundary, firmware_error_payload=payload,
+        # Last-error is separate global metadata, not a correlated response.
+        lock_cause='consistent-with-lock-rejection' if boundary == 'linux-error-with-immediate-key-locked'
+                  else 'not-assessed',
+    )
+
+
 class Session:
-    def __init__(self, path):
+    def __init__(self, path, read_only=False):
         self.path = Path(path)
         require(self.path.is_absolute() and not self.path.is_symlink(), 'absolute-private-state-required')
         st = self.path.stat()
         require(st.st_uid == os.geteuid() and st.st_mode & 0o077 == 0, 'state-not-private')
-        self.lock = (self.path / 'lock').open('ab')
+        self.lock = (self.path / 'lock').open('rb' if read_only else 'ab')
         try:
             fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             self.config = validate(decode(regular_bytes(self.path / 'session.json')))
@@ -206,6 +256,36 @@ class Session:
 
     def close(self):
         self.lock.close()
+
+    def assess_hmac(self, attempt):
+        # Assessment works on failed/expired sessions, but never calls allowed,
+        # creates an action intent, contacts the target, or changes a result.
+        require(type(attempt) is str and re.fullmatch(r'[0-9]{4}', attempt)
+                and 1 <= int(attempt) <= 48, 'invalid-assessment-attempt')
+        intent = decode(regular_bytes(self.path / f'{attempt}.intent.json'))
+        require(type(intent) is dict and set(intent) == {'action', 'before', 'session_sha256', 'started_at'}
+                and type(intent['before']) is dict and type(intent['before'].get('boot_id')) is str
+                and UUID.fullmatch(intent['before']['boot_id']) and intent['action'] == 'hmac'
+                and intent['session_sha256'] == self.auth['session_sha256'], 'assessment-intent-binding')
+        raw = regular_bytes(self.path / f'{attempt}.stdout', 32768)
+        result_bytes = regular_bytes(self.path / f'{attempt}.result.json')
+        result = decode(result_bytes)
+        require(type(result) is dict and set(result) == {'status', 'observed_at', 'observation',
+                'stdout_sha256', 'hardware_qualified'}
+                and result['status'] in ('passed', 'failed') and result['hardware_qualified'] is False
+                and result['stdout_sha256'] == hashlib.sha256(raw).hexdigest(), 'assessment-result-binding')
+        require(regular_bytes(self.path / f'{attempt}.stderr') == b'', 'assessment-unexpected-stderr')
+        value = validate_result(raw, self.config, 'hmac', intent['before']['boot_id'],
+                                0 if result['status'] == 'passed' else 3)
+        require(value == result['observation'], 'assessment-observation-mismatch')
+        return dict(schema_version='kaiba.device-secret-hmac-assessment/v1alpha1', mode='development',
+                    source=dict(attempt=attempt, session_sha256=self.auth['session_sha256'],
+                                helper_sha256=self.config['helper_sha256'],
+                                result_sha256=hashlib.sha256(result_bytes).hexdigest(),
+                                stdout_sha256=result['stdout_sha256']),
+                    recorded_result=result['status'], claims=assess_hmac_observation(value),
+                    hardware_qualified=False, execution_authority=False,
+                    session_continuation_authorized=False)
 
     def allowed(self, action):
         require(now() < expiry(self.config['expires_at']), 'session-expired')
@@ -309,19 +389,21 @@ def main(argv=None):
     os.umask(0o077)
     parser = argparse.ArgumentParser(description='Remote development checks; no image signing or media staging.')
     sub = parser.add_subparsers(dest='command', required=True)
-    for command in ['init', 'status', 'run', 'reboot']:
+    for command in ['init', 'status', 'run', 'reboot', 'assess-hmac']:
         p = sub.add_parser(command); p.add_argument('--state', required=True)
         if command == 'init': p.add_argument('--config', required=True)
         if command == 'run':
             p.add_argument('--helper', required=True); p.add_argument('--check', choices=sorted(CHECKS), required=True)
+        if command == 'assess-hmac': p.add_argument('--attempt', required=True)
     a = parser.parse_args(argv)
     try:
         if a.command == 'init': result = initialize(a.state, a.config)
         else:
-            session = Session(a.state)
+            session = Session(a.state, read_only=a.command == 'assess-hmac')
             try:
                 if a.command == 'run': result = session.run(a.helper, a.check)
                 elif a.command == 'reboot': result = session.reboot()
+                elif a.command == 'assess-hmac': result = session.assess_hmac(a.attempt)
                 else: result = dict(attempts=[decode(regular_bytes(p)) for p in session.intents], execution_authority=False)
             finally: session.close()
         print(json.dumps(result, sort_keys=True))

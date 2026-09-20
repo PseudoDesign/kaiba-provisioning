@@ -44,6 +44,12 @@ lock-status readback remain individually visible even when the final rejection
 check fails. Unexpected/malformed responses remain failed, cleanup success is
 separate, and a failed session still blocks the next check or reboot.
 
+Use the file-only [`assess-hmac` command](device-secret-rejection-evidence.md#assess-a-saved-attempt)
+to classify an existing HMAC result. The [evidence decision](device-secret-rejection-evidence.md)
+explains the pinned driver's response-copy limit and the distinction between a
+Linux API rejection and a validated firmware error payload. Assessment preserves
+the original failure and does not authorize another attempt.
+
 Locks persist within a boot. A second mutating check on an already closed slot
 stops. Start an explicitly authorized soft reboot between checks that need an
 open HMAC operation; do not attempt to clear locks. A soft reboot is useful for
@@ -121,7 +127,7 @@ boot ID changed before accepting the new pin. Old pins and captures are retained
 It never accepts `ssh-keyscan` alone as authentication.
 
 Failed checks, missing/invalid responses, timeouts and interrupted actions block
-further execution in that session. `status` remains available. There is no reset,
+further execution in that session. `status` and local `assess-hmac` remain available. There is no reset,
 force or automatic retry. Preserve the session, reconcile its result and actual
 lock state, then prepare a newly reviewed session within the remaining human
 authority. Creating a fresh directory cannot manufacture additional authority.
