@@ -31,6 +31,10 @@ static bool record(const char *name, bool passed, bool has_value, uint32_t value
      * unchanged; the private executor already retains stderr separately. */
     if (!passed && steps[step_count-1].diagnostic.outcome == FW_INVALID)
         fprintf(stderr, "KAIBA_RESPONSE_VALIDATION step=%s reason=%s\n", name, fw_validation_reason());
+    struct fw_sign_lengths lengths = fw_sign_response_lengths();
+    if (!passed && steps[step_count-1].diagnostic.outcome == FW_INVALID && lengths.present)
+        fprintf(stderr, "KAIBA_SIGN_RESPONSE_LENGTHS step=%s tag_bytes=%u signature_bytes=%u metadata_bytes=8\n",
+                name, lengths.tag_bytes, lengths.signature_bytes);
     return passed && !interrupted;
 }
 static bool record_crypto(const char *name, enum fw_result result, bool passed) {

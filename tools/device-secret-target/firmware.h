@@ -27,6 +27,9 @@ enum fw_result fw_legacy_read(void);
 enum fw_result fw_sign(uint32_t);
 const char *fw_last_outcome(void);
 const char *fw_validation_reason(void);
+/* Present only for a signing coverage failure after all preceding checks. */
+struct fw_sign_lengths { bool present; uint32_t tag_bytes, signature_bytes; };
+struct fw_sign_lengths fw_sign_response_lengths(void);
 struct fw_diagnostic fw_snapshot(void);
 void fw_diagnostic(int, const char *);
 #endif

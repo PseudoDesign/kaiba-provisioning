@@ -107,7 +107,7 @@ A malformed reply still fails the operation and triggers the existing cleanup.
 The development helper additionally writes a fixed `KAIBA_RESPONSE_VALIDATION`
 line to stderr at the failed step, before cleanup can replace the diagnostic.
 Its `step` and `reason` are program literals; no response bytes, signature, key,
-raw status word or numeric response lengths are emitted. The JSON contract and
+or raw status word is emitted. The JSON contract and
 assessor acceptance rules are unchanged. Executors must retain stderr alongside
 stdout; these diagnostics do not issue another mailbox call.
 
@@ -118,3 +118,21 @@ identify which validation predicate rejected a reply, not whether firmware or
 the helper's ABI assumption is wrong. Software tests exercise these cases and
 verify that later cleanup cannot erase the emitted reason. Physical diagnosis
 still requires a separately authorized experiment; no validation is relaxed.
+
+For a signing-only `output-outside-response` failure, a second stderr line,
+`KAIBA_SIGN_RESPONSE_LENGTHS`, retains `tag_bytes`, `signature_bytes` and the
+fixed `metadata_bytes=8`. It is emitted only after framing, completion, zero
+operation status and signature-length bounds have passed. The first two fields
+are bounded by the 128-byte signing ABI; they are lengths, never signature bytes.
+The fields are reset before the next exchange and retained before cleanup.
+Other malformed replies expose no numeric metadata. JSON and acceptance rules
+remain unchanged.
+
+The [pinned upstream signing implementation](https://github.com/raspberrypi/utils/blob/292dbe7e35296e556d839a0b9ae2ca957ac8c961/rpifwcrypto/rpifwcrypto.c)
+uses the inner signature length without requiring the outer tag length to cover
+it. The [general mailbox specification](https://github.com/raspberrypi/firmware/wiki/Mailbox-property-interface)
+defines the response length as the value length. Neither establishes a documented
+signing exception. These diagnostics permit comparing the actual lengths before
+proposing any compatibility rule; they do not accept a truncated response or
+verify the signature. Any future exception needs explicit bounds, rationale and
+negative tests. A new hardware call remains separately authorized.

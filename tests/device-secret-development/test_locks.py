@@ -17,7 +17,9 @@ class Locks(unittest.TestCase):
    r=subprocess.run([HELPER,'locks','--slot-id','1','--expected-usage','8','--expected-boot-id',BOOT],env=env,capture_output=True,text=True)
    v=json.loads(r.stdout)
    self.assertEqual(r.returncode,3);self.assertEqual(v['stop'],'sign-control');self.assertTrue(v['cleanup_locks_closed'])
-   self.assertEqual([x for x in r.stderr.splitlines() if not x.startswith('TAG ')],[f'KAIBA_RESPONSE_VALIDATION step=sign-control reason={reason}'])
+   expected=[f'KAIBA_RESPONSE_VALIDATION step=sign-control reason={reason}']
+   if fault=='sign-response-length':expected.append('KAIBA_SIGN_RESPONSE_LENGTHS step=sign-control tag_bytes=64 signature_bytes=64 metadata_bytes=8')
+   self.assertEqual([x for x in r.stderr.splitlines() if not x.startswith('TAG ')],expected)
    self.assertEqual([int(x.split()[1],16) for x in r.stderr.splitlines() if x.startswith('TAG ')],[0x3008f,0x30090,0x3009c,0x38090,0x30090,0x30092,0x30091,0x38090,0x30090])
  def test_exact_bounded_sequence(self):
   v,tags=self.run_case();self.assertTrue(v['completed']);self.assertTrue(v['cleanup_locks_closed'])

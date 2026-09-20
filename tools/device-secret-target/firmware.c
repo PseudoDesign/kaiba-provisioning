@@ -23,6 +23,8 @@ static uint32_t last_mailbox_tag;
 static int last_mailbox_errno;
 /* Closed vocabulary only: never return bytes, lengths or status-word values. */
 static const char *validation_reason = "none";
+static struct fw_sign_lengths sign_lengths;
+struct fw_sign_lengths fw_sign_response_lengths(void) { return sign_lengths; }
 const char *fw_validation_reason(void) { return validation_reason; }
 static enum fw_result invalid(const char *reason) {
     validation_reason = reason;
@@ -66,6 +68,7 @@ void fw_close(void) {
 }
 static enum fw_result exchange(struct message *m, uint32_t tag, uint32_t capacity, uint32_t request) {
     validation_reason = "none";
+    sign_lengths = (struct fw_sign_lengths){0};
     last_mailbox_tag = tag;
     last_mailbox_errno = 0;
     size_t size = capacity <= 8 ? 40 : (tag == 0x00030091 ? 160 : 24 + capacity);
@@ -131,7 +134,14 @@ static enum fw_result crypto_result(struct message *m, enum fw_result result, ui
     if (m->data[0]) return invalid("operation-status");
     if (m->data[1] < minimum) return invalid("output-too-short");
     if (m->data[1] > maximum) return invalid("output-too-long");
-    if (bytes < 8 + m->data[1]) return invalid("output-outside-response");
+    if (bytes < 8 + m->data[1]) {
+        /* Only validated length fields, never the signature/status/payload.
+         * exchange bounded bytes <= 128; the checks above bounded length.
+         * Do not infer or accept a signing-specific ABI exception here. */
+        if (m->tag == 0x30091)
+            sign_lengths = (struct fw_sign_lengths){true, bytes, m->data[1]};
+        return invalid("output-outside-response");
+    }
     return FW_OK;
 }
 enum fw_result fw_hmac(uint32_t id, const uint8_t *input, size_t length, uint8_t out[32]) {
