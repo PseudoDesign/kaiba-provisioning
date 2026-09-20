@@ -47,6 +47,7 @@ first-fleet applicability is determined by the admission policy.
 | [EEPROM crypto-lock update](rpi5-eeprom-crypto-update.md) | September firmware pin, public signing/recovery inputs and pending physical update |
 | [Device-secret feasibility](device-secret-feasibility.md) | Pinned firmware-crypto package, non-secret capability probe and pending physical mechanism investigation |
 | [Remote device-secret development](device-secret-development.md) | RAM-resident firmware checks and authenticated SSH/reboot runner; no new image signature for helper changes |
+| [HMAC rejection evidence](device-secret-rejection-evidence.md) | Read-only assessment of saved results, Linux response-copy limits and the remaining qualification decision |
 | [Device-secret experiment automation](device-secret-automation.md) | Staged plan, passive host capture runner and software rehearsal |
 | [Device-secret execution packet](device-secret-execution-packet.md) | File-only packet, bounded staging/restore executor and private report projection; selected hardware session pending |
 | [Device-secret target harness](device-secret-target-harness.md) | Experimental two-boot LUKS harness, secret/lock checks and unsigned image constructor; physical execution remains pending |

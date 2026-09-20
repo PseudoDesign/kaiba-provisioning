@@ -168,6 +168,11 @@ The event sequence matches the host runner. Its meanings are:
 - `locks_cannot_clear`: a clearing request leaves every required lock bit set.
   Failure triggers a bounded attempt to close locks and stops the run.
 
+The [HMAC evidence decision](device-secret-rejection-evidence.md) explains why the
+pinned Linux driver can make the firmware error payload unavailable. A separate
+last-error query can support development diagnosis, but does not satisfy these
+qualification checks or change this harness's interpretation of transport errors.
+
 The legacy mapping and error conventions come from the pinned
 [Pi 5 device tree](https://github.com/raspberrypi/linux/blob/c8c7494100e99ee05b11aaa4f0588a223a63d1af/arch/arm64/boot/dts/broadcom/bcm2712-rpi.dtsi),
 [nvmem driver](https://github.com/raspberrypi/linux/blob/c8c7494100e99ee05b11aaa4f0588a223a63d1af/drivers/nvmem/raspberrypi-otp.c),

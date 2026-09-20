@@ -210,6 +210,11 @@ it blocks and completes that investigation report. Missing access, approval,
 measurements, or an untested legacy read path leaves feasibility pending.
 A compiled harness or successful build cannot make the go decision.
 
+For HMAC failures, the [rejection-evidence decision](device-secret-rejection-evidence.md)
+separates Linux API observations from firmware-payload validation. Its local
+assessment can describe saved development results without repeating hardware
+operations; it does not mark the operation-closure case above as passed.
+
 ## Decisions and later milestone
 
 | Decision | Resolving observation | Blocks |

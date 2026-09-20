@@ -2,6 +2,7 @@ import base64
 import datetime
 import hashlib
 import importlib
+import io
 import json
 import os
 from pathlib import Path
@@ -31,6 +32,22 @@ def response(check='inspect', success=True):
                 stop='complete' if success else 'raw-read-blocked', cleanup_locks_closed=None if check == 'inspect' else True,
                 hardware_qualified=False, steps=[dict(name=n, passed=success, outcome=0,
                 mailbox_tag=0x3008f, mailbox_errno=0, value=None) for n in names])
+
+
+def hmac_observation(explicit_locked=False):
+    value = response('hmac')
+    value.update(passed=explicit_locked, stop='complete' if explicit_locked else 'hmac-closed')
+    tags = [0x3008f, 0x30090, 0x3009c, 0x38090, 0x30090,
+            0x30092, 0x30092, 0x30092, 0x38090, 0x30090, 0x3008e if explicit_locked else 0x30092]
+    values = [1, 1, 8, None, 0x1301, None, None, None, None, 0x1f01, None]
+    for step, tag, metadata in zip(value['steps'], tags, values):
+        step.update(mailbox_tag=tag, value=metadata)
+    value['steps'][-1].update(passed=explicit_locked, outcome=1 if explicit_locked else 2,
+                              mailbox_errno=0 if explicit_locked else 22)
+    if not explicit_locked:
+        value['steps'].append(dict(name='last-error-after-transport-failure', passed=True,
+                                  outcome=0, mailbox_tag=0x3008e, mailbox_errno=0, value=4))
+    return value
 
 
 class SessionTests(unittest.TestCase):
@@ -142,6 +159,103 @@ class SessionTests(unittest.TestCase):
         with patch.object(d, 'inspect', side_effect=AssertionError('no further SSH')):
             with self.assertRaisesRegex(d.Rejected, 'failed-attempt'): s.reboot()
             with self.assertRaisesRegex(d.Rejected, 'failed-attempt'): s.run(self.helper, 'read-lock')
+
+    def saved_hmac(self, explicit_locked=False):
+        s = self.init()
+        observation = hmac_observation(explicit_locked)
+        with patch.object(d, 'inspect', return_value={'boot_id': BOOT}), patch.object(
+            d, 'remote', return_value=subprocess.CompletedProcess(
+                [], 0 if explicit_locked else 3, json.dumps(observation).encode(), b''
+            )
+        ):
+            s.run(self.helper, 'hmac')
+        return s
+
+    def test_assessment_of_failed_expired_session_is_local_and_preserves_failure(self):
+        s = self.saved_hmac()
+        before = {p.name: p.read_bytes() for p in self.state.iterdir()}
+        with (patch.object(d, 'inspect', side_effect=AssertionError('no SSH')),
+             patch.object(d, 'remote', side_effect=AssertionError('no target')),
+             patch.object(d, 'Serial', side_effect=AssertionError('no UART')),
+             patch.object(d.subprocess, 'run', side_effect=AssertionError('no process')),
+             patch.object(d, 'now', return_value=d.now()+datetime.timedelta(days=2))):
+            result = s.assess_hmac('0001')
+            with self.assertRaisesRegex(d.Rejected, 'expired'): s.allowed('hmac')
+        self.assertEqual(result['recorded_result'], 'failed')
+        self.assertEqual(result['claims'], dict(hmac_controls='observed', runtime_lock_closure='observed',
+            post_closure_rejection='linux-error-with-immediate-key-locked', firmware_error_payload='unavailable',
+            lock_cause='consistent-with-lock-rejection'))
+        for key in ('hardware_qualified', 'execution_authority', 'session_continuation_authorized'):
+            self.assertIs(result[key], False)
+        self.assertEqual(before, {p.name: p.read_bytes() for p in self.state.iterdir()})
+        self.assertEqual(result['source']['stdout_sha256'], hashlib.sha256(before['0001.stdout']).hexdigest())
+        self.assertEqual(result['source']['result_sha256'], hashlib.sha256(before['0001.result.json']).hexdigest())
+        with self.assertRaisesRegex(d.Rejected, 'failed-attempt'): s.allowed('reboot')
+
+    def test_assessment_distinguishes_explicit_validated_locked_response(self):
+        s = self.saved_hmac(True)
+        result = s.assess_hmac('0001')
+        self.assertEqual(result['recorded_result'], 'passed')
+        self.assertEqual(result['claims']['post_closure_rejection'], 'helper-validated-locked-response')
+        self.assertEqual(result['claims']['firmware_error_payload'], 'validated-by-helper')
+        self.assertFalse(result['hardware_qualified'])
+        self.assertFalse(result['session_continuation_authorized'])
+
+    def test_assessment_CLI_reports_failed_record_without_creating_files(self):
+        s = self.saved_hmac(); s.close()
+        before = {p.name: p.read_bytes() for p in self.state.iterdir()}
+        output = io.StringIO()
+        with patch.object(sys, 'stdout', output), patch.object(d, 'remote', side_effect=AssertionError('no target')):
+            self.assertEqual(d.main(['assess-hmac', '--state', str(self.state), '--attempt', '0001']), 0)
+        self.assertEqual(json.loads(output.getvalue())['recorded_result'], 'failed')
+        self.assertEqual(before, {p.name: p.read_bytes() for p in self.state.iterdir()})
+        (self.state/'lock').unlink()
+        with self.assertRaises(FileNotFoundError): d.Session(self.state, read_only=True)
+        self.assertFalse((self.state/'lock').exists())
+
+    def test_assessment_requires_exact_controls_diagnostic_order_and_cleanup(self):
+        mutations = [
+            lambda v: v['steps'][5].update(passed=False),
+            lambda v: v['steps'][6].update(mailbox_tag=0x30094),
+            lambda v: v['steps'][7].update(outcome=2),
+            lambda v: v['steps'][4].update(value=1),
+            lambda v: v['steps'][10].update(mailbox_errno=5),
+            lambda v: v['steps'][11].update(value=8),
+            lambda v: v['steps'][11].update(passed=False, outcome=2, mailbox_errno=5),
+            lambda v: v['steps'].insert(11, dict(name='intervening-metadata', passed=True,
+                                              outcome=0, mailbox_tag=0x30090, mailbox_errno=0, value=0x1f01)),
+            lambda v: v['steps'][9].update(value=0x1301),
+            lambda v: v.update(cleanup_locks_closed=False),
+        ]
+        for index, mutate in enumerate(mutations):
+            with self.subTest(index=index):
+                value = hmac_observation(); mutate(value)
+                claims = d.assess_hmac_observation(value)
+                self.assertEqual(claims['post_closure_rejection'], 'not-established')
+                self.assertEqual(claims['lock_cause'], 'not-assessed')
+        value = hmac_observation(); value['steps'].append(value['steps'][-1])
+        with self.assertRaisesRegex(d.Rejected, 'ambiguous'): d.assess_hmac_observation(value)
+
+    def test_assessment_rejects_inconsistent_saved_evidence(self):
+        s = self.saved_hmac()
+        original = {p.name: p.read_bytes() for p in self.state.iterdir()}
+        mutations = [
+            ('0001.stdout', lambda data: data + b' '),
+            ('0001.result.json', lambda data: json.dumps(json.loads(data) | {'status': 'passed'}).encode()),
+            ('0001.result.json', lambda data: json.dumps(json.loads(data) | {'observation': {}}).encode()),
+            ('0001.intent.json', lambda data: json.dumps(json.loads(data) | {'session_sha256': '0'*64}).encode()),
+            ('0001.intent.json', lambda data: json.dumps(json.loads(data) | {'action': 'read-lock'}).encode()),
+            ('0001.stderr', lambda data: b'unexpected output'),
+        ]
+        for name, mutate in mutations:
+            with self.subTest(name=name):
+                (self.state/name).write_bytes(mutate(original[name]))
+                with self.assertRaises(d.Rejected): s.assess_hmac('0001')
+                (self.state/name).write_bytes(original[name])
+        for attempt in ('../0001', '1', '0000', '0049'):
+            with self.subTest(attempt=attempt), self.assertRaises(d.Rejected): s.assess_hmac(attempt)
+        (self.state/'0001.result.json').unlink()
+        with self.assertRaises(FileNotFoundError): s.assess_hmac('0001')
 
     def test_expiry_and_budget_enforced(self):
         s = self.init(); s.config['expires_at'] = '2000-01-01T00:00:00Z'
