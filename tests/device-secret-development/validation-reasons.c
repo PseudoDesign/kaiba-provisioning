@@ -43,12 +43,17 @@ int main(void) {
         fault=cases[i];calls=0;
         assert(fw_sign(1)==FW_INVALID);
         assert(!strcmp(fw_validation_reason(),fault));
+        struct fw_sign_lengths lengths=fw_sign_response_lengths();
+        assert(lengths.present==IS("output-outside-response"));
+        if (lengths.present) assert(lengths.tag_bytes==64 && lengths.signature_bytes==64);
+        else assert(lengths.tag_bytes==0 && lengths.signature_bytes==0);
         assert(calls==(IS("error-query-failed")?2U:1U));
         /* Reading diagnostics neither mutates the reason nor calls firmware. */
         assert(fw_snapshot().outcome==FW_INVALID);
         assert(!strcmp(fw_validation_reason(),fault));
         fault="valid";calls=0;assert(fw_sign(1)==FW_OK);
         assert(!strcmp(fw_validation_reason(),"none") && calls==1);
+        assert(!fw_sign_response_lengths().present);
     }
     fault="operation-status";assert(fw_sign(1)==FW_INVALID);
     fault="transport";assert(fw_sign(1)==FW_IO);
