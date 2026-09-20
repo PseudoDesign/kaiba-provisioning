@@ -91,7 +91,9 @@ before treating this Linux error as satisfying operation closure:
 | Qualify the Linux API boundary | Define the profile's denial claim explicitly, test unrelated/malformed failures and stale last-error metadata, and review how controls and closure establish the claim without assuming a firmware payload | Adopting Linux-level rejection as sufficient evidence in the selected profile and harness |
 | Observe the firmware response inside the kernel | Review a narrowly scoped observation mechanism that emits public booleans/status only, excludes secret-buffer export, and distinguishes malformed/transport failures; test and deploy it under separate authority | Retaining a requirement to validate the firmware error payload on this driver path |
 
-Neither path is implemented or approved by this assessment. Both require their
-own software review; any new signing, deployment or physical experiment also
+The [passive firmware observer](firmware-rejection-observer.md) implements a
+software diagnostic for the second path without exporting response bytes or
+changing the running kernel. Its hardware behavior and qualification interpretation
+remain pending. Neither path is adopted as a qualification rule by this assessment; any new signing, deployment or physical experiment also
 needs its applicable execution authority. No kernel change or repeat hardware
 run is needed to classify the evidence already saved.

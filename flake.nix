@@ -573,6 +573,10 @@
           };
         in
         {
+          kaiba-firmware-rejection-observer =
+            (import ./nix/firmware-rejection-observer.nix {
+              pkgs = import nixpkgs { inherit system; };
+            }).package;
           kaiba-rpi5-fwcrypto = deviceSecret.library;
           kaiba-device-secret-capabilities = deviceSecret.probe;
           kaiba-device-secret-runner = deviceSecretRunner.package;
@@ -886,6 +890,10 @@
               }).media;
           };
           device-secret-runner = (import ./nix/device-secret-runner.nix { inherit pkgs; }).check;
+          firmware-rejection-observer =
+            (import ./nix/firmware-rejection-observer.nix {
+              inherit pkgs;
+            }).check;
           device-secret-development = (import ./nix/device-secret-development.nix { inherit pkgs; }).check;
           device-secret-storage-development =
             (import ./nix/device-secret-storage-development.nix { inherit pkgs; }).check;
