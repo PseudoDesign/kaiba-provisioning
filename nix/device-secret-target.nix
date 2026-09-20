@@ -35,6 +35,12 @@ let
         $(pkg-config --libs jansson openssl libcryptsetup devmapper) -o kaiba-device-secret-target
     '';
   });
+  cleanupFixture = package.overrideAttrs (old: {
+    pname = "kaiba-device-secret-target-cleanup-test";
+    buildPhase =
+      builtins.replaceStrings [ "main.c " ] [ "-I${source} ${../tests/device-secret-target/cleanup.c} " ]
+        old.buildPhase;
+  });
   check =
     pkgs.runCommand "kaiba-device-secret-target-check"
       {
@@ -66,5 +72,10 @@ let
       '';
 in
 {
-  inherit package fixture check;
+  inherit
+    package
+    fixture
+    cleanupFixture
+    check
+    ;
 }

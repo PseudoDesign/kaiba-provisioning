@@ -42,6 +42,17 @@ let
       import json
       machine.start(allow_reboot=True)
       machine.wait_for_unit("multi-user.target")
+      for holder in ["transient", "persistent"]:
+          machine.succeed("dmsetup create kaiba-secret-experiment-container --table '0 2048 zero'")
+          machine.succeed("udevadm settle")
+          command = "${storage.cleanupFixture}/bin/kaiba-device-secret-storage-development " + holder
+          status, output = machine.execute(command)
+          assert status == (0 if holder == "transient" else 3), output
+          names = machine.succeed("dmsetup info --columns --noheadings -o name")
+          assert ("kaiba-secret-experiment-container" in names) == (holder == "persistent"), names
+          if holder == "persistent":
+              machine.succeed("dmsetup remove kaiba-secret-experiment-container")
+          machine.succeed("udevadm settle")
       machine.succeed("printf 'label: gpt\\nstart=2048,size=133120,type=linux,uuid=${config.partition_uuid}\\n' | sfdisk /dev/vdb")
       machine.succeed("udevadm settle")
       machine.succeed("test $(blockdev --getsize64 /dev/vdb1) = 68157440")

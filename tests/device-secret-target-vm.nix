@@ -59,6 +59,20 @@ let
       start_all()
       machine.wait_for_unit("multi-user.target")
 
+      # Fast CI exposed a transient-reader race during wrong-key teardown.
+      # Exercise actual libdevmapper cleanup with deterministic open readers.
+      for holder in ["transient", "persistent"]:
+          machine.succeed("dmsetup create kaiba-secret-experiment-container --table '0 2048 zero'")
+          machine.succeed("udevadm settle")
+          command = "${target.cleanupFixture}/bin/kaiba-device-secret-target " + holder
+          status, output = machine.execute(command)
+          assert status == (0 if holder == "transient" else 3), output
+          names = machine.succeed("dmsetup info --columns --noheadings -o name")
+          assert ("kaiba-secret-experiment-container" in names) == (holder == "persistent"), names
+          if holder == "persistent":
+              machine.succeed("dmsetup remove kaiba-secret-experiment-container")
+          machine.succeed("udevadm settle")
+
       def prepare():
           machine.succeed("udevadm settle")
           machine.succeed("test $(readlink -f /dev/disk/by-partuuid/${fixtureConfig.partition_uuid}) = /dev/vdb1")

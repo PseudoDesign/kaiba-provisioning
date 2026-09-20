@@ -45,6 +45,12 @@ let
     fixtureFlags = "-DKAIBA_TESTING";
     fixtureSource = ../tests/device-secret-storage-development/firmware-fixture.c;
   });
+  cleanupFixture = helper.overrideAttrs (old: {
+    pname = "kaiba-device-secret-storage-cleanup-test";
+    buildPhase =
+      builtins.replaceStrings [ "main.c " ] [ "${../tests/device-secret-target/cleanup.c} " ]
+        old.buildPhase;
+  });
   scripts = pkgs.runCommand "kaiba-device-secret-storage-development-scripts" { } ''
     mkdir -p "$out"
     cp ${../scripts/device-secret/storage_development.py} "$out/storage_development.py"
@@ -87,6 +93,7 @@ in
   inherit
     helper
     fixture
+    cleanupFixture
     package
     check
     ;

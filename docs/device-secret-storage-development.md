@@ -49,6 +49,10 @@ fixed mapping names and interrupted-attempt detection. The journal binds the
 complete configuration, boot-image digest and verity root. Its create/reopen
 records require different boot IDs. Development uses its own configuration
 schema, so its journal cannot be substituted for a qualification journal.
+Removing the helper's temporary linear mapping uses the pinned libdevmapper's
+bounded busy-device handling (at most 25 waits of 200 ms). This handles transient
+udev readers during teardown only. A persistent holder still fails cleanup;
+deferred deletion and retries of firmware, format or unlock operations are not used.
 
 There is no private-key read, signing, generation, OTP/usage write, lock-clear
 attempt or post-closure crypto probe. Runtime lock status is recorded separately
