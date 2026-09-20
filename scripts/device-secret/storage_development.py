@@ -53,11 +53,12 @@ def validate(c):
     return c
 
 
-def validate_result(raw, c, phase, boot, rc):
+def validate_result(raw, c, phase, boot, rc, *, mode="development",
+                    schema="kaiba.device-secret-storage-result/v1alpha1"):
     require(len(raw) <= 8192, 'storage-result-bound')
     v = decode(raw)
     require(type(v) is dict and set(v) == RESULT_FIELDS, 'storage-result-fields')
-    require(v['schema_version'] == 'kaiba.device-secret-storage-result/v1alpha1' and v['mode'] == 'development'
+    require(v['schema_version'] == schema and v['mode'] == mode
             and v['phase'] == phase and v['boot_id'] == boot and v['boot_image_sha256'] == c['boot_image_sha256']
             and v['volume_uuid'] == c['storage']['volume_uuid']
             and v['nonce_sha256'] == hashlib.sha256(bytes.fromhex(c['storage']['nonce_hex'])).hexdigest()

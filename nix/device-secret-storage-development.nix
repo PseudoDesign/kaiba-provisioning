@@ -45,6 +45,15 @@ let
     fixtureFlags = "-DKAIBA_TESTING";
     fixtureSource = ../tests/device-secret-storage-development/firmware-fixture.c;
   });
+  offlineHelper = helper.overrideAttrs (_: {
+    pname = "kaiba-device-secret-storage-offline-development";
+    fixtureFlags = "-DKAIBA_STORAGE_OFFLINE";
+  });
+  offlineFixture = offlineHelper.overrideAttrs (_: {
+    pname = "kaiba-device-secret-storage-offline-test-firmware";
+    fixtureFlags = "-DKAIBA_STORAGE_OFFLINE -DKAIBA_TESTING";
+    fixtureSource = ../tests/device-secret-storage-development/firmware-fixture.c;
+  });
   cleanupFixture = helper.overrideAttrs (old: {
     pname = "kaiba-device-secret-storage-cleanup-test";
     buildPhase =
@@ -55,6 +64,7 @@ let
     mkdir -p "$out"
     cp ${../scripts/device-secret/storage_development.py} "$out/storage_development.py"
     cp ${../scripts/device-secret/development.py} "$out/development.py"
+    cp ${../scripts/device-secret/offline_storage.py} "$out/offline_storage.py"
     cp ${../scripts/device-secret/runner.py} "$out/runner.py"
   '';
   package = pkgs.writeShellApplication {
@@ -63,6 +73,13 @@ let
     text = ''
       exec ${pkgs.python3}/bin/python3 -I -c \
         'import runpy, sys; sys.path.insert(0, "${scripts}"); runpy.run_module("storage_development", run_name="__main__")' "$@"
+    '';
+  };
+  offlineAssessor = pkgs.writeShellApplication {
+    name = "kaiba-offline-storage-assess";
+    text = ''
+      exec ${pkgs.python3}/bin/python3 -I -B -c \
+        'import runpy, sys; sys.path.insert(0, "${scripts}"); runpy.run_module("offline_storage", run_name="__main__")' "$@"
     '';
   };
   check =
@@ -75,9 +92,11 @@ let
       }
       ''
         export KAIBA_DEVELOPMENT_SCRIPTS=${scripts}
+        export KAIBA_OFFLINE_STORAGE_HELPER=${offlineHelper}/bin/kaiba-device-secret-storage-development
         export KAIBA_STORAGE_HELPER=${helper}/bin/kaiba-device-secret-storage-development
         python3 -B -m unittest discover -s ${../tests/device-secret-storage-development} -p 'test_*.py' -v
         ${package}/bin/kaiba-device-secret-storage-session --help > help.txt
+        ${offlineAssessor}/bin/kaiba-offline-storage-assess --help > offline-help.txt
         ${fixture}/bin/kaiba-device-secret-storage-development --version > fixture.txt
         readelf -l "$KAIBA_STORAGE_HELPER" > segments
         ! grep -q INTERP segments
@@ -85,6 +104,10 @@ let
         ! grep -q NEEDED dynamic
         nm "$KAIBA_STORAGE_HELPER" > symbols
         ! grep -E 'test_exchange|fw_raw_read|fw_legacy_read|fw_sign|rpi_fw_crypto_(gen|set_key_usage)' symbols
+        nm "$KAIBA_OFFLINE_STORAGE_HELPER" > offline-symbols
+        ! grep -E 'test_exchange|fw_raw_read|fw_legacy_read|fw_sign|rpi_fw_crypto_(gen|set_key_usage)' offline-symbols
+        readelf -l "$KAIBA_OFFLINE_STORAGE_HELPER" > offline-segments
+        ! grep -q INTERP offline-segments
         mkdir -p "$out"
         cp help.txt fixture.txt segments dynamic symbols "$out/"
       '';
@@ -94,6 +117,9 @@ in
     helper
     fixture
     cleanupFixture
+    offlineHelper
+    offlineFixture
+    offlineAssessor
     package
     check
     ;

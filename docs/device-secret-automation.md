@@ -4,6 +4,10 @@ Firmware API iteration should first use the [remote development helper](device-s
 on the existing signed inspection system. This avoids repeating image signing
 and media transfers for helper changes. It does not supply qualification evidence.
 
+An [offline storage development runner](device-secret-offline-storage.md) can
+separately exercise boot-time persistence without promoting unresolved lock
+rejection checks. Its physical execution is pending.
+
 The offline qualification work is a bounded two-boot experiment, reusing the existing
 OTP-derived LUKS implementation and keeping human actions at physical and
 execution-authority boundaries. The existing owned Pi does not enter the
