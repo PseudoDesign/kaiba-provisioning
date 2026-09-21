@@ -18,7 +18,7 @@ class Assessment(unittest.TestCase):
   h,o=self.fixture();a=self.assess(h,o)
   self.assertEqual(a['status'],'matched-target-and-kernel-observations');self.assertFalse(a['hardware_qualified']);self.assertFalse(a['execution_authority'])
  def test_linux_error_steps_remain_failed(self):
-  for fault,name in [('raw-einval','raw-read-blocked'),('sign-einval','sign-closed')]:
+  for fault,name in [('raw-einval','raw-read-blocked'),('sign-einval','sign-closed'),('clear-einval','attempt-clear-locks')]:
    h,o=self.fixture(fault);a=self.assess(h,o)
    self.assertEqual(a['original_failed_operations'],[name])
    self.assertFalse(next(s for s in h['steps'] if s['name']==name)['passed'])
@@ -46,6 +46,16 @@ class Assessment(unittest.TestCase):
   h=copy.deepcopy(base);h['cleanup_locks_closed']=False
   with self.assertRaises(Exception):self.assess(h,o)
   h=copy.deepcopy(base);h['steps'][-1]['value']=1
+  with self.assertRaises(Exception):self.assess(h,o)
+ def test_clear_error_requires_immediate_successful_readback(self):
+  base,o=self.fixture('clear-einval')
+  i=next(i for i,s in enumerate(base['steps']) if s['name']=='locks-remain-closed')
+  for key,value in [('value',1),('passed',False),('outcome',2),('mailbox_errno',22),('value',None)]:
+   h=copy.deepcopy(base);h['steps'][i][key]=value
+   with self.assertRaises(Exception):self.assess(h,o)
+  h=copy.deepcopy(base);h['steps'][i],h['steps'][i+1]=h['steps'][i+1],h['steps'][i]
+  with self.assertRaises(Exception):self.assess(h,o)
+  h=copy.deepcopy(base);h['steps'][i-1]['mailbox_errno']=5
   with self.assertRaises(Exception):self.assess(h,o)
  def test_changed_boot_slot_usage_or_framing_rejects(self):
   h,o=self.fixture()

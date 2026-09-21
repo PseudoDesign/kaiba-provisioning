@@ -32,7 +32,7 @@ class Locks(unittest.TestCase):
   v,tags=self.run_case();self.assertTrue(v['completed']);self.assertTrue(v['cleanup_locks_closed'])
   self.assertEqual(tags,[0x3008f,0x30090,0x3009c,0x38090,0x30090,0x30092,0x30091,0x30094,0x3008e,0x30024,0x30081,0x38090,0x30090,0x30091,0x3008e,0x38090,0x30090,0x38090,0x30090])
  def test_linux_denial_is_preserved_as_failed_step_not_promoted(self):
-  for fault,name in [('raw-einval','raw-read-blocked'),('sign-einval','sign-closed')]:
+  for fault,name in [('raw-einval','raw-read-blocked'),('sign-einval','sign-closed'),('clear-einval','attempt-clear-locks')]:
    with self.subTest(fault=fault):
     v,tags=self.run_case(fault);self.assertTrue(v['completed'])
     step=next(s for s in v['steps'] if s['name']==name)
@@ -44,6 +44,16 @@ class Locks(unittest.TestCase):
     self.assertEqual(tags[-2:],[0x38090,0x30090])
     if fault!='cleanup':self.assertTrue(v['cleanup_locks_closed'])
     if fault in ['private-returned','legacy-unlocked','legacy-io','sign-control']:self.assertEqual(tags.count(0x30091),1)
+ def test_clear_readback_precedes_cleanup_even_after_error(self):
+  for fault in ['clear-einval','clear-einval-after-effect','clear-io-after-effect','clear-eio','clear-read-io','clear-read-malformed']:
+   with self.subTest(fault=fault):
+    v,tags=self.run_case(fault);self.assertEqual(v['completed'],fault=='clear-einval');self.assertTrue(v['cleanup_locks_closed'])
+    names=[s['name'] for s in v['steps']];i=names.index('attempt-clear-locks')
+    self.assertEqual(names[i:],['attempt-clear-locks','locks-remain-closed','close-runtime-locks','closed-status'])
+    self.assertEqual(tags[-4:],[0x38090,0x30090,0x38090,0x30090])
+    if fault in ['clear-einval-after-effect','clear-io-after-effect']:
+     self.assertEqual(v['steps'][i+1]['value'],1);self.assertFalse(v['steps'][i+1]['passed'])
+    self.assertEqual(v['steps'][-1]['value'],0x1f01)
  def test_preclosed_never_runs_secret_operations(self):
   v,tags=self.run_case('preclosed');self.assertFalse(v['completed']);self.assertEqual(tags,[0x3008f,0x30090,0x3009c])
  def test_production_rejects_unrelated_modes_before_device_access(self):

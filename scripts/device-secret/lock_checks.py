@@ -58,7 +58,14 @@ def assess(raw, plan):
     take('legacy-read-blocked', 0x30081, outcome=1, error=22)
     take('close-before-probes', 0x38090); take('closed-before-probes', 0x30090, 0x1f01)
     sign_result = denial('sign-closed', 'last-error-sign-closed', 0x30091)
-    take('attempt-clear-locks', 0x38090); take('locks-remain-closed', 0x30090, 0x1f01)
+    require(steps, 'missing-clear-result')
+    if steps[0]['outcome'] == 2:
+        take('attempt-clear-locks', 0x38090, outcome=2, passed=False, error=22)
+        failed_operations.append('attempt-clear-locks')
+    else:
+        take('attempt-clear-locks', 0x38090)
+    # Must precede cleanup: final closed-status could conceal a clearing effect.
+    take('locks-remain-closed', 0x30090, 0x1f01)
     take('close-runtime-locks', 0x38090); take('closed-status', 0x30090, 0x1f01)
     require(not steps, 'extra-steps')
     require(type(observer) is dict and set(observer) == {'schema_version', 'complete', 'helper_exit', 'rejected',

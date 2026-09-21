@@ -7,6 +7,7 @@
 
 static uint32_t locks = DEVICE_TYPE, error_code;
 static unsigned hmac_calls;
+static bool clear_read_pending;
 static bool fault(const char *s) {
     const char *v = getenv("KAIBA_TEST_FAULT"); return v && !strcmp(v, s);
 }
@@ -21,7 +22,13 @@ int test_exchange(void *buffer, size_t size) {
     if (fault("malformed")) m[0]++;
     switch (tag) {
     case 0x3008f: v[0] = fault("no-slots") ? 0 : 1; return 0;
-    case 0x30090: v[0] = fault("preclosed") ? DEVICE_TYPE | ALL_LOCKS : locks; return 0;
+    case 0x30090:
+        if (clear_read_pending) {
+            clear_read_pending=false;
+            if (fault("clear-read-io")) {errno=EIO;return -1;}
+            if (fault("clear-read-malformed")) m[0]++;
+        }
+        v[0] = fault("preclosed") ? DEVICE_TYPE | ALL_LOCKS : locks; return 0;
     case 0x3009c: v[0] = fault("usage-mismatch") ? 9 : 8; return 0;
     case 0x3008e:
         if (fault("last-error-io")) { errno = EIO; return -1; }
@@ -33,9 +40,14 @@ int test_exchange(void *buffer, size_t size) {
             && v[1] != DEVICE_TYPE
 #endif
         )) abort();
+        if (v[1] == DEVICE_TYPE) clear_read_pending=true;
         if (!(fault("cleanup") && v[1] == (DEVICE_TYPE | ALL_LOCKS))) locks = fault("clearable-locks") ? v[1] : locks | v[1];
-        if (fault("clear-io-after-effect") && v[1] == DEVICE_TYPE) {
-            locks = DEVICE_TYPE; errno = EIO; return -1;
+        if (v[1] == DEVICE_TYPE) {
+            if (fault("clear-io-after-effect") || fault("clear-einval-after-effect")) {
+                locks=DEVICE_TYPE;errno=fault("clear-einval-after-effect")?EINVAL:EIO;return -1;
+            }
+            if (fault("clear-einval")) {errno=EINVAL;return -1;}
+            if (fault("clear-eio")) {errno=EIO;return -1;}
         }
         v[0] = 0; return 0;
     case 0x30094:

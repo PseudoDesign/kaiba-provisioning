@@ -163,8 +163,21 @@ int main(int argc, char **argv) {
         META("closed-before-probes", fw_status(slot, &status), status, status == (DEVICE_TYPE | ALL_LOCKS));
         stop = "sign-closed";
         if (!observe_denial(stop, "last-error-sign-closed", fw_sign(slot))) goto done;
-        CHECK("attempt-clear-locks", fw_set_locks(slot, DEVICE_TYPE) == FW_OK);
-        META("locks-remain-closed", fw_status(slot, &status), status, status == (DEVICE_TYPE | ALL_LOCKS));
+        stop = "attempt-clear-locks";
+        if (interrupted) goto done;
+        enum fw_result clear_result = fw_set_locks(slot, DEVICE_TYPE);
+        struct fw_diagnostic clear_diagnostic = fw_snapshot();
+        record(stop, clear_result == FW_OK, false, 0);
+        if (interrupted) goto done;
+        /* Read BEFORE cleanup can reclose locks, even after a failed write.
+         * EINVAL is preserved as failed; status, not errno, proves retention. */
+        enum fw_result readback = fw_status(slot, &status);
+        bool retained = readback == FW_OK && status == (DEVICE_TYPE | ALL_LOCKS);
+        if (!record("locks-remain-closed", retained, readback == FW_OK, status)) {
+            stop = "locks-remain-closed"; goto done;
+        }
+        if (clear_result != FW_OK && !(clear_result == FW_IO && clear_diagnostic.error == EINVAL))
+            goto done;
         passed = true;
         goto done;
     }
