@@ -17,3 +17,21 @@ func TestCanonical(t *testing.T) {
 		}
 	}
 }
+
+func TestCanonicalIntegerSpellings(t *testing.T) {
+	for _, raw := range []string{`{"revision":1}`, `{"revision":1.0}`, `{"revision":1e0}`, `{"revision":0.1e1}`} {
+		got, err := Canonical([]byte(raw))
+		if err != nil || string(got) != `{"revision":1}` {
+			t.Fatalf("%s: %s %v", raw, got, err)
+		}
+	}
+	got, err := Canonical([]byte(`{"generation":-0}`))
+	if err != nil || string(got) != `{"generation":0}` {
+		t.Fatalf("negative zero: %s %v", got, err)
+	}
+	for _, raw := range []string{`{"revision":1.5}`, `{"revision":-1}`, `{"revision":9007199254740993}`, `{"revision":9.007199254740992e15}`, `{"revision":1e9999}`} {
+		if _, err := Canonical([]byte(raw)); err == nil {
+			t.Fatalf("accepted %s", raw)
+		}
+	}
+}

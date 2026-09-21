@@ -9,8 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"sort"
 	"strconv"
+	"strings"
 	"unicode/utf16"
 	"unicode/utf8"
 )
@@ -20,7 +22,8 @@ const MaxBytes = 1 << 20
 func Digest(b []byte) string { h := sha256.Sum256(b); return "sha256:" + hex.EncodeToString(h[:]) }
 
 // Canonical implements RFC8785 for the contract's integer-only number profile.
-// Fractions, negative numbers, and integers beyond I-JSON's exact range fail closed.
+// Integer-valued decimal/exponent spellings normalize to the same bytes.
+// Fractional values, negative values and integers outside the exact range fail closed.
 func Canonical(b []byte) ([]byte, error) {
 	if !utf8.Valid(b) {
 		return nil, errors.New("invalid UTF-8")
@@ -153,7 +156,17 @@ func emit(v any) ([]byte, error) {
 	case string:
 		return quote(x), nil
 	case json.Number:
-		n, e := strconv.ParseUint(string(x), 10, 64)
+		raw := string(x)
+		n, e := strconv.ParseUint(raw, 10, 64)
+		if e != nil && (strings.ContainsAny(raw, ".eE") || raw == "-0") {
+			// JCS interprets decimal/exponent JSON numbers as IEEE 754 doubles.
+			// Plain integer tokens retain the exact range check above.
+			f, err := strconv.ParseFloat(raw, 64)
+			if err != nil || math.IsInf(f, 0) || math.IsNaN(f) || f < 0 || f > 9007199254740991 || math.Trunc(f) != f {
+				return nil, errors.New("number outside contract profile")
+			}
+			n, e = uint64(f), nil
+		}
 		if e != nil || n > 9007199254740991 {
 			return nil, errors.New("number outside contract profile")
 		}
