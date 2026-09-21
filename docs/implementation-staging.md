@@ -123,10 +123,14 @@ the existing ownership procedure.
 
 ## Later milestones and decision gates
 
+The [enrollment handoff](enrollment-handoff.md) pins the existing shared
+`ProvisioningRecord` and `DeviceBinding` proposal. Producer-adapter work can
+start now; service selection gates the live enrollment interface.
+
 | Milestone | Completion demonstration | Decision or experiment that blocks it |
 | --- | --- | --- |
 | Protected persistent state | The original device cold boots offline and reopens a private test record; copied storage on a functioning comparable board cannot decrypt it or use the original identity. | Slice B must establish the device-secret mechanism and required protections. Qualify the complete encrypted-state and credential path, not just a decryption failure on the second board. |
-| Fleet enrollment | Pending membership, fresh device-key proof, installed-key proof after restart, atomic activation, and retry/revocation behavior work against the selected service. | Confirm the fleet backing service and identity interface before implementation. This choice does not block slice A or B. Real activation still requires every admission condition. |
+| Fleet enrollment | Pending membership, fresh device-key proof, installed-key proof after restart, atomic activation, and retry/revocation behavior work against the selected service. | Confirm the fleet backing service and identity interface before live enrollment implementation; the contract producer adapter can proceed now. This choice does not block slice A or B. Real activation still requires every admission condition. |
 | Integrated admission | One eligible device completes the required hardware procedure and enrollment through the UI, including offline operation and interrupted-transaction recovery. | Approve the exact fleet profile and qualify final protections, recovery and applicable negative tests; retain all required evidence. The development-key-owned Pi is not eligible for a profile requiring a different customer root. |
 
 Resolve these remaining decisions at their specific boundaries:
@@ -136,7 +140,7 @@ Resolve these remaining decisions at their specific boundaries:
 | Exact native candidate and applicable qualification cases | Bind the selected artifacts and media plan; map existing boot, root, recovery and any retained handoff tests to the candidate. | Its physical attempt and any qualification claim. |
 | Device-secret provisioning, derivation and lock behavior | Run slice B's bounded investigation and authorized mechanism checks; record supported behavior or a concrete blocker. | Secret programming and protected-state integration that depend on those properties. |
 | Final boot/debug/EEPROM protections and observation method | Select exact expected values, qualify their actuators and verify effective state after restart through an observation path that still works. | Applying those settings and admitting the device; read-only UI integration can continue. |
-| Fleet service and identity interface | Identify the actual service and agree its device-proof, membership and activation interface. | Enrollment implementation; offline-device work can continue. |
+| Fleet service and identity interface | Identify the actual service and agree its device-proof, membership and activation interface. | Live enrollment interface; contract-adapter and offline-device work can continue. |
 
 Keep the existing online-verifier campaign intact for its candidate. Map
 applicable evidence explicitly: native offline success is a separate case,
