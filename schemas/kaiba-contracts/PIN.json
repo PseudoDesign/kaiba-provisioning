@@ -1,0 +1,6 @@
+{
+  "repository": "https://github.com/pd-codex/kaiba-contracts",
+  "commit": "9ebf773d5d07d61d8cb522aea66160d37562e6b1",
+  "version": "0.1.0-draft.1",
+  "validation": "typed producer construction and strict configuration decoding; fleet independently validates generated records against these exact schemas"
+}

@@ -40,6 +40,7 @@ first-fleet applicability is determined by the admission policy.
 | [Native-build policy](../README.md#native-build-policy) | Native builders, cache reuse, and narrow exceptions |
 | [Architecture and trust boundaries](architecture-and-trust-boundaries.md) | Implemented authority, execution, audit, and UI boundaries |
 | [Raspberry Pi 5 secure-boot model](raspberry-pi-5-secure-boot.md) | Native boot chain, supported claims, and required hardware evidence |
+| [Fleet evidence exporter](fleet-export.md) | Authenticated development records, scoped authority reads and immutable export revisions |
 | [Contracts reference](contracts-reference.md) | JSON contracts, Go interfaces, Nix constructors, and modules |
 | [Hardware qualification](raspberry-pi-5-provisioning-probe.md) | Read-only observations and their limitations |
 | [Signed-boot workflow](raspberry-pi-5-signed-boot-workflow.md) | Full-release signing, verification, and publication |

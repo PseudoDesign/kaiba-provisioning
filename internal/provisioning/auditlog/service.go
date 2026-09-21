@@ -368,3 +368,19 @@ func cloneRecord(record Record) Record {
 func SortRecords(records []Record) {
 	sort.Slice(records, func(i, j int) bool { return records[i].Sequence < records[j].Sequence })
 }
+
+// ValidateRetainedRecord checks the exact upstream hash material without granting
+// trust to its origin. Callers must authenticate the authority separately.
+func ValidateRetainedRecord(r Record) error {
+	if err := validateEvent(r.Event); err != nil {
+		return err
+	}
+	hash, err := digestJSON(recordHashMaterial(r))
+	if err != nil {
+		return err
+	}
+	if hash != r.EventHash || r.Sequence == 0 || r.RecordedAt.IsZero() {
+		return errors.New("invalid retained audit record")
+	}
+	return nil
+}

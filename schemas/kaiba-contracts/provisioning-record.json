@@ -1,0 +1,260 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kaiba:contracts:0.1.0-draft.1:provisioning-record",
+  "type": "object",
+  "properties": {
+    "contract": {
+      "const": "ProvisioningRecord"
+    },
+    "contract_version": {
+      "const": "0.1.0-draft.1"
+    },
+    "record_id": {
+      "$ref": "urn:kaiba:contracts:0.1.0-draft.1:common#/$defs/id"
+    },
+    "revision": {
+      "$ref": "urn:kaiba:contracts:0.1.0-draft.1:common#/$defs/revision"
+    },
+    "issued_at": {
+      "$ref": "urn:kaiba:contracts:0.1.0-draft.1:common#/$defs/timestamp"
+    },
+    "authority_id": {
+      "$ref": "urn:kaiba:contracts:0.1.0-draft.1:common#/$defs/id"
+    },
+    "tenant_id": {
+      "$ref": "urn:kaiba:contracts:0.1.0-draft.1:common#/$defs/id"
+    },
+    "security_domain_id": {
+      "$ref": "urn:kaiba:contracts:0.1.0-draft.1:common#/$defs/id"
+    },
+    "correlation_id": {
+      "$ref": "urn:kaiba:contracts:0.1.0-draft.1:common#/$defs/id"
+    },
+    "purpose": {
+      "enum": [
+        "candidate_evidence",
+        "completion_evidence"
+      ]
+    },
+    "asset_ref": {
+      "$ref": "urn:kaiba:contracts:0.1.0-draft.1:common#/$defs/id"
+    },
+    "cohort": {
+      "enum": [
+        "development",
+        "test",
+        "production"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "repository": {
+          "type": "string",
+          "format": "uri"
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "transaction_id": {
+          "$ref": "urn:kaiba:contracts:0.1.0-draft.1:common#/$defs/id"
+        },
+        "state": {
+          "$ref": "urn:kaiba:contracts:0.1.0-draft.1:common#/$defs/text"
+        },
+        "profile_ref": {
+          "$ref": "urn:kaiba:contracts:0.1.0-draft.1:common#/$defs/evidenceRef"
+        },
+        "posture_ref": {
+          "$ref": "urn:kaiba:contracts:0.1.0-draft.1:common#/$defs/evidenceRef"
+        },
+        "release_ref": {
+          "$ref": "urn:kaiba:contracts:0.1.0-draft.1:common#/$defs/evidenceRef"
+        }
+      },
+      "required": [
+        "repository",
+        "commit",
+        "transaction_id",
+        "state",
+        "profile_ref",
+        "posture_ref",
+        "release_ref"
+      ],
+      "additionalProperties": false
+    },
+    "readiness": {
+      "type": "object",
+      "properties": {
+        "production_ready": {
+          "type": "boolean"
+        },
+        "enrollment_ready": {
+          "type": "boolean"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:kaiba:contracts:0.1.0-draft.1:common#/$defs/text"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "production_ready",
+        "enrollment_ready",
+        "reasons"
+      ],
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "properties": {
+        "control_record": {
+          "$ref": "urn:kaiba:contracts:0.1.0-draft.1:common#/$defs/evidenceRef"
+        },
+        "audit_receipt": {
+          "$ref": "urn:kaiba:contracts:0.1.0-draft.1:common#/$defs/evidenceRef"
+        }
+      },
+      "required": [
+        "control_record",
+        "audit_receipt"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "contract",
+    "contract_version",
+    "record_id",
+    "revision",
+    "issued_at",
+    "authority_id",
+    "tenant_id",
+    "security_domain_id",
+    "correlation_id",
+    "purpose",
+    "asset_ref",
+    "cohort",
+    "source",
+    "readiness",
+    "evidence"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "cohort": {
+            "enum": [
+              "development",
+              "test"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "readiness": {
+            "properties": {
+              "production_ready": {
+                "const": false
+              },
+              "enrollment_ready": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "readiness": {
+            "properties": {
+              "enrollment_ready": {
+                "const": true
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "readiness": {
+            "properties": {
+              "production_ready": {
+                "const": true
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "readiness": {
+            "anyOf": [
+              {
+                "properties": {
+                  "production_ready": {
+                    "const": false
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "enrollment_ready": {
+                    "const": false
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "readiness": {
+            "properties": {
+              "reasons": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "purpose": {
+            "const": "completion_evidence"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "cohort": {
+            "const": "production"
+          },
+          "readiness": {
+            "properties": {
+              "production_ready": {
+                "const": true
+              },
+              "enrollment_ready": {
+                "const": true
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

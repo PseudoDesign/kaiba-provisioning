@@ -1225,6 +1225,20 @@ let
     description = "Authenticated Kaiba control/audit to physical-lane authority bridge";
   };
 
+  fleetExport = pkgs.buildGoModule {
+    pname = "kaiba-provision-export";
+    inherit version;
+    src = goSource;
+    subPackages = [ "cmd/kaiba-provision-export" ];
+    vendorHash = null;
+    doCheck = false;
+    disallowedReferences = [
+      serviceSuite
+      rpiboot
+      pkgs.libgpiod
+    ];
+  };
+
   control = servicePackage {
     binary = "kaiba-provision-control";
     description = "Kaiba provisioning transaction and inventory reference service";
@@ -2628,6 +2642,7 @@ in
     unfusedEvidence
     unfusedRuntimeRecordTool
     serviceSuite
+    fleetExport
     signerFoundation
     signingClientFoundation
     signingGateFoundation
