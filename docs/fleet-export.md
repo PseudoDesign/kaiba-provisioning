@@ -74,3 +74,9 @@ The initial mapping and synthetic workflow fixture were adapted from
 `286c0063ee9924bb1369a84e8d826574eb965aaa8ccf6a0574ac61b7385b29f1`).
 The live scoped interfaces and durable revision allocator are additional work.
 The offline helper remains only a fixture-building API, not the deployed exporter.
+
+`Fleet handoff compatibility` CI pins the fleet verifier by commit and overrides
+only its provisioning source with the candidate commit. Fleet's own native check
+pins the producer separately. Neither repository evaluates the other's flake
+recursively: fleet builds the three authority binaries directly from the pinned
+source. This avoids a circular dependency and any image/kernel build.

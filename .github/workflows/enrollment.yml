@@ -1,0 +1,47 @@
+name: Fleet handoff compatibility
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: fleet-handoff-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  enrollment:
+    name: Native fleet handoff (${{ matrix.system }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            system: x86_64-linux
+          - runner: ubuntu-24.04-arm
+            system: aarch64-linux
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: producer
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: PseudoDesign/kaiba-fleet
+          ref: 0b429d3aa8fe28ba1eb16789170f21d5d79e63d9
+          path: fleet
+          persist-credentials: false
+      - uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342
+      - name: Candidate producer against pinned fleet verifier
+        run: |
+          nix build ./fleet#checks.${{ matrix.system }}.enrollment \
+            --override-input provisioning "git+file://${GITHUB_WORKSPACE}/producer" \
+            --no-write-lock-file -L
+      - name: Upload synthetic report only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: handoff-report-${{ matrix.system }}
+          path: result/report.json
+          if-no-files-found: error

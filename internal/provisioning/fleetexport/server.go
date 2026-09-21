@@ -189,7 +189,13 @@ func (s *Server) Handler() http.Handler {
 		}
 		b, e := s.Export(r.Context(), id)
 		if e != nil {
-			handoff.Fail(w, 409, e.Error())
+			code := e.Error()
+			switch code {
+			case "invalid_record", "dependency_unavailable", "stale_state", "evidence_binding_failed":
+			default:
+				code = "export_unavailable"
+			}
+			handoff.Fail(w, 409, code)
 			return
 		}
 		handoff.Write(w, 200, b)
