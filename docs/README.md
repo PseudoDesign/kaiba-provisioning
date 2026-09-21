@@ -32,7 +32,7 @@ first-fleet applicability is determined by the admission policy.
 | [Native offline candidate](native-offline-candidate.md) | Pi 5 NVMe boot/root candidate, explicit local action and integrity tests; pristine boot and scoped physical negatives observed; device-secret feasibility pending |
 | [Native verity observations, 2026-09-17](observations/2026-09-17-native-verity.md) | Startup and late-read rejection, pristine restoration, positive control and SD return; includes the explicit console-interleaving review |
 | [HMAC lock-rejection observation, 2026-09-20](observations/2026-09-20-hmac-lock-rejection.md) | Returned error-tag and payload non-disclosure observed in kernel; original helper failure and qualification limits retained |
-| [Offline encrypted-state observation, 2026-09-20](observations/2026-09-20-offline-storage.md) | Original-device create/cold-reopen and authenticated SD return; lock rejection and copied-media protection remain pending |
+| [Offline encrypted-state observation, 2026-09-20](observations/2026-09-20-offline-storage.md) | Original-device create/cold-reopen and authenticated SD return; final qualification and copied-media protection remain pending |
 | [Native offline observation, 2026-09-16](observations/2026-09-16-native-offline-positive.md) | Reviewed positive boot, unavailable network-time operation, SD return and private-evidence hashes; Slice B remains incomplete |
 | [Development workflow](development-workflow.md) | Focused tests and candidate validation |
 | [Native-build policy](../README.md#native-build-policy) | Native builders, cache reuse, and narrow exceptions |
@@ -47,12 +47,12 @@ first-fleet applicability is determined by the admission policy.
 | [Station interface](provisioning-station-kiosk.md) | Simulation and authenticated read-only transaction view; hardware actions and enrollment remain unavailable |
 | [Development target access](raspberry-pi-5-development-target-access.md) | Optional root-equivalent development access; excluded from fleet images |
 | [EEPROM crypto-lock update](rpi5-eeprom-crypto-update.md) | September firmware pin, public signing/recovery inputs and pending physical update |
-| [Device-secret feasibility](device-secret-feasibility.md) | Pinned firmware-crypto package, non-secret capability probe and pending physical mechanism investigation |
+| [Device-secret feasibility](device-secret-feasibility.md) | Observed development HMAC/LUKS and lock path; final qualification, permitted-image boundary and copied-media test pending |
 | [Remote device-secret development](device-secret-development.md) | RAM-resident firmware checks and authenticated SSH/reboot runner; no new image signature for helper changes |
 | [Remote LUKS development](device-secret-storage-development.md) | Bounded create/reboot/reopen helper and host runner; synthetic VM coverage, physical execution pending |
-| [Remaining device-secret lock checks](device-secret-lock-checks.md) | Bounded read/signing/lock-clear sequence and paired kernel assessment; physical execution pending |
-| [Passive firmware rejection observer](firmware-rejection-observer.md) | Bounded eBPF response diagnostics on the existing inspection kernel; hardware validation and qualification pending |
-| [Offline storage development](device-secret-offline-storage.md) | Boot-time create/reopen service and saved-capture assessment; physical cold-power execution pending |
+| [Remaining device-secret lock checks](device-secret-lock-checks.md) | Bounded read/signing/lock-clear sequence and paired kernel assessment; scoped development observations recorded |
+| [Passive firmware rejection observer](firmware-rejection-observer.md) | Bounded eBPF response diagnostics on the existing inspection kernel; scoped observations recorded, final qualification pending |
+| [Offline storage development](device-secret-offline-storage.md) | Boot-time create/reopen service and saved-capture assessment; original-device cold reopen observed |
 | [HMAC rejection evidence](device-secret-rejection-evidence.md) | Read-only assessment of saved results, Linux response-copy limits and the remaining qualification decision |
 | [Device-secret experiment automation](device-secret-automation.md) | Staged plan, passive host capture runner and software rehearsal |
 | [Device-secret execution packet](device-secret-execution-packet.md) | File-only packet, bounded staging/restore executor and private report projection; selected hardware session pending |
