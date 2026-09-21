@@ -164,3 +164,20 @@ ABI convention. Synthetic tests cover strict/development separation, exact count
 matching, DER and scalar boundaries, preceding failures, explicit diagnostics and
 unchanged operation bounds. Physical behavior remains pending a new reviewed
 one-use experiment; no extra mailbox operation is added.
+
+## Read lock retention before cleanup
+
+After the single clearing request, the development helper records its original
+result and immediately reads slot status, including when the request fails.
+Only successful status readback with every lock still set may establish retention.
+An `EINVAL` clearing result remains a failed operation in the helper and assessor;
+it can complete the observation sequence only when that readback succeeds.
+Other clearing errors stop after readback. Missing, failed, malformed or unlocked
+readback stops the sequence. Interruption proceeds to cleanup without claiming
+retention. All paths still attempt final closure.
+
+The assessor requires `locks-remain-closed` directly after `attempt-clear-locks`
+and before `close-runtime-locks`. Final cleanup status cannot substitute for this
+observation: cleanup might conceal side effects of a failed clearing request.
+No clearing retry or additional write is introduced. The original four-write
+bound, JSON contracts and qualification limits remain unchanged.
