@@ -1,0 +1,70 @@
+{
+  "record_kind": "scoped-development-lock-rejection-observation",
+  "date": "2026-09-20",
+  "source_revision": "0f3038ba9bcbd887866b73a472de67c66c37650a",
+  "platform": {
+    "model": "Raspberry Pi 5",
+    "kernel": "6.18.34",
+    "firmware_prefix": "a8698392"
+  },
+  "results": {
+    "assessor_status": "matched-target-and-kernel-observations",
+    "helper_completed": true,
+    "hmac_control": "passed",
+    "signing_control": "development-der-tag40; structural validation only",
+    "crypto_read_denial": "tagged-error-no-new-payload",
+    "legacy_read_denial": "helper-validated-pinned-exception",
+    "signing_closure": "positive-control-then-tagged-error-no-new-payload",
+    "clearing_request_errno": 22,
+    "all_locks_set_before_cleanup": true,
+    "cleanup_locks_closed": true,
+    "final_authenticated_inspection_verity": "V"
+  },
+  "limits": {
+    "hardware_qualified": false,
+    "strict_qualification_harness_passed": false,
+    "signature_cryptographically_verified": false,
+    "last_error_transaction_correlation": false,
+    "generation_and_usage": "lock bits observed; no irreversible write tests",
+    "copied_media_confidentiality": "pending comparable-board test",
+    "fleet_admission": "unevaluated",
+    "execution_authority": false
+  },
+  "original_failed_operations": [
+    "raw-read-blocked",
+    "sign-closed",
+    "attempt-clear-locks"
+  ],
+  "private_evidence": [
+    {
+      "role": "reboot.uart",
+      "bytes": 82939,
+      "sha256": "cbb1decff0992d446cdcd0c5c68d2c5b2463ac0367710bbad45bf37eeac0015c"
+    },
+    {
+      "role": "lock-checks.stdout",
+      "bytes": 3117,
+      "sha256": "7dd49a4df5791c096129df60e0de5c1123e6a2a37edd82ba00af58b779721e63"
+    },
+    {
+      "role": "lock-checks.stderr",
+      "bytes": 246,
+      "sha256": "75ba29071f43777c7d5159442baa3947bb9e18f05ea344c48ce50cec9833433b"
+    },
+    {
+      "role": "assessment.json",
+      "bytes": 782,
+      "sha256": "51ab00a24857b58e8af05648f1995a2c090622ed0f10d730b3d8b03749b654f4"
+    },
+    {
+      "role": "final-readonly-check.stdout",
+      "bytes": 583,
+      "sha256": "29fb121d6786aab2fa9360cb505857d781c65d32df9159f5742c78b6b084692d"
+    },
+    {
+      "role": "completion.json",
+      "bytes": 179,
+      "sha256": "91a347ce73240ac47d4bbc95f887afea8516f640f6254c77fab9a49a359440bd"
+    }
+  ]
+}
