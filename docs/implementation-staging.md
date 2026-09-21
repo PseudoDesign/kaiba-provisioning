@@ -8,8 +8,10 @@ in the [station runbook](provisioning-station-kiosk.md#read-only-live-station).
 Slice B has a native candidate, a [pristine offline observation](observations/2026-09-16-native-offline-positive.md),
 [scoped physical verity results](observations/2026-09-17-native-verity.md), and an
 [original-device offline encrypted-state observation](observations/2026-09-20-offline-storage.md).
-Device-secret feasibility and the later milestones remain open. This document
-grants no fleet approval.
+Scoped development lock observations now also exist; the
+[feasibility status](device-secret-feasibility.md#current-evidence-and-remaining-gates)
+separates those completed experiments from final mechanism qualification and later
+milestones. This document grants no fleet approval.
 
 ## Starting decisions and planning exit
 
@@ -78,7 +80,9 @@ return-to-SD sequence](observations/2026-09-16-native-offline-positive.md) is ob
 The [2026-09-17 procedure](observations/2026-09-17-native-verity.md) observed startup
 and late-read corruption rejection, pristine restoration and a positive control,
 followed by SD return. The late-read result includes an explicit console-interleaving
-review. Device-secret feasibility and its mechanism checks remain open.
+review. Original-device offline encrypted-state reopen and the selected
+development lock sequence are now observed. Final mechanism qualification,
+permitted-image/recovery coverage and copied-media protection remain open.
 
 Prepare the existing [signed-boot components](raspberry-pi-5-signed-boot-workflow.md)
 and [verified-root target](../nix/modules/secure-boot-target.nix) for the selected
@@ -144,5 +148,8 @@ staging plan neither waives missing evidence nor grants hardware authority.
 The [native offline handoff](native-offline-handoff.md) supplies a distinct
 one-image signing scope and exact regular-file media package. Software checks
 do not close Slice B. Pristine offline boot and the two selected physical
-corruption cases are now observed for the candidate; the device-secret mechanism
-experiment and full protection qualification remain pending.
+corruption cases, original-device encrypted-state reopen and the selected
+development lock sequence are now observed. The next work is the
+[protected-state preparation gate](device-secret-feasibility.md#next-protected-state-milestone-prepare-before-copying),
+followed by a separately authorized comparable-board demonstration. Final
+mechanism/profile qualification and integrated admission remain pending.

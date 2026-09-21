@@ -1,34 +1,55 @@
-# Device-secret feasibility: pending physical investigation
+# Device-secret feasibility: observed development path, qualification pending
 
 This is the protected-storage mechanism investigation in
-[Slice B](implementation-staging.md). Offline-image work proceeds independently.
-No device secret has been programmed, read, derived or qualified by this change.
-Production persistent state and copied-media protection remain unimplemented.
-An [experimental target harness](device-secret-target-harness.md) now supplies
-software for a disposable two-boot LUKS test; it has not run on the Pi.
+[Slice B](implementation-staging.md). The candidate now has an
+[original-device offline create/cold-reopen observation](observations/2026-09-20-offline-storage.md),
+an [HMAC closure observation](observations/2026-09-20-hmac-lock-rejection.md), and
+[remaining development lock observations](https://github.com/PseudoDesign/kaiba-provisioning/blob/de56f51b4d9d4c8ed25ed77451d4a15fae5e8ac7/docs/observations/2026-09-20-remaining-lock-rejection.md).
+The last link pins the reviewed public report revision while its documentation
+PR is separate from this status update.
 
-For firmware API debugging, use the [remote development workflow](device-secret-development.md)
-before selecting another full-image experiment. Its runtime lock checks and HMAC
-comparisons remain development observations, with final boot/storage qualification
-separate.
+These results support continued engineering of the firmware-HMAC/LUKS candidate
+on the selected development platform. They are not a production adoption decision,
+a strict qualification-harness pass, or fleet admission. Production persistent
+state, copied-media confidentiality, the permitted-image boundary and recovery
+still need the decisions and demonstrations below.
 
-The [remote storage helper](device-secret-storage-development.md) now supplies a
-bounded create/reboot/reopen development path with synthetic-firmware LUKS VM
-coverage. Its selected media, management boot/recovery route and physical
-execution remain pending. Storage functionality can be developed while the
-rejection-evidence qualification decision is reviewed separately.
+The [remote development workflow](device-secret-development.md) provides
+RAM-resident checks; the [remote storage helper](device-secret-storage-development.md)
+and [offline storage service](device-secret-offline-storage.md) provide bounded
+experimental storage paths. Use these existing routes for focused experiments.
+A new kernel, image signature or media move is not automatically required for
+a helper change. The [strict target harness](device-secret-target-harness.md)
+remains a separate contract; observations from development helpers do not turn
+its failed or unperformed cases into passes.
+
+## Current evidence and remaining gates
+
+| Area | Established observation | Still open |
+| --- | --- | --- |
+| Native offline boot and integrity | Pristine offline boot/local action and selected physical verity rejection cases have reports linked from Slice B. | Applicability to the final profile and complete boot/recovery qualification. |
+| Original-device encrypted state | A private test record was created and reopened after an isolated cold boot. | Production volume/keyslot lifecycle, identity use, fallback and leakage review. |
+| HMAC closure | Paired kernel error/payload observation retained alongside the original failed Linux call. | Adoption of this evidence method in the final profile; full permitted-image coverage. |
+| Crypto and legacy reads, signing closure | The bounded development sequence completed with scoped rejection observations. Signing control used explicit DER compatibility, not cryptographic verification. | Strict qualification and final profile acceptance; no device-identity proof is implied. |
+| Lock clearing | Immediate status readback after a failed clearing request showed all locks still set before cleanup. | Reapplication and secret protection across every permitted normal/recovery image. Generation/usage were observed as bits, not tested by irreversible writes. |
+| Copied media | Original-device offline reopen provides one prerequisite. | A functioning comparable board must fail to decrypt the copied private record or use the original identity; an unbootable board or unsupported API is not a pass. |
+
+The selected offline-storage and lock-observation sequences are complete. Slice B's final mechanism
+qualification remains open; do not keep treating every observed case as unrun,
+and do not infer that the final protection boundary has passed.
 
 ## Pinned inputs and established software work
 
 | Input | Selected source | What remains to observe |
 | --- | --- | --- |
-| Pi platform | `nixos-raspberrypi` `7e39508bcf9c1da82cf11c1e22f74f9d9fd0fe10` | Exact running kernel and mailbox device availability/permissions |
-| EEPROM candidate | `rpi-eeprom` `2fee426f27b6c54d3f5b6f36efd9a2fe1286a45d`, Pi 5 image `2026-09-12`, revision `a8698392` | Installed EEPROM identity and actual API/lock behavior |
-| Firmware crypto | `raspberrypi/utils` `292dbe7e35296e556d839a0b9ae2ca957ac8c961` | Hardware support for every required operation |
+| Pi platform | `nixos-raspberrypi` `7e39508bcf9c1da82cf11c1e22f74f9d9fd0fe10` | Applicability of the recorded running platform to the final profile |
+| EEPROM candidate | `rpi-eeprom` `2fee426f27b6c54d3f5b6f36efd9a2fe1286a45d`, Pi 5 image `2026-09-12`, revision `a8698392` | Final-profile applicability beyond the scoped running-platform observations |
+| Firmware crypto | `raspberrypi/utils` `292dbe7e35296e556d839a0b9ae2ca957ac8c961` | Qualification of the required operations and any development compatibility rules for the final profile |
 
 The [EEPROM update](rpi5-eeprom-crypto-update.md) replaces the May candidate,
-which predates the June 17 fine-grained locks required by the harness. Signing,
-installation and hardware qualification remain pending. The selected history
+which predates the June 17 fine-grained locks required by the harness. The later
+observation records identify the running platform; full EEPROM/protection
+qualification remains pending. The selected history
 contains the crypto API, key usage, raw-OTP lock fix, invalid-HMAC-key fix and
 fine-grained read/generate/sign/HMAC/usage locks. That is source support, not a board result. The
 separate boot-firmware bundle revision is not an EEPROM version observation.
@@ -140,8 +161,9 @@ The [2026-09-17 observation report](observations/2026-09-17-device-secret-metada
 and [public JSON projection](observations/2026-09-17-device-secret-metadata.json)
 record successful count, status and usage queries on the owned development Pi 5
 through the metadata companion. The metadata-access blocker is resolved without
-a kernel patch. Slot suitability, the authorized-image boundary, HMAC and lock
-behavior, and protected-storage qualification remain pending.
+a kernel patch. Later scoped HMAC, storage and lock observations are summarized
+above. Production slot suitability, the authorized-image boundary and final
+protected-storage qualification remain pending.
 
 ## Proposed mechanism and authority gate
 
@@ -184,8 +206,10 @@ operator session to prepared execution and physical steps. The passive runner
 and software rehearsal are implemented. The [target harness and unsigned image
 constructor](device-secret-target-harness.md) are now implemented and tested in
 software. The [packet and staging/recovery tooling](device-secret-execution-packet.md)
-is also implemented; selecting its exact physical inputs and executing the run remain pending. Neither a capture plan nor a matched
-target report grants execution authority or qualifies this mechanism.
+is also implemented. The development observations above came from their specific
+reviewed procedures, not from a blanket pass of every harness case. Neither a
+capture plan nor a matched target report grants execution authority or qualifies
+this mechanism.
 
 Prepare a signed test image and an exact operation/slot plan after the baseline.
 Use disposable secret material. Disable swap, core dumps and persistent logs;
@@ -225,12 +249,42 @@ operations; it does not mark the operation-closure case above as passed.
 
 | Decision | Resolving observation | Blocks |
 | --- | --- | --- |
-| Installed firmware supports the mechanism | Baseline plus bounded operation tests | Choosing this unlock mechanism |
+| Adopt the observed engineering mechanism in a final profile | Map the scoped operation evidence and explicit compatibility limits to profile requirements | Production mechanism adoption |
 | Slot and authorized-image set are suitable | Usage inventory and image/recovery review | Secret programming |
-| Read restrictions and operation closure hold | Positive and negative lock tests | Protected-state implementation using this mechanism |
-| Normal/recovery boot can derive safely offline | Cold-boot canary reopen and lock reapplication | Persistent-state integration |
+| Final read restrictions and operation closure | Accept an evidence method and cover all permitted images, retaining scoped positive/negative results | Production protection qualification |
+| Normal/recovery boot can derive safely offline | Reuse original-device cold reopen; qualify lock reapplication and recovery routes | Production persistent-state integration |
 
 Full LUKS lifecycle, recovery/keyslot handling and leakage review are the next
 protected-state milestone. Copied-media confidentiality stays pending until
 the original board reopens a private record offline and a functioning
 comparable board cannot decrypt it or use the original identity.
+
+## Next protected-state milestone: prepare before copying
+
+1. Record a read-only baseline for each board: model, functioning boot and storage
+   access, installed firmware/kernel, ownership root, slot metadata, and applicable
+   recovery route. Do not assume the second board is unfused, disposable, or has an
+   empty key slot. Do not route the already-owned original through fresh ownership.
+2. Define the permitted normal, maintenance and recovery images and their secret
+   exposure boundary. Existing development-root images are not automatically safe
+   for production storage. Select provisioning, keyslot/fallback handling, loss,
+   replacement and credential retirement behavior before implementing that path.
+3. Prepare a disposable private-record fixture and a scoped identity challenge.
+   Bind exact artifacts, public KDF inputs and a repeatable original-device offline
+   reopen. Define which storage bytes, headers, nonces and credential material the
+   copy must contain; an incomplete copy cannot establish the intended boundary.
+4. Establish independent positive controls on the comparable board so failure is
+   attributable to device-bound protection rather than broken hardware, boot,
+   firmware, storage access or cryptographic tooling. Any secret provisioning for
+   that control needs its own explicit authority; metadata alone is insufficient.
+5. Prepare exact source/destination media identities, private backups, bounded
+   copy/readback operations, stop conditions and recovery. Only then authorize and
+   run the original/copy comparison. No copy, write, key operation or power action
+   is authorized by this planning document.
+
+Passing the comparison will establish only its stated copied-storage/identity
+boundary. It does not replace qualification of all authorized images, final debug
+and EEPROM protections, recovery, enrollment or the admission evidence method.
+The [per-device boot-root plan](per-device-boot-root-plan.md) remains a separate
+planned custody/update track; neither its TPM option nor device-local signing is
+an implemented prerequisite silently added to the current experiment.
