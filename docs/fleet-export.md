@@ -75,8 +75,13 @@ The initial mapping and synthetic workflow fixture were adapted from
 The live scoped interfaces and durable revision allocator are additional work.
 The offline helper remains only a fixture-building API, not the deployed exporter.
 
-`Fleet handoff compatibility` CI pins the fleet verifier by commit and overrides
-only its provisioning source with the candidate commit. Fleet's own native check
-pins the producer separately. Neither repository evaluates the other's flake
-recursively: fleet builds the three authority binaries directly from the pinned
-source. This avoids a circular dependency and any image/kernel build.
+The cross-repository check runs in fleet's private CI, which can read both
+repositories without giving this public repository access to private source.
+Fleet PRs test a pinned producer; workflow dispatch accepts an exact producer
+commit for coordinated changes, and scheduled runs check producer `main`.
+Run the dispatch for producer candidates before merging a handoff change and
+retain the report's exact source revisions. This repository's native Go checks
+cover the producer locally; they do not claim that a private consumer passed.
+Fleet builds the three authority binaries directly from a source input, without
+evaluating this repository's flake. There is no circular flake dependency or
+image/kernel build in the enrollment check.

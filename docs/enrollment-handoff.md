@@ -1,10 +1,15 @@
 # Enrollment implementation handoff
 
-Status: planned implementation, not contract adoption or fleet authorization.
+Status: producer implemented; isolated consumer rehearsal in review. Contract
+adoption review and fleet authorization remain separate.
 
-The existing shared contracts are sufficient to start the provisioning producer
-adapter and an isolated enrollment rehearsal while hardware qualification
-continues. Production activation still requires [FA-01–FA-08](fleet-admission-policy.md).
+The [authenticated producer](fleet-export.md) implements the provisioning side.
+The isolated consumer rehearsal is in
+[fleet PR #1](https://github.com/PseudoDesign/kaiba-fleet/pull/1), with shared
+integration obligations in
+[contracts PR #7](https://github.com/pd-codex/kaiba-contracts/pull/7).
+Hardware qualification continues independently. Production activation still
+requires [FA-01–FA-08](fleet-admission-policy.md).
 The current station remains read-only and the development Pi remains ineligible
 for production enrollment.
 
@@ -24,11 +29,10 @@ Preserve raw source facts such as `rollback_unimplemented`, but do not turn that
 fact or archived online-unlock requirements into new first-fleet prerequisites.
 The current admission policy governs platform eligibility.
 
-## First implementation PR: provisioning producer adapter
+## Provisioning producer adapter
 
-Owner: this repository. Implement a transport-independent, read-only adapter
-with a pinned, offline contract bundle and explicit source mapping. This can
-start before choosing the fleet service or finishing copied-media testing.
+Owner: this repository. The read-only adapter uses a pinned, offline contract
+bundle and explicit source mapping. Copied-media testing remains a separate gate.
 
 Deliverables and acceptance:
 
@@ -61,20 +65,20 @@ adapter plus repeatable tests and a source-mapping document, not admission.
 ## Consumer handoff: enrollment rehearsal
 
 Owner: [PseudoDesign/kaiba-fleet](https://github.com/PseudoDesign/kaiba-fleet),
-the fleet inventory and enrollment implementation repository. Repository
-ownership is selected; its backing store, transport and CA integration remain
-open. Resolve these in an adoption/design PR before implementing the network
-enrollment interface:
+the fleet inventory and enrollment implementation repository. The rehearsal
+selects Go, PostgreSQL, HTTPS/mTLS and a separate disposable test CA. The following
+boundaries govern implementation and adoption review; production CA integration
+and deployment qualification remain open:
 
 | Decision | Concrete deliverable | Blocks |
 | --- | --- | --- |
-| Durable inventory and RA/CA arrangement | In `kaiba-fleet`, select service boundaries, CA integration and the durable transaction model | Live enrollment API |
-| Evidence resolver and authority authentication | Exact control/audit lookup, trust roots or signature envelope, scope and freshness checks; no arbitrary URL trust | Reliance on exported records |
-| Bootstrap and operational-key proof | Challenge, audience, expiry, replay protection and exact transaction/identity/instance/storage/key tuple binding | Issuance and pending verification |
-| Atomic activation and authorization freshness | Durable staged-to-active transaction, verifier receipt, idempotency/reconciliation and bounded revocation/cache behavior | Activation and relying-service access |
+| Durable inventory and RA/CA arrangement | PostgreSQL transactions and a separate idempotent test issuer; select production CA custody/integration later | Production enrollment API |
+| Evidence resolver and authority authentication | Scoped mTLS reads, pinned exact artifacts and current control/audit/control observations | Reliance on exported records |
+| Bootstrap and operational-key proof | Bound, expiring challenges and a restarted software client's installed-key proof | Rehearsal issuance and pending verification; hardware identity remains unqualified |
+| Atomic activation and authorization freshness | One inventory transaction plus per-request exact tuple checks; lost-response reconciliation | Rehearsal activation; cross-authority production coordination remains open |
 | Contract adoption | Producer/consumer records pinning schemas, supported versions, tests, compatibility and review | Compatibility claim |
 
-Build the isolated rehearsal in this order:
+The isolated rehearsal covers this sequence:
 
 1. Accept and verify candidate evidence, assign canonical identity at the RA,
    and reject client-selected identity, scope or role.
