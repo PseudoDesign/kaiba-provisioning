@@ -60,13 +60,15 @@ adapter plus repeatable tests and a source-mapping document, not admission.
 
 ## Consumer handoff: enrollment rehearsal
 
-Owner: the selected identity/inventory service. Its repository and backing
-service are not selected by the shared-contract repository. Resolve these in
-an adoption/design PR before implementing the network enrollment interface:
+Owner: [PseudoDesign/kaiba-fleet](https://github.com/PseudoDesign/kaiba-fleet),
+the fleet inventory and enrollment implementation repository. Repository
+ownership is selected; its backing store, transport and CA integration remain
+open. Resolve these in an adoption/design PR before implementing the network
+enrollment interface:
 
 | Decision | Concrete deliverable | Blocks |
 | --- | --- | --- |
-| Service owner, durable inventory and RA/CA arrangement | Named implementation repository, service boundaries and durable transaction model | Live enrollment API |
+| Durable inventory and RA/CA arrangement | In `kaiba-fleet`, select service boundaries, CA integration and the durable transaction model | Live enrollment API |
 | Evidence resolver and authority authentication | Exact control/audit lookup, trust roots or signature envelope, scope and freshness checks; no arbitrary URL trust | Reliance on exported records |
 | Bootstrap and operational-key proof | Challenge, audience, expiry, replay protection and exact transaction/identity/instance/storage/key tuple binding | Issuance and pending verification |
 | Atomic activation and authorization freshness | Durable staged-to-active transaction, verifier receipt, idempotency/reconciliation and bounded revocation/cache behavior | Activation and relying-service access |
