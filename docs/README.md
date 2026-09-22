@@ -43,6 +43,7 @@ first-fleet applicability is determined by the admission policy.
 | [Raspberry Pi 5 secure-boot model](raspberry-pi-5-secure-boot.md) | Native boot chain, supported claims, and required hardware evidence |
 | [Fleet evidence exporter](fleet-export.md) | Authenticated development records, scoped authority reads and immutable export revisions |
 | [Device enrollment client](device-enrollment-client.md) | Development management-key persistence, bound proofs and restart recovery; device execution and production admission remain pending |
+| [Protected enrollment storage](enrollment-storage-development.md) | Bounded encrypted credential filesystem and mount guard; synthetic restart tests, physical execution pending |
 | [Contracts reference](contracts-reference.md) | JSON contracts, Go interfaces, Nix constructors, and modules |
 | [Hardware qualification](raspberry-pi-5-provisioning-probe.md) | Read-only observations and their limitations |
 | [Signed-boot workflow](raspberry-pi-5-signed-boot-workflow.md) | Full-release signing, verification, and publication |
