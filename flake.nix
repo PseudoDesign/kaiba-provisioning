@@ -614,6 +614,8 @@
           kaiba-provision-control = built.control;
           kaiba-provision-export = built.fleetExport;
           kaiba-device-enrollment = built.deviceEnrollment;
+          kaiba-enrollment-storage =
+            (import ./nix/enrollment-storage.nix { pkgs = import nixpkgs { inherit system; }; }).helper;
           kaiba-provision-integrated-rehearsal = built.integratedRehearsal;
           kaiba-provision-lane-guard = built.laneGuard;
           kaiba-provision-lane-operator = built.laneOperator;
@@ -878,6 +880,11 @@
           public-input-key-scan = import ./tests/public-input-key-scan.nix { inherit lib pkgs; };
           unit = provisioning.goUnitTests;
           device-enrollment-client = built.deviceEnrollment;
+          enrollment-storage = (import ./nix/enrollment-storage.nix { inherit pkgs; }).check;
+          enrollment-storage-vm = import ./tests/enrollment-storage-vm.nix {
+            inherit pkgs;
+            client = built.deviceEnrollment;
+          };
           unit-static = provisioning.staticGoTests;
           development-yubikey-signing = provisioning.developmentYubiKeySigningContract;
           device-secret-execution-vm = import ./tests/device-secret-execution-vm.nix {

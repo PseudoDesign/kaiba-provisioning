@@ -34,6 +34,7 @@ var (
 	ErrReconcile  = errors.New("station reconciliation required; do not repeat the request automatically")
 	ErrTransport  = errors.New("fleet request unavailable; no automatic retry")
 	ErrResponse   = errors.New("invalid fleet response")
+	ErrStorage    = errors.New("protected credential filesystem unavailable or mismatched")
 	idPattern     = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`)
 	digestPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 	noncePattern  = regexp.MustCompile(`^[0-9a-f]{48}$`)
@@ -46,17 +47,18 @@ type RecordRef struct {
 	Digest   string `json:"digest"`
 }
 type Config struct {
-	Schema       string    `json:"schema_version"`
-	Mode         string    `json:"mode"`
-	FleetURL     string    `json:"fleet_url"`
-	ServerCA     string    `json:"server_ca_pem"`
-	IssuerCA     string    `json:"issuer_ca_pem"`
-	IssuerID     string    `json:"issuer_id"`
-	Provisioning RecordRef `json:"provisioning_ref"`
-	Restart      string    `json:"restart_requirement"`
-	Authority    string    `json:"authority_id"`
-	Transaction  string    `json:"transaction_id"`
-	Target       string    `json:"target"`
+	Schema          string    `json:"schema_version"`
+	Mode            string    `json:"mode"`
+	FleetURL        string    `json:"fleet_url"`
+	ServerCA        string    `json:"server_ca_pem"`
+	IssuerCA        string    `json:"issuer_ca_pem"`
+	IssuerID        string    `json:"issuer_id"`
+	Provisioning    RecordRef `json:"provisioning_ref"`
+	Restart         string    `json:"restart_requirement"`
+	Authority       string    `json:"authority_id"`
+	Transaction     string    `json:"transaction_id"`
+	Target          string    `json:"target"`
+	ProtectedVolume string    `json:"protected_volume_uuid,omitempty"`
 }
 type Challenge struct {
 	Purpose      string    `json:"purpose"`
@@ -142,6 +144,9 @@ func certificate(raw string) (*x509.Certificate, error) {
 }
 func (c Config) validate() error {
 	if c.Schema != Version || c.Mode != "development" || !idPattern.MatchString(c.IssuerID) || !idPattern.MatchString(c.Authority) || !idPattern.MatchString(c.Transaction) || !idPattern.MatchString(c.Target) || (c.Restart != "boot" && c.Restart != "process") || !idPattern.MatchString(c.Provisioning.ID) || c.Provisioning.Revision == 0 || c.Provisioning.Revision > 9007199254740991 || !digestPattern.MatchString(c.Provisioning.Digest) {
+		return ErrInput
+	}
+	if (c.Restart == "boot" && c.ProtectedVolume == "") || (c.ProtectedVolume != "" && (!bootPattern.MatchString(c.ProtectedVolume) || c.ProtectedVolume == "00000000-0000-0000-0000-000000000000")) {
 		return ErrInput
 	}
 	u, e := url.Parse(c.FleetURL)

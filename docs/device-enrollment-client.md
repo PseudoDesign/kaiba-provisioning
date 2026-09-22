@@ -60,6 +60,7 @@ configuration JSON has these required fields:
 | `authority_id`, `transaction_id`, `target` | Exact station-selected rehearsal source and target |
 | `provisioning_ref` | Exact `record_id`, integer `revision` and `sha256:` digest |
 | `restart_requirement` | `boot` for the device campaign; `process` only for software rehearsal |
+| `protected_volume_uuid` | Required for `boot`; exact expected LUKS2 volume UUID. A process-only rehearsal may omit it. |
 
 Each command emits public JSON on success and a bounded category on failure:
 
@@ -82,6 +83,14 @@ The boot requirement compares the kernel boot ID at installation with the one
 at proof. A changed boot ID is evidence of a new kernel session, not a cold
 power cycle. Process-only testing reports no boot change. The client always
 reports `production_enrollment: false` and `hardware_qualified: false`.
+
+The [protected-storage helper](enrollment-storage-development.md) provides a
+bounded development filesystem. When `protected_volume_uuid` is configured,
+initialization and every state open verify the pinned directory's actual Linux
+mount: writable ext4 with `nosuid,nodev,noexec`, a matching LUKS2 device-mapper
+UUID, and no swap. Missing or substituted storage is rejected before key
+generation or protocol activity. This check does not qualify hardware custody,
+recovery images or privileged software access to the key.
 
 ## Interrupted operations
 
