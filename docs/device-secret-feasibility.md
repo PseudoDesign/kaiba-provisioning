@@ -261,6 +261,11 @@ comparable board cannot decrypt it or use the original identity.
 
 ## Next protected-state milestone: prepare before copying
 
+The [copied-storage development helper](copied-storage-comparison.md) supplies
+RAM-backed comparisons of a completed fixture, independent local LUKS controls
+and a disposable record-derived identity challenge. Its software results do not
+complete the physical steps below or qualify a production fleet identity.
+
 1. Record a read-only baseline for each board: model, functioning boot and storage
    access, installed firmware/kernel, ownership root, slot metadata, and applicable
    recovery route. Do not assume the second board is unfused, disposable, or has an
