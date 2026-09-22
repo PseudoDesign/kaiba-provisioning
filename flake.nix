@@ -613,6 +613,7 @@
           kaiba-provision-authority-bridge = built.authorityBridge;
           kaiba-provision-control = built.control;
           kaiba-provision-export = built.fleetExport;
+          kaiba-device-enrollment = built.deviceEnrollment;
           kaiba-provision-integrated-rehearsal = built.integratedRehearsal;
           kaiba-provision-lane-guard = built.laneGuard;
           kaiba-provision-lane-operator = built.laneOperator;
@@ -876,6 +877,7 @@
           boot-image-hash-decoder = bootImageHashDecoderCheck;
           public-input-key-scan = import ./tests/public-input-key-scan.nix { inherit lib pkgs; };
           unit = provisioning.goUnitTests;
+          device-enrollment-client = built.deviceEnrollment;
           unit-static = provisioning.staticGoTests;
           development-yubikey-signing = provisioning.developmentYubiKeySigningContract;
           device-secret-execution-vm = import ./tests/device-secret-execution-vm.nix {

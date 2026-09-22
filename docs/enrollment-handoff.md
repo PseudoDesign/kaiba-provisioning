@@ -13,6 +13,12 @@ requires [FA-01–FA-08](fleet-admission-policy.md).
 The current station remains read-only and the development Pi remains ineligible
 for production enrollment.
 
+The [development device client](device-enrollment-client.md) implements local
+management-key creation, certificate installation and restarted installed-key
+proof for the rehearsal service. It is separate from the station UI. Its
+software tests do not establish encrypted-storage protection or physical
+qualification; actual target execution remains a campaign task.
+
 ## Shared baseline
 
 Use `pd-codex/kaiba-contracts` at commit

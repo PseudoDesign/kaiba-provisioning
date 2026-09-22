@@ -346,6 +346,41 @@ jobs:
       - name: Build remaining ARM64 checks and operator-facing packages
         run: python3 -B .github/scripts/verifier_ci.py build-ordinary
 
+      - name: Export the tested native device enrollment client
+        run: |
+          test "$(uname -m)" = aarch64
+          export ENROLLMENT_PACKAGE="$(nix --accept-flake-config build --no-link --print-out-paths .#kaiba-device-enrollment)"
+          export ENROLLMENT_EXPORT="$RUNNER_TEMP/device-enrollment"
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, shutil, subprocess
+          output = pathlib.Path(os.environ["ENROLLMENT_EXPORT"])
+          output.mkdir()
+          source = pathlib.Path(os.environ["ENROLLMENT_PACKAGE"]) / "bin/kaiba-device-enrollment"
+          target = output / source.name
+          shutil.copyfile(source, target)
+          target.chmod(0o555)
+          (output / "build.json").write_text(json.dumps({
+              "source_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "run_id": os.environ["GITHUB_RUN_ID"],
+              "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "system": "aarch64-linux",
+              "store_path": str(source),
+              "sha256": hashlib.sha256(target.read_bytes()).hexdigest(),
+              "hardware_observation": False,
+              "production_enrollment": False,
+              "requires_boot_image_signing": False,
+          }, indent=2) + "\n")
+          PY
+
+      - name: Upload the native device enrollment client
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: device-enrollment-${{ github.sha }}-aarch64-linux
+          path: ${{ runner.temp }}/device-enrollment/
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Rehearse the native unsigned device-secret export
         env:
           PYTHONDONTWRITEBYTECODE: '1'
