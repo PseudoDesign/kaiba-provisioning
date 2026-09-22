@@ -374,6 +374,17 @@ done:
     diagnostic = fw_snapshot();
     explicit_bzero(key, sizeof(key)); explicit_bzero(mac, sizeof(mac));
     explicit_bzero(repeat, sizeof(repeat)); explicit_bzero(message, sizeof(message));
+    /* Cleanup's successful mailbox calls can clear the global error. Preserve
+     * the original operation diagnostic above, then make one metadata query
+     * before cleanup. This is uncorrelated diagnostic data, never a pass, a
+     * retry or proof that the source passphrase was rejected. */
+    if (!interrupted && diagnostic.outcome == FW_IO && diagnostic.tag == 0x30092) {
+        uint32_t error = 0;
+        enum fw_result query = fw_error(&error);
+        struct fw_diagnostic observed = fw_snapshot();
+        fprintf(stderr, "KAIBA_COPIED_STORAGE_LAST_ERROR query_outcome=%u query_errno=%d available=%s value=%u transaction_correlated=false\n",
+                (unsigned)query, observed.error, query == FW_OK ? "true" : "false", query == FW_OK ? error : 0);
+    }
     if (locks_needed) {
         bool set = fw_set_locks(1, DEVICE_TYPE | ALL_LOCKS) == FW_OK;
         locks_closed = fw_status(1, &status) == FW_OK && set && status == (DEVICE_TYPE | ALL_LOCKS);

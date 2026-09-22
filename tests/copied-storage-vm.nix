@@ -59,12 +59,22 @@ let
               value["image_sha256"] = machine.succeed("sha256sum /dev/shm/comparison.img").split()[0]
           machine.succeed("printf '%s' '" + json.dumps(value) + "' > /run/comparison.json")
           env = f"KAIBA_TEST_FAULT={fault} " if fault else ""
-          status, raw = machine.execute(f"ulimit -l unlimited; {env}{helper} run /run/comparison.json ${sourceConfig} /dev/shm/comparison.img --expected-boot-id {boot()}")
+          status, raw = machine.execute(f"ulimit -l unlimited; {env}{helper} run /run/comparison.json ${sourceConfig} /dev/shm/comparison.img --expected-boot-id {boot()} 2>/run/comparison.stderr")
+          diagnostic = machine.succeed("cat /run/comparison.stderr")
           result = json.loads(raw)
           assert (status == 0) is expected and result["passed"] is expected, result
           assert result["mode"] == "synthetic-development" and not result["hardware_qualified"], result
           assert result["storage_closed"], result
-          assert "KAIBA_PRIVATE_RECORD" not in raw and "42"*32 not in raw, raw
+          assert "KAIBA_PRIVATE_RECORD" not in raw + diagnostic and "42"*32 not in raw + diagnostic
+          failures = {"hmac-einval": (0, 0, "true", 6), "canary-einval": (0, 0, "true", 6),
+                      "error-query-eio": (2, 5, "false", 0), "error-query-malformed": (3, 0, "false", 0)}
+          if fault in failures:
+              outcome, error, available, value = failures[fault]
+              assert diagnostic == f"KAIBA_COPIED_STORAGE_LAST_ERROR query_outcome={outcome} query_errno={error} available={available} value={value} transaction_correlated=false\n", diagnostic
+              assert (result["last_firmware_outcome"], result["last_mailbox_tag"], result["last_mailbox_errno"]) == (2, 0x30092, 22), result
+              assert not result["local_control_verified"] and not result["copied_fixture_rejected"] and result["runtime_locks_closed"], result
+          else:
+              assert diagnostic == "", diagnostic
           machine.succeed("test ! -e /dev/shm/kaiba-copied-storage-control.img")
           names = machine.succeed("dmsetup info --columns --noheadings -o name")
           assert "kaiba-copied-storage" not in names, names
@@ -83,7 +93,9 @@ let
       assert run("comparison", expected=False)["stop"] == "unexpected-source-key"
       assert run(image="incomplete", expected=False)["stop"] == "source-copy"
       for fault, stop in [("preclosed", "firmware-metadata"), ("wrong-usage", "firmware-metadata"),
-                          ("hmac-einval", "luks-derivation"), ("hmac-short", "luks-derivation"),
+                          ("hmac-einval", "luks-derivation"), ("canary-einval", "canary-derivation"),
+                          ("error-query-eio", "luks-derivation"), ("error-query-malformed", "luks-derivation"),
+                          ("hmac-short", "luks-derivation"),
                           ("hmac-constant", "hmac-positive-control"), ("hmac-zero", "hmac-positive-control"),
                           ("hmac-repeat-mismatch", "hmac-positive-control"),
                           ("control-reopen", "local-positive-control"), ("cleanup", "cleanup-locks"),
