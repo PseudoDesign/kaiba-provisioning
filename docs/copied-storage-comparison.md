@@ -64,6 +64,16 @@ Loop cleanup makes one detach request and waits at most five seconds for existin
 udev readers to release it. A persistent holder fails cleanup; there is no repeated
 detach, firmware call, format or unlock attempt.
 
+If an HMAC call has a transport failure, the helper preserves its original
+diagnostic and makes at most one read-only last-error query before cleanup can
+clear that global value. It emits one `KAIBA_COPIED_STORAGE_LAST_ERROR` line on
+stderr with the query outcome, errno, availability and scalar value; no request,
+response or key bytes are logged. Interrupted calls do not make this extra query.
+Executors must retain this separate metadata alongside the unchanged failed JSON
+result and allow only that exact diagnostic format when handling a failed run.
+The value is not correlated proof of the failed transaction. Neither a last-error
+code nor `EINVAL` counts as a working second-board control or copied-key rejection.
+
 ## Disposable identity challenge
 
 The existing private record contains 128 random bytes. After authenticating the
