@@ -593,6 +593,10 @@
           kaiba-device-secret-storage-development-helper =
             (import ./nix/device-secret-storage-development.nix { pkgs = import nixpkgs { inherit system; }; })
             .helper;
+          kaiba-copied-storage =
+            (import ./nix/copied-storage.nix { pkgs = import nixpkgs { inherit system; }; }).helper;
+          kaiba-copied-storage-assess =
+            (import ./nix/copied-storage.nix { pkgs = import nixpkgs { inherit system; }; }).assessor;
           kaiba-device-secret-offline-storage-helper =
             (import ./nix/device-secret-storage-development.nix { pkgs = import nixpkgs { inherit system; }; })
             .offlineHelper;
@@ -904,6 +908,8 @@
           device-secret-development = (import ./nix/device-secret-development.nix { inherit pkgs; }).check;
           device-secret-storage-development =
             (import ./nix/device-secret-storage-development.nix { inherit pkgs; }).check;
+          copied-storage = (import ./nix/copied-storage.nix { inherit pkgs; }).check;
+          copied-storage-vm = import ./tests/copied-storage-vm.nix { inherit pkgs; };
           device-secret-storage-development-vm = import ./tests/device-secret-storage-development-vm.nix {
             inherit pkgs;
           };

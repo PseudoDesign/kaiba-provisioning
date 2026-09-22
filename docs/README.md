@@ -56,6 +56,7 @@ first-fleet applicability is determined by the admission policy.
 | [Remaining device-secret lock checks](device-secret-lock-checks.md) | Bounded read/signing/lock-clear sequence and paired kernel assessment; scoped development observations recorded |
 | [Passive firmware rejection observer](firmware-rejection-observer.md) | Bounded eBPF response diagnostics on the existing inspection kernel; scoped observations recorded, final qualification pending |
 | [Offline storage development](device-secret-offline-storage.md) | Boot-time create/reopen service and saved-capture assessment; original-device cold reopen observed |
+| [Copied-storage comparison](copied-storage-comparison.md) | RAM-backed source copies, local LUKS controls and a disposable identity challenge; hardware comparison pending |
 | [HMAC rejection evidence](device-secret-rejection-evidence.md) | Read-only assessment of saved results, Linux response-copy limits and the remaining qualification decision |
 | [Device-secret experiment automation](device-secret-automation.md) | Staged plan, passive host capture runner and software rehearsal |
 | [Device-secret execution packet](device-secret-execution-packet.md) | File-only packet, bounded staging/restore executor and private report projection; selected hardware session pending |
