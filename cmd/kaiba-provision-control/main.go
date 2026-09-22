@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/handoff"
 	"io"
 	"log"
 	"net"
@@ -20,9 +22,11 @@ import (
 )
 
 type serverConfig struct {
-	listen    string
-	statePath string
-	tlsFiles  mtls.Files
+	handoffPolicy string
+	handoffDir    string
+	listen        string
+	statePath     string
+	tlsFiles      mtls.Files
 }
 
 func main() {
@@ -37,6 +41,8 @@ func parseConfig(arguments []string, output io.Writer) (serverConfig, error) {
 	flags := flag.NewFlagSet("kaiba-provision-control", flag.ContinueOnError)
 	flags.SetOutput(output)
 	var config serverConfig
+	flags.StringVar(&config.handoffPolicy, "handoff-policy", "", "scoped read-only service grants")
+	flags.StringVar(&config.handoffDir, "handoff-evidence-dir", "", "private authority evidence archive")
 	flags.StringVar(&config.listen, "listen", "127.0.0.1:8091", "explicit IP address and port")
 	flags.StringVar(&config.statePath, "state", "kaiba-provision-control.json", "durable coordinator state path")
 	flags.StringVar(&config.tlsFiles.Certificate, "tls-cert", "", "server certificate PEM path")
@@ -47,6 +53,9 @@ func parseConfig(arguments []string, output io.Writer) (serverConfig, error) {
 	}
 	if flags.NArg() != 0 {
 		return serverConfig{}, errors.New("unexpected positional arguments")
+	}
+	if (config.handoffPolicy == "") != (config.handoffDir == "") || (config.handoffPolicy != "" && !config.tlsFiles.Enabled()) {
+		return serverConfig{}, errors.New("handoff requires policy, evidence directory and mTLS")
 	}
 	if config.statePath == "" {
 		return serverConfig{}, errors.New("state path must not be empty")
@@ -85,8 +94,22 @@ func run(ctx context.Context, arguments []string) error {
 	if tlsConfig != nil {
 		listener = tls.NewListener(listener, tlsConfig)
 	}
+	h := controlplane.Handler(service, identityPolicy)
+	if config.handoffPolicy != "" {
+		p, e := handoff.LoadPolicy(config.handoffPolicy)
+		if e != nil {
+			return e
+		}
+		h = handoff.Wrap(h, p, config.handoffDir, func(ctx context.Context, id string) ([]byte, error) {
+			tx, e := service.GetTransaction(ctx, id)
+			if e != nil {
+				return nil, e
+			}
+			return json.Marshal(tx)
+		})
+	}
 	server := &http.Server{
-		Addr: config.listen, Handler: controlplane.Handler(service, identityPolicy), TLSConfig: tlsConfig,
+		Addr: config.listen, Handler: h, TLSConfig: tlsConfig,
 		ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second,
 		WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second,
 		MaxHeaderBytes: 16 * 1024,

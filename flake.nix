@@ -608,6 +608,7 @@
           kaiba-provision-audit = built.audit;
           kaiba-provision-authority-bridge = built.authorityBridge;
           kaiba-provision-control = built.control;
+          kaiba-provision-export = built.fleetExport;
           kaiba-provision-integrated-rehearsal = built.integratedRehearsal;
           kaiba-provision-lane-guard = built.laneGuard;
           kaiba-provision-lane-operator = built.laneOperator;
