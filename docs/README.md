@@ -11,6 +11,7 @@ archived proposals do not add requirements to the first fleet.
 | [Delivery scope](delivery-scope.md) | The three outcomes: apply hardware security, enroll devices, and guide the operator through a simple live UI |
 | [Fleet admission policy](fleet-admission-policy.md) | Eight acceptance conditions, implementation/evidence mapping, and the selected offline and copied-storage requirements; remaining profile settings are proposed |
 | [Implementation staging](implementation-staging.md) | Parallel first slices for real station status and native offline boot/storage feasibility, with later admission gates |
+| [Ace adoption and first fleet bootstrap](ace-adoption-plan.md) | Selected first production target, proposed existing-secret reuse, development Pi station, external bootstrap and gated service transfer; production profile remains draft |
 | [Enrollment implementation handoff](enrollment-handoff.md) | Pinned shared contracts, first producer adapter PR, consumer decisions and isolated enrollment rehearsal |
 | [Production readiness](production-readiness.md) | What exists, what has been observed, and what still prevents fleet admission |
 

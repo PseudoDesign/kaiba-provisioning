@@ -55,6 +55,14 @@ admission; the draft does not itself change the approved hardware policy.
 
 ## Next milestone and limits
 
+The selected first production target is **Ace**, following the
+[existing-device adoption and bootstrap plan](ace-adoption-plan.md). The
+development Pi becomes the station, with initial authorities on malak and fleet
+services transferred to Ace after admission. Existing storage-secret reuse is
+a bounded review proposal, not evidence of completed protection or enrollment.
+The exact production profile, station deployment and operation authorities remain
+to be established; the three delivery outcomes and FA-01–FA-08 are unchanged.
+
 Deliver one real device through all three outcomes using the current
 components. The remaining work is to finish the existing physical path,
 implement the minimum fleet enrollment handoff, and connect the live UI.

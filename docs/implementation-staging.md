@@ -123,6 +123,13 @@ the existing ownership procedure.
 
 ## Later milestones and decision gates
 
+The [Ace adoption plan](ace-adoption-plan.md) specializes these milestones for
+the selected first production target. It keeps the existing OTP storage secret
+as a proposed adoption input, uses the development Pi as the station, and
+bootstraps the authority on malak before transferring fleet services to Ace.
+Its profile, contract and deployment slices can proceed against fixtures while
+hardware qualification is pending; admission conditions are not relaxed.
+
 The [enrollment handoff](enrollment-handoff.md) pins the existing shared
 `ProvisioningRecord` and `DeviceBinding` proposal. Producer-adapter work can
 start now; service selection gates the live enrollment interface.
