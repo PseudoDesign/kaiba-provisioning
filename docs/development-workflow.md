@@ -25,9 +25,18 @@ variants; `scripts/check.sh full` remains unconditional. See the
 
 ## Test ownership
 
+Packaged Go tools exclude `*_test.go` from their runtime source inputs while
+retaining embedded assets and schemas. Unit/static checks keep the full source.
+The development secure-boot package also retains its explicit package test phase.
+The block-device staging VM uses its own package tests and runtime import closure,
+so an unrelated signer test no longer invalidates its full disk exercise. Edits
+to its tests, imported runtime code, module definition or VM fixture still do.
+`tests/build-inputs.py` verifies these boundaries using real Nix derivations.
+This improves cache reuse; it does not remove checks or change release provenance.
+
 `checks.<system>.unit` owns the complete Go suite. It is independent of the probe
-binary, firmware and other package builds, so CI runs it before the broader x86
-check graph. The later `flake check` reuses the same result in the same Nix store.
+binary, firmware and other package builds, so both x86 and ARM CI run it before
+the broader check graph. Later checks reuse that result in the same Nix store.
 
 `checks.<system>.unit-static` owns the existing static-mode contract package
 coverage with `CGO_ENABLED=0`. It preserves the different build mode while

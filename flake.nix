@@ -1562,7 +1562,7 @@
           native-offline-verity-vm = import ./tests/native-offline-verity-vm.nix { inherit pkgs; };
           stable-campaign-staging-vm = import ./tests/campaign-staging-vm.nix {
             inherit pkgs;
-            source = built.goSource;
+            source = built.campaignStagingVMSource;
           };
           stable-campaign-provisioner-signed-boot-filesystem =
             stableCampaignProvisionerSignedBootFilesystemCheck;
