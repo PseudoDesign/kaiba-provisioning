@@ -190,7 +190,7 @@ access.
 
 The exported `kaiba-provision-station` can observe one existing transaction
 through the authenticated control service. Its browser listener remains
-loopback-only. The station reads recorded state; it cannot submit authority
+loopback-only. In observer mode it reads recorded state; it cannot submit authority
 transitions, acquire or renew claims, invoke hardware, or enroll a device.
 `--enable-mutations` remains rejected. The static demo is a separate program
 and is never a fallback for live observation.
@@ -277,6 +277,19 @@ recovery, and rejection of workflow actions. The check compares authority-store
 bytes and filesystem metadata to detect any viewer mutation. It cleans up its
 processes and temporary credentials and never contacts a deployed authority.
 These are real-service software results, not physical provisioning evidence.
+
+## Guided development campaign
+
+The same live station now supports a separate
+[guided campaign mode](guided-station-campaign.md). Its touchscreen view shows
+the current step, last recorded result, required input and allowed action;
+diagnostics are exported separately. A mutually authenticated controller owns
+the durable journal and invokes only fixed, reviewed packet wrappers.
+
+This mode preserves the observer and foundation contracts. The packaged native
+software demonstration uses disposable enrollment-client state. Real Pi
+wrappers and isolated development fleet eligibility remain to be integrated;
+finishing a development campaign does not establish any fleet-admission gate.
 
 ## Remaining live workflow integration
 

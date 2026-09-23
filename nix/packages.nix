@@ -156,6 +156,7 @@ let
       "cmd/kaiba-provision-audit"
       "cmd/kaiba-provision-authority-bridge"
       "cmd/kaiba-provision-control"
+      "cmd/kaiba-provision-campaign"
       "cmd/kaiba-provision-lane-guard"
       "cmd/kaiba-provision-signer"
       "cmd/kaiba-provision-signing-client"
@@ -1263,6 +1264,11 @@ let
   liveStation = servicePackage {
     binary = "kaiba-provision-station";
     description = "Kaiba live secure-boot provisioning station interface";
+  };
+
+  guidedCampaign = servicePackage {
+    binary = "kaiba-provision-campaign";
+    description = "Durable authenticated controller for one fixed development campaign";
   };
 
   signerFoundation = servicePackage {
@@ -2601,6 +2607,7 @@ in
     laneOperator
     laneWorkflow
     liveStation
+    guidedCampaign
     mediaContractTool
     mediaStager
     eepromSigningTool

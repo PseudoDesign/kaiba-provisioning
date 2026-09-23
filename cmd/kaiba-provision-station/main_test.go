@@ -152,3 +152,29 @@ func TestUnconfiguredStationRetainsDisabledFoundation(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func campaignArguments() []string {
+	return []string{"--campaign-url", "https://campaign.example", "--campaign-id", "campaign-1", "--campaign-plan-digest", "sha256:" + strings.Repeat("a", 64), "--campaign-server-ca", "/run/credentials/campaign-ca.crt", "--tls-cert", "/run/credentials/station.crt", "--tls-key", "/run/credentials/station.key", "--station-id", "station-1", "--lane-id", "lane-1"}
+}
+func TestCampaignConfigurationHasNoObserverOrFoundationFallback(t *testing.T) {
+	c, e := parseConfig(campaignArguments(), io.Discard)
+	if e != nil || !c.campaign || c.observe {
+		t.Fatal(c, e)
+	}
+	for _, name := range []string{"--campaign-url", "--campaign-id", "--campaign-plan-digest", "--campaign-server-ca", "--tls-cert", "--tls-key"} {
+		args := campaignArguments()
+		for i := 0; i < len(args); i += 2 {
+			if args[i] == name {
+				args[i+1] = ""
+			}
+		}
+		if _, e := parseConfig(args, io.Discard); e == nil {
+			t.Fatal("partial campaign accepted", name)
+		}
+	}
+	for _, extra := range [][]string{{"--transaction-id", "transaction-1"}, {"--control-url", "https://control.example"}, {"--control-server-ca", "/run/ca"}, {"--enable-mutations"}, {"--campaign-server-ca", "/nix/store/not-runtime"}} {
+		if _, e := parseConfig(append(campaignArguments(), extra...), io.Discard); e == nil {
+			t.Fatal(extra)
+		}
+	}
+}

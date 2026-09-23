@@ -612,6 +612,7 @@
           kaiba-provision-audit = built.audit;
           kaiba-provision-authority-bridge = built.authorityBridge;
           kaiba-provision-control = built.control;
+          kaiba-provision-campaign = built.guidedCampaign;
           kaiba-provision-export = built.fleetExport;
           kaiba-device-enrollment = built.deviceEnrollment;
           kaiba-enrollment-storage =
@@ -880,6 +881,12 @@
           public-input-key-scan = import ./tests/public-input-key-scan.nix { inherit lib pkgs; };
           unit = provisioning.goUnitTests;
           device-enrollment-client = built.deviceEnrollment;
+          guided-station-campaign = import ./tests/guided-campaign.nix {
+            inherit pkgs;
+            campaign = built.guidedCampaign;
+            station = built.liveStation;
+            client = built.deviceEnrollment;
+          };
           enrollment-storage = (import ./nix/enrollment-storage.nix { inherit pkgs; }).check;
           enrollment-storage-vm = import ./tests/enrollment-storage-vm.nix {
             inherit pkgs;
@@ -1531,6 +1538,7 @@
                 node --check internal/provisioning/stationui/web/transport.js
                 node --check internal/provisioning/livestation/web/app.js
                 node internal/provisioning/livestation/web/app.test.cjs
+                node internal/provisioning/livestation/web/campaign.test.cjs
                 export KAIBA_STATION_PAGES=${built.stationPages}
                 node --test tests/station-ui/transport.test.mjs
                 python3 -m unittest discover -s tests/station-ui -p 'test_*.py' -v
