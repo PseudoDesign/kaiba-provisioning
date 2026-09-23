@@ -1225,6 +1225,17 @@ let
     description = "Authenticated Kaiba control/audit to physical-lane authority bridge";
   };
 
+  deviceEnrollment = pkgs.buildGoModule {
+    pname = "kaiba-device-enrollment";
+    inherit version;
+    src = scopedSource "deviceEnrollment";
+    subPackages = [ "cmd/kaiba-device-enrollment" ];
+    vendorHash = null;
+    env.CGO_ENABLED = 0;
+    doCheck = false;
+    meta.mainProgram = "kaiba-device-enrollment";
+  };
+
   fleetExport = pkgs.buildGoModule {
     pname = "kaiba-provision-export";
     inherit version;
@@ -2643,6 +2654,7 @@ in
     unfusedRuntimeRecordTool
     serviceSuite
     fleetExport
+    deviceEnrollment
     signerFoundation
     signingClientFoundation
     signingGateFoundation

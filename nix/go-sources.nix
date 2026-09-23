@@ -51,6 +51,11 @@ in
       ]
     )
   );
+  deviceEnrollment = runtimeSource [
+    "cmd/kaiba-device-enrollment"
+    "internal/provisioning/deviceenrollment"
+    "internal/provisioning/handoff"
+  ];
   stableVerifier = runtimeSource (
     verifierLibraries
     ++ [
