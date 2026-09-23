@@ -17,7 +17,7 @@ An interrupted temporary save requires reconciliation instead of silently
 creating another key. Each successful initialization retains one P-256 key;
 unchanged configuration reopens it and changed configuration is rejected.
 
-The deployable executable has no storage bypass. Before creating or loading a
+The deployable executable has no storage bypass. Before creating a key or using a stored
 key it requires writable ext4 mounted `nosuid,nodev,noexec`, no active swap, and
 the configured LUKS2 UUID. It supports a direct mapping or a bounded,
 single-parent LVM chain above that mapping. Mixed backing devices, cycles,
