@@ -10,7 +10,7 @@ archived proposals do not add requirements to the first fleet.
 | --- | --- |
 | [Delivery scope](delivery-scope.md) | The three outcomes: apply hardware security, enroll devices, and guide the operator through a simple live UI |
 | [Fleet admission policy](fleet-admission-policy.md) | Eight conditions for full qualification, implementation/evidence mapping, and the selected offline and copied-storage requirements |
-| [Ace and Mako pilot enrollment](pilot-enrollment.md) | Selected two-device cohort, limited pilot permissions, independent records and staged implementation; runtime pilot admission remains planned |
+| [Ace and Mako pilot enrollment](pilot-enrollment.md) | Selected two-device cohort, limited pilot permissions, independent records and staged implementation; software lifecycle tested; real enrollment pending |
 | [Implementation staging](implementation-staging.md) | Parallel first slices for real station status and native offline boot/storage feasibility, with later admission gates |
 | [Ace adoption and first fleet bootstrap](ace-adoption-plan.md) | Later full qualification, target-specific existing-secret reuse and gated service transfer to Ace; malak CLI, GUI deferred |
 | [Enrollment implementation handoff](enrollment-handoff.md) | Pinned shared contracts, implemented producer/consumer rehearsal and remaining production integration |
@@ -21,7 +21,8 @@ private data or usable device credentials. Offline rejection of older correctly
 signed software is not required. These choices do not waive authentication,
 hardware protections, recovery checks, or current authority for provisioning
 operations. The pilot tracks these qualification gaps separately from its
-limited membership decision; pilot activation is not yet implemented.
+limited membership decision; the separate pilot lifecycle has synthetic software
+coverage, while real-device deployment and activation remain pending.
 The implemented development posture still has
 [`production_ready: false`](../policies/raspberry-pi-5-development-posture-v1alpha1.json).
 
@@ -44,6 +45,7 @@ first-fleet applicability is determined by the admission policy.
 | [Native-build policy](../README.md#native-build-policy) | Native builders, cache reuse, and narrow exceptions |
 | [Architecture and trust boundaries](architecture-and-trust-boundaries.md) | Implemented authority, execution, audit, and UI boundaries |
 | [Raspberry Pi 5 secure-boot model](raspberry-pi-5-secure-boot.md) | Native boot chain, supported claims, and required hardware evidence |
+| [Pilot device client](pilot-device-client.md) | Protected operational keys and bound process-restart proofs; real pilot execution pending |
 | [Pilot handoff preflight](pilot-handoff-preflight.md) | Retained, authenticated existing-device observations; fleet preflight grants no membership |
 | [Fleet evidence exporter](fleet-export.md) | Authenticated development records, scoped authority reads and immutable export revisions |
 | [Device enrollment client](device-enrollment-client.md) | Development management-key persistence, bound proofs and restart recovery; device execution and production admission remain pending |

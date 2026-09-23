@@ -1,10 +1,11 @@
 # Ace and Mako pilot enrollment
 
-Status: **selected two-device pilot; policy and implementation planned**.
+Status: **selected two-device pilot; software lifecycle tested, real deployment pending**.
 Ace and Mako are the initial pilot cohort. Malak supplies the reviewed CLI
 procedure and initial fleet authority. Selecting a device for this cohort does
-not enroll it. This document defines the next implementation milestone; current
-runtime contracts, credentials and activation rules are unchanged.
+not enroll it. This document defines the real-device milestone. The
+original rehearsal contracts remain separate. Pilot runtime contracts and
+software support are described in [the pilot client guide](pilot-device-client.md).
 
 The pilot exercises real device identity, durable enrollment, restart recovery
 and membership enforcement while recording incomplete hardware qualification.
@@ -36,8 +37,8 @@ migrate either host. Any required storage change gets its own recovery plan.
 
 ## Pilot admission policy
 
-Use `rpi5-existing-luks-pilot-v1` as the working policy label. It is not yet a
-registered profile, wire enum or configuration switch. Before execution, bind a
+The pilot contract and separate runtime use `rpi5-existing-luks-pilot-v1`.
+It does not enable pilot credentials on the rehearsal API. Before execution, bind a
 reviewed policy revision to exactly two authenticated target records. Hostnames
 are operator labels, not identity proofs or an unrestricted allowlist.
 
@@ -131,8 +132,8 @@ Keep one report per device and a cohort summary. Bind source and policy revision
 target authentication, public key/credential references, approved history/gaps,
 membership state, timestamps, restart type and evidence references. Report
 readiness to join the pilot separately from readiness for full qualification.
-Machine-readable labels for these distinctions are part of the planned contract
-change, not new fields accepted by today's API.
+Machine-readable labels for these distinctions are part of the pilot contract
+family; the original rehearsal API does not accept pilot bindings.
 
 This milestone completes when both real devices have completed the selected
 pilot lifecycle and the retained report shows the remaining qualification work.
@@ -140,6 +141,8 @@ Adding them to this document or passing software fixtures does not complete it.
 
 The first runtime handoff boundary is described in
 [pilot handoff preflight](pilot-handoff-preflight.md). It exports reviewed
-observations for independent fleet checks; pilot credential issuance, installed-key
-proof and activation remain planned. Neither a preflight report nor merging this
+observations for independent fleet checks. The separate
+[pilot client](pilot-device-client.md) and fleet lifecycle implement key proofs
+and activation with synthetic test coverage. Real issuance and enrollment remain
+pending deployment review. Neither a preflight report nor merging this
 implementation enrolls Ace or Mako.

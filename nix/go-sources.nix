@@ -78,6 +78,11 @@ in
     "internal/provisioning/handoff"
     "internal/provisioning/mtls"
   ];
+  pilotDevice = runtimeSource [
+    "cmd/kaiba-pilot-device"
+    "internal/provisioning/pilotenrollment"
+    "internal/provisioning/handoff"
+  ];
   deviceEnrollment = runtimeSource [
     "cmd/kaiba-device-enrollment"
     "internal/provisioning/deviceenrollment"

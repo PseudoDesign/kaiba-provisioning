@@ -5,8 +5,8 @@ The existing-device pilot now has an authenticated observation transport.
 [kaiba-contracts 046193a](https://github.com/pd-codex/kaiba-contracts/tree/046193a204e576cd1c3c5f0208e2ce3c9ab078bc),
 wire family `0.2.0-draft.1`. The old development exporter and its wire family
 remain unchanged. This is a software prerequisite for the
-[pilot plan](pilot-enrollment.md); device key generation, issuer deployment,
-installed-key proof, pilot activation and real enrollment are still planned.
+[pilot plan](pilot-enrollment.md); the separate [pilot client](pilot-device-client.md) and fleet lifecycle now have
+software coverage. Real issuer deployment and device enrollment remain planned.
 
 ## Reviewed input boundary
 
@@ -80,8 +80,8 @@ and decision through separately configured mTLS authorities. It reads immutable
 revisions and evidence, then checks current selections again. A result means
 **consistent authenticated handoff, `membership: not_enrolled`**. It does not
 issue credentials or approve enrollment. The policy authority and independent
-consumer belong in `kaiba-fleet`; the existing enrollment client stays disabled
-for pilot use until its proof and activation contracts are implemented.
+consumer belong in `kaiba-fleet`; the development enrollment client remains separate. The
+[pilot client](pilot-device-client.md) implements the pilot proof path.
 
 Focused producer checks:
 
