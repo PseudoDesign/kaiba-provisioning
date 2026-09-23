@@ -79,6 +79,21 @@ The current development-key-owned Pi remains a test device; installing a new
 image does not change its fused customer root or make it eligible for a profile
 requiring a different production root.
 
+## Existing-device adoption
+
+The [Ace adoption plan](ace-adoption-plan.md) selects an existing device as the
+first production target. An existing OTP storage secret is separate from the
+secure-boot customer root and the new operational fleet identity. Its presence
+alone does not disqualify the device or establish that any FA condition passed.
+
+The planned adoption path may accept externally created secret material through
+an explicit, target/profile-bound reuse review. Record the creation history,
+custody assessment, unknowns and approval scope without manufacturing a new
+programming result. This accepts a historical process difference; it does not
+waive FA-04, conceal conflicting ownership or turn unresolved exposure into
+protection evidence. The proposed `ACE-EX-01` decision and its remaining gates
+are described in the plan. Current runtime policies and contracts stay unchanged.
+
 ## Offline operation and continued fleet access
 
 Offline cold boot, protected storage access, and normal local operation must be
@@ -119,12 +134,21 @@ evidence only within its recorded applicability; repeat checks invalidated by
 relevant changes. Tests on a workstation do not prove hardware enforcement.
 
 Every device must still complete its required individual procedure and
-observations. Preserve the [existing seven-operation sequence](raspberry-pi-5-live-provisioning.md#fixed-seven-operation-campaign):
+observations. For a fresh boot-root transition, preserve the
+[existing seven-operation sequence](raspberry-pi-5-live-provisioning.md#fixed-seven-operation-campaign):
 customer-key/EEPROM commit, signed cold boot, owned-state readback, signed
 recovery, repeated readback, negative boot/recovery tests, and root-integrity
 testing. Shared qualification does not waive those checks, their approvals,
 or the final identity/storage checks. Already-owned development hardware must
 not repeat a fresh-device ownership operation.
+
+An already-owned production candidate requires an explicit adoption path that
+verifies the approved root and retained ownership evidence without reprogramming
+or claiming that a fresh commit occurred. Signed cold boot, owned-state readback,
+recovery, repeated readback, negative boot/recovery and root-integrity checks
+remain required. Storage-secret reuse alone does not select this boot-root path;
+fresh authenticated inventory must determine the applicable prestate. This path
+is planned, not an override of the current fresh-board control contract.
 
 The backend evaluates these conditions and retains the evidence. The UI shows
 pending, blocked, quarantined, or enrolled status, the exact failed condition,
@@ -150,7 +174,7 @@ attest them. Station and authority compromise remain outside this assurance.
 | FA-01 | Express the selected profile as versioned machine-readable expected values and artifacts. The station compares board/ownership/firmware observations and inventory with those values before mutation and after final restart. Keep fresh-board preconditions separate from final owned-state requirements. Bind the profile, target, release, and transaction in the retained admission result. | Reuse [probe and evaluation](../cmd/kaiba-provision/main.go), target claims, and [device-class facts](../profiles/device-classes/raspberry-pi-5-model-b-v1alpha1.json). The current fresh-development profile and its deferred checks are not a final fleet profile; exact production values and missing observations still need closure. |
 | FA-02 | Use native Pi secure boot to authenticate the boot image and its system-root hash; mount the system root through dm-verity. Verify the staged bytes and owned key state, then cold boot. Run the required wrong-key, unsigned, modified-boot, recovery, and root-corruption cases. Exercise modified root blocks, including reads after mounting; do not count a timeout or a read-only mount alone as successful rejection. Check that writable data cannot introduce executable system code. | Reuse [signed artifacts](../nix/secure-boot-artifacts.nix), [target configuration](../nix/modules/secure-boot-target.nix), media readback, and the [physical adapter](../internal/provisioning/physicalrpi5/adapter.go). Limited signed-boot observations exist; complete applicable physical acceptance remains open. |
 | FA-03 | Cold boot the supported image with every network path unavailable, unlock its data, and exercise a defined local application action. Shared qualification also checks that server unavailability, unavailable network time, and an expired network credential do not disable local functions. Record older-image behavior without requiring rollback rejection or promising compatibility. | The native signed target provides an offline starting point. The [stable-verifier command](../cmd/kaiba-rpi5-stable-verifier/main.go) currently requests server authorization; its shipping composition and acceptance expectations must match the selected offline behavior. |
-| FA-04 | Add a LUKS2 volume for credentials and private state, unlocked locally using a device-unique secret absent from removable storage. The candidate mechanism is OTP-backed firmware HMAC derivation inside the signed early-boot environment. Qualify that exact firmware/key/lock behavior first. In shared qualification, copy all storage to another comparable board: the original must unlock while the copy cannot decrypt a test record or answer a challenge using the original identity. Each device must record successful secret provisioning, encrypted-volume setup, and offline reopen after cold restart. | The current target has tmpfs state, not an implemented persistent-secret/LUKS path. Add the scoped unlock and secret-provisioning path; check every key slot and fallback, and keep secrets out of logs, store outputs, backups, and receipts. A generic decryption failure on a broken second board is not sufficient clone-protection evidence. |
+| FA-04 | Add a LUKS2 volume for credentials and private state, unlocked locally using a device-unique secret absent from removable storage. The candidate mechanism is OTP-backed firmware HMAC derivation inside the signed early-boot environment. Qualify that exact firmware/key/lock behavior first. In shared qualification, copy all storage to another comparable board: the original must unlock while the copy cannot decrypt a test record or answer a challenge using the original identity. Each device must record successful secret provisioning or approved existing-secret adoption, encrypted-volume setup, and offline reopen after cold restart. Adoption requires the history/custody review and unchanged protection checks above. | The current target has tmpfs state, not an implemented persistent-secret/LUKS path. Add the scoped unlock and secret-provisioning/adoption path; check every key slot and fallback, and keep secrets out of logs, store outputs, backups, and receipts. A generic decryption failure on a broken second board is not sufficient clone-protection evidence. |
 | FA-05 | Generate an independent operational key on the trusted target and store it only in protected state. Bind its public key to the physical target and fresh enrollment transaction through the station's authenticated endorsement. The device authenticates the enrollment server and answers a fresh challenge bound to the transaction and public key. The authority assigns the identity and stages a constrained credential. Qualify rejection of replay, substituted keys, and another device's identity. | Reuse authenticated station/control channels and transaction bindings. Device key generation, bootstrap binding, issuance, and installation are [planned](device-identity.md), not implemented. A software key in LUKS can meet the selected copied-storage boundary; it is not a non-exportable hardware key. |
 | FA-06 | After required recovery testing, apply the final approved locks and access configuration, cold restart, and verify effective state. Shared qualification tests the protected firmware-write and debug boundaries; each unit needs the corresponding hardware configuration/readback and absence of development access. Use a reviewed observation path that still works after UART/debug restrictions take effect. | Reuse owned-state observations and finalization plumbing. Current metadata explicitly does not establish effective EEPROM write protection or all processor debug paths. Final settings, their actuators, and evidence methods remain to be qualified. |
 | FA-07 | Use one narrow signed recovery environment. On each device, run the required recovery and post-recovery readback plus negative recovery tests. Shared qualification checks that recovery preserves locks and secret protection, and that destructive storage replacement results in a new instance with the former fleet credentials retired. | Reuse [owned-recovery signing](../nix/owned-recovery-signing.nix) and the fixed physical sequence. Production recovery qualification and the storage/identity replacement handoff remain open. |

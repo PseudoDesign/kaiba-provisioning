@@ -108,6 +108,15 @@ circular prerequisite for the activation it needs.
 
 ## Parallel physical gate
 
+The selected production integration target is now
+[Ace through an explicit adoption path](ace-adoption-plan.md), with the
+development Pi as its station and the initial fleet authority on malak.
+Existing-secret reuse requires a target-bound review record; it must not be
+represented as a fresh programming result. Production adoption semantics and
+readiness evaluation need a versioned producer/consumer handoff and shared
+contract review. This plan does not extend the pinned schemas or enable the
+development client/rehearsal to issue production credentials.
+
 Continue the comparable-board copied-media experiment, production encrypted
 state/credential lifecycle, permitted-image and recovery boundary, and final
 boot/debug/EEPROM qualification separately. No experiment authorization is

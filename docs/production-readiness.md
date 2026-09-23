@@ -12,6 +12,12 @@ This assessment follows the status language in the [documentation
 index](README.md): implemented, tested, evidenced, and planned are distinct
 claims.
 
+The [Ace adoption plan](ace-adoption-plan.md) selects the first production
+target and the development Pi's future station role. It does not change this
+development-posture assessment or report Ace as qualified. Production profile,
+existing-secret reuse, station persistence/power, issuer integration and service
+transfer remain explicit gates in that plan.
+
 ## What is established
 
 | Area | Status | Repository evidence | Scope limit |
