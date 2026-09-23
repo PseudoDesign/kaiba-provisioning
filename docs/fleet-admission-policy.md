@@ -150,10 +150,12 @@ remain required. Storage-secret reuse alone does not select this boot-root path;
 fresh authenticated inventory must determine the applicable prestate. This path
 is planned, not an override of the current fresh-board control contract.
 
-The backend evaluates these conditions and retains the evidence. The UI shows
-pending, blocked, quarantined, or enrolled status, the exact failed condition,
-and the next necessary operator action. It shows **enrolled** only after
-FA-08 is complete; users do not copy evidence digests or JSON between steps.
+The backend evaluates these conditions and retains the evidence. The first Ace
+campaign uses malak's reviewed CLI procedure and report; GUI provisioning is
+deferred. Both interfaces must report pending, blocked, quarantined or enrolled
+status, the exact failed condition and next necessary operator action. They may
+report **enrolled** only after FA-08 completes. A later GUI should exchange
+evidence references through the backend, without manual digest/JSON transfer.
 
 ## How to establish the conditions
 
@@ -225,10 +227,11 @@ choices permit implementation; all eight conditions still gate admission.
    installed-key proof, activation, retry, and revocation behavior. This work
    can proceed alongside remaining hardware qualification; real activation
    remains conditional on all admission checks.
-4. Finalize and approve the exact fleet profile, close its required evidence,
-   and connect the remaining UI actions to real backend results. Demonstrate
-   one eligible device through the required hardware sequence and enrollment,
-   including offline operation and recovery from an interrupted transaction.
+4. Finalize and approve the exact fleet profile and close its required evidence.
+   Demonstrate Ace through the required hardware sequence and enrollment using
+   malak's reviewed CLI path, including offline operation and recovery from an
+   interrupted transaction. Connect GUI actions to those real backend results
+   in a later milestone; GUI completion does not gate this first admission.
 
 Map qualification cases before the physical work they cover, preserving
 applicable boot, root, recovery and handoff checks. Keep the old online-verifier

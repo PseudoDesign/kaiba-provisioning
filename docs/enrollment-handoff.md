@@ -1,17 +1,18 @@
 # Enrollment implementation handoff
 
-Status: producer implemented; isolated consumer rehearsal in review. Contract
-adoption review and fleet authorization remain separate.
+Status: producer and isolated consumer rehearsal implemented. Contract adoption
+review, production integration and fleet authorization remain separate.
 
 The [authenticated producer](fleet-export.md) implements the provisioning side.
-The isolated consumer rehearsal is in
+The isolated consumer rehearsal was introduced in
 [fleet PR #1](https://github.com/PseudoDesign/kaiba-fleet/pull/1), with shared
 integration obligations in
 [contracts PR #7](https://github.com/pd-codex/kaiba-contracts/pull/7).
 Hardware qualification continues independently. Production activation still
 requires [FA-01–FA-08](fleet-admission-policy.md).
-The current station remains read-only and the development Pi remains ineligible
-for production enrollment.
+The current browser station remains read-only and the development Pi remains
+ineligible for production enrollment. Ace's first campaign uses malak's CLI path;
+its production orchestration and qualification are still planned.
 
 The [development device client](device-enrollment-client.md) implements local
 management-key creation, certificate installation and restarted installed-key
@@ -98,9 +99,10 @@ The isolated rehearsal covers this sequence:
    against INT-DB-01–04. Use disposable PKI and synthetic production candidates
    in an isolated test domain; real development records must fail production
    admission.
-5. Return authoritative status for subsequent station integration. Keep
-   enrollment actions out of the current observer until an authenticated action
-   interface and its authorization model are implemented and reviewed.
+5. Return authoritative status for malak's reviewed CLI orchestration, retaining
+   durable state and reconciliation. GUI integration is deferred. Keep enrollment
+   actions out of the current read-only observer; changing the operator interface
+   does not create execution authority or waive backend implementation/review.
 
 Candidate evidence may precede identity activation. Final completion evidence
 follows required identity and audit outcomes; do not make completion evidence a
@@ -110,7 +112,9 @@ circular prerequisite for the activation it needs.
 
 The selected production integration target is now
 [Ace through an explicit adoption path](ace-adoption-plan.md), with the
-development Pi as its station and the initial fleet authority on malak.
+provisioning station and initial fleet authority on malak. The first campaign
+uses reviewed CLI procedures; touchscreen and development-Pi station work are
+deferred.
 Existing-secret reuse requires a target-bound review record; it must not be
 represented as a fresh programming result. Production adoption semantics and
 readiness evaluation need a versioned producer/consumer handoff and shared
@@ -124,6 +128,6 @@ conferred by this handoff. A functioning second Pi is available; availability
 alone is not copied-media evidence.
 
 The release milestone is one eligible device completing real enrollment and
-interrupted-transaction recovery through the station, with all FA conditions
+interrupted-transaction recovery through malak's CLI path, with all FA conditions
 established. Neither a schema-valid record nor a passing isolated rehearsal
 permits production activation.
