@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/pd-codex/kaiba-contracts",
+  "commit": "046193a204e576cd1c3c5f0208e2ce3c9ab078bc",
+  "version": "0.2.0-draft.1",
+  "source": "examples/valid/pilot-adoption-a.json",
+  "destination": "adoption.json",
+  "synthetic": true
+}
