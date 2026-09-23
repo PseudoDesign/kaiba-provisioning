@@ -1,11 +1,15 @@
 # Ace adoption and first fleet bootstrap
 
-Status: **selected implementation direction; production profile draft**.
-Ace is the first production target. **malak is the provisioning station**, using
+Status: **later full-qualification and service-bootstrap plan; profile draft**.
+The immediate milestone is [pilot enrollment of Ace and Mako](pilot-enrollment.md).
+This document retains the path to full qualification and the proposed later fleet
+service role on Ace; it is not a prerequisite to complete every hardware check
+before the separately scoped pilot. **malak is the provisioning station**, using
 reviewed CLI procedures, and hosts the initial authorities and separate signer.
-After admission, Ace hosts the first fleet services. Touchscreen/GUI provisioning
-and deployment of the development Pi as a station are deferred. This plan defines
-work and acceptance gates, not a hardware result or an executable authorization.
+Fleet-service transfer to Ace remains gated work after the pilot. Touchscreen/GUI
+provisioning and deployment of the development Pi as a station are deferred.
+This plan defines work and acceptance gates, not a hardware result or an
+executable authorization.
 
 The [delivery scope](delivery-scope.md), [FA-01–FA-08](fleet-admission-policy.md)
 and [enrollment handoff](enrollment-handoff.md) remain authoritative. Offline
@@ -64,6 +68,10 @@ custody assessment, approver, approval time, validity and invalidation condition
 Changing the target, secret history or relevant protection assumptions requires
 review again. Store references and outcomes, never secret bytes or a raw-key
 read masquerading as inventory.
+
+`ACE-EX-01` applies only to Ace. Mako's pilot participation requires its own
+target-bound history/custody decision and evidence; a shared Nix module does not
+make these observations or approvals interchangeable.
 
 Acceptance of `ACE-EX-01` does not waive FA-04. Establish independent secret
 material, the intended unlock path, required locks, protected credential storage,
