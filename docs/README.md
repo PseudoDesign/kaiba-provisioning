@@ -9,9 +9,10 @@ archived proposals do not add requirements to the first fleet.
 | Document | Purpose |
 | --- | --- |
 | [Delivery scope](delivery-scope.md) | The three outcomes: apply hardware security, enroll devices, and guide the operator through a simple live UI |
-| [Fleet admission policy](fleet-admission-policy.md) | Eight acceptance conditions, implementation/evidence mapping, and the selected offline and copied-storage requirements; remaining profile settings are proposed |
+| [Fleet admission policy](fleet-admission-policy.md) | Eight conditions for full qualification, implementation/evidence mapping, and the selected offline and copied-storage requirements |
+| [Ace and Mako pilot enrollment](pilot-enrollment.md) | Selected two-device cohort, limited pilot permissions, independent records and staged implementation; runtime pilot admission remains planned |
 | [Implementation staging](implementation-staging.md) | Parallel first slices for real station status and native offline boot/storage feasibility, with later admission gates |
-| [Ace adoption and first fleet bootstrap](ace-adoption-plan.md) | Selected first production target, proposed existing-secret reuse, malak CLI provisioning/bootstrap and gated service transfer; GUI deferred and production profile draft |
+| [Ace adoption and first fleet bootstrap](ace-adoption-plan.md) | Later full qualification, target-specific existing-secret reuse and gated service transfer to Ace; malak CLI, GUI deferred |
 | [Enrollment implementation handoff](enrollment-handoff.md) | Pinned shared contracts, implemented producer/consumer rehearsal and remaining production integration |
 | [Production readiness](production-readiness.md) | What exists, what has been observed, and what still prevents fleet admission |
 
@@ -19,7 +20,9 @@ Normal device operation must work offline. Copied storage must not disclose
 private data or usable device credentials. Offline rejection of older correctly
 signed software is not required. These choices do not waive authentication,
 hardware protections, recovery checks, or current authority for provisioning
-operations. The implemented development posture still has
+operations. The pilot tracks these qualification gaps separately from its
+limited membership decision; pilot activation is not yet implemented.
+The implemented development posture still has
 [`production_ready: false`](../policies/raspberry-pi-5-development-posture-v1alpha1.json).
 
 ## Current component and development references

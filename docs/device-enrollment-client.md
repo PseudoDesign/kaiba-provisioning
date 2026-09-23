@@ -136,3 +136,9 @@ permitted-image boundary still require qualification. Actual device execution,
 key creation, persistent writes and restart require the campaign's bounded
 execution authority. The production-root eligibility decision and FA-01–FA-08
 remain unresolved by a passing software rehearsal.
+
+The selected next milestone is [Ace and Mako pilot enrollment](pilot-enrollment.md).
+It needs explicit pilot client/authority support and a versioned adoption handoff.
+The existing development mode, rehearsal audience and certificate profile cannot
+be reused to label either real host enrolled in that pilot. Its acceptance tests
+must distinguish process restart, physical cold boot and full qualification.

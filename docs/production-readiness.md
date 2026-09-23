@@ -12,11 +12,15 @@ This assessment follows the status language in the [documentation
 index](README.md): implemented, tested, evidenced, and planned are distinct
 claims.
 
-The [Ace adoption plan](ace-adoption-plan.md) selects the first production
-target and malak's CLI provisioning/bootstrap role; GUI and development-Pi
-station deployment are deferred. This does not change the development-posture
-assessment or report Ace as qualified. Production profile, existing-secret reuse,
-station persistence/power, issuer integration and service transfer remain gates.
+The [pilot plan](pilot-enrollment.md) selects Ace and Mako for limited enrollment
+through malak's CLI, with independent identities and retained qualification gaps.
+Pilot policy and runtime support remain planned. The
+[Ace adoption plan](ace-adoption-plan.md) retains later full qualification and
+fleet-service transfer; GUI and development-Pi station deployment are deferred.
+Neither selecting the pilot nor completing it changes this development-posture
+assessment or reports either host as fully qualified. Production profile,
+existing-secret reuse, applicable station/power qualification, issuer integration
+and service transfer remain gates at their respective milestones.
 
 ## What is established
 

@@ -5,6 +5,12 @@ This defines the proposed acceptance bar for the first fleet profile, not a
 claim that the current device satisfies it. It does not change the approved
 development policy or authorize physical operations.
 
+This is the **full-qualification** bar. The selected intermediate milestone is
+[Ace and Mako pilot enrollment](pilot-enrollment.md), under a separate limited
+policy that must explicitly record accepted gaps. Pilot membership does not
+satisfy these conditions or confer qualified-fleet privileges. Runtime pilot
+admission is planned; naming a cohort does not change current activation rules.
+
 ## Decisions and scope
 
 The user has selected:
@@ -81,9 +87,10 @@ requiring a different production root.
 
 ## Existing-device adoption
 
-The [Ace adoption plan](ace-adoption-plan.md) selects an existing device as the
-first production target. An existing OTP storage secret is separate from the
-secure-boot customer root and the new operational fleet identity. Its presence
+The [pilot plan](pilot-enrollment.md) selects Ace and Mako as existing-device
+candidates; the [Ace adoption plan](ace-adoption-plan.md) retains its later
+full-qualification and service role. An existing OTP storage secret is separate
+from the secure-boot customer root and the new operational fleet identity. Its presence
 alone does not disqualify the device or establish that any FA condition passed.
 
 The planned adoption path may accept externally created secret material through

@@ -16,11 +16,12 @@ physical qualification has passed.
 | Enroll known-good devices in a fleet | An authenticated device identity is durably bound to its verified provisioning result and fleet membership. Failed or uncertain devices are not admitted. Membership can be retrieved after restart and enrollment retries cannot create conflicting identities. | Provisioning transactions persist, but fleet enrollment is not implemented. `security_applied` is not fleet membership. |
 | Guide the operator through a simple UI | The UI identifies the device, shows the current step and outcome, requests the next necessary human action, and confirms actual fleet enrollment. Backend services perform the handshakes and retain progress. | A simulation and a live-interface foundation exist; the live backend is disabled. |
 
-For the first Ace admission, the selected interface is a reviewed CLI procedure
+For the Ace and Mako pilot, the selected interface is a reviewed CLI procedure
 on malak. Touchscreen/GUI provisioning and a development-Pi station are deferred
-until later. The first milestone delivers the hardware-security and enrollment
-outcomes with retained diagnostics; the UI outcome remains a later deliverable,
-not a prerequisite or a condition claimed complete by CLI execution.
+until later. The pilot exercises limited enrollment and retains unresolved
+qualification in its report; it does not complete the hardware-security outcome.
+The UI remains a later deliverable, not a prerequisite or a condition claimed
+complete by CLI execution.
 
 The operator flow is: connect and identify the device, apply and verify its
 approved security configuration, enroll it, then show its fleet status.
@@ -61,26 +62,30 @@ admission; the draft does not itself change the approved hardware policy.
 
 ## Next milestone and limits
 
-The selected first production target is **Ace**, following the
-[existing-device adoption and bootstrap plan](ace-adoption-plan.md). The
-provisioning station and initial authorities run on malak, with fleet services
-transferred to Ace after admission. Existing storage-secret reuse is
-a bounded review proposal, not evidence of completed protection or enrollment.
-The exact production profile, station deployment and operation authorities remain
-to be established; the three delivery outcomes and FA-01–FA-08 are unchanged.
+The selected initial cohort is **Ace and Mako**, following the
+[pilot enrollment plan](pilot-enrollment.md). Use malak's CLI and initial
+authorities, preserve each host's current storage and workloads, and keep
+separate identities, adoption decisions and qualification reports. Shared source
+configuration does not establish matching effective state or secret history.
 
-Deliver Ace through hardware qualification and enrollment using malak's CLI
-path. Finish the physical path, adoption record, production enrollment handoff
-and durable report; connect a GUI in a later milestone. The fleet repository
-owns enrollment/inventory, with PostgreSQL and a separate issuer interface in
-the rehearsal. Production issuer/trust configuration and contract adoption
-remain gates; the provisioning transaction store is not already a fleet.
+Implement the versioned pilot handoff and limited admission policy before live
+activation; the current development/rehearsal path cannot enroll these hosts by
+renaming them. The fleet repository owns enrollment/inventory, with PostgreSQL
+and a separate issuer interface in the rehearsal. Pilot issuer/trust custody,
+deployment and contract adoption remain gates.
+
+The [Ace adoption and bootstrap plan](ace-adoption-plan.md) retains the later
+full-qualification and fleet-service transfer work. Pilot membership alone does
+not authorize service transfer or satisfy FA-01–FA-08. The three delivery
+outcomes and that full-qualification bar remain; the pilot is an intermediate
+milestone with explicit gaps, not a claim of completed protection.
 
 Follow the [implementation staging plan](implementation-staging.md) for the
 first two parallel slices: real station status with restart recovery, and
 native offline boot with protected-storage feasibility. Resolve provisional
-choices at the operations they affect; final profile approval gates admission,
-not every implementation step. Missing admission conditions remain blocking.
+choices at the operations they affect; the selected policy gates its own
+admission, not every implementation step. Unmet pilot prerequisites block pilot
+activation; missing FA conditions continue to block full qualification.
 
 Retain completed signing, builds and evidence. Collect only missing evidence
 or evidence invalidated by a relevant change. The retained campaign currently

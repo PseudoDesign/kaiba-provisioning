@@ -11,8 +11,10 @@ integration obligations in
 Hardware qualification continues independently. Production activation still
 requires [FA-01–FA-08](fleet-admission-policy.md).
 The current browser station remains read-only and the development Pi remains
-ineligible for production enrollment. Ace's first campaign uses malak's CLI path;
-its production orchestration and qualification are still planned.
+ineligible for production enrollment. The next campaign is
+[limited pilot enrollment of Ace and Mako](pilot-enrollment.md) using malak's CLI;
+its policy, adoption contracts and runtime support are still planned. Pilot
+membership and full qualification must be represented separately.
 
 The [development device client](device-enrollment-client.md) implements local
 management-key creation, certificate installation and restarted installed-key
@@ -110,16 +112,20 @@ circular prerequisite for the activation it needs.
 
 ## Parallel physical gate
 
-The selected production integration target is now
-[Ace through an explicit adoption path](ace-adoption-plan.md), with the
-provisioning station and initial fleet authority on malak. The first campaign
-uses reviewed CLI procedures; touchscreen and development-Pi station work are
-deferred.
-Existing-secret reuse requires a target-bound review record; it must not be
-represented as a fresh programming result. Production adoption semantics and
-readiness evaluation need a versioned producer/consumer handoff and shared
-contract review. This plan does not extend the pinned schemas or enable the
-development client/rehearsal to issue production credentials.
+The selected pilot cohort is **Ace and Mako**, with the provisioning station and
+initial fleet authority on malak. Implement the [pilot handoff](pilot-enrollment.md)
+as its own reviewed producer/consumer contract change: actual adopted prestate,
+target-bound history/gap decisions, pilot eligibility and independent full
+qualification outcomes. Test with two distinct device fixtures. Preserve separate
+keys, identities, approvals, access and revocation; a hostname or shared source
+configuration cannot supply another device's evidence.
+
+The campaign uses reviewed CLI procedures; touchscreen and development-Pi
+station work are deferred. Existing-secret reuse must not be represented as a
+fresh programming result. This plan does not extend the pinned schemas or enable
+the development client/rehearsal to issue pilot or production credentials.
+Existing development records remain ineligible for production, and synthetic
+rehearsal records must not activate as real pilot devices.
 
 Continue the comparable-board copied-media experiment, production encrypted
 state/credential lifecycle, permitted-image and recovery boundary, and final
@@ -127,7 +133,9 @@ boot/debug/EEPROM qualification separately. No experiment authorization is
 conferred by this handoff. A functioning second Pi is available; availability
 alone is not copied-media evidence.
 
-The release milestone is one eligible device completing real enrollment and
-interrupted-transaction recovery through malak's CLI path, with all FA conditions
-established. Neither a schema-valid record nor a passing isolated rehearsal
-permits production activation.
+The pilot milestone is both devices completing the selected limited enrollment
+and restart/isolation checks, with remaining FA conditions visible in their
+reports. The [later Ace qualification and service-bootstrap path](ace-adoption-plan.md)
+still requires its applicable FA conditions and controlled service transfer.
+Neither a schema-valid record, pilot membership nor a passing isolated rehearsal
+permits qualified-fleet activation.
