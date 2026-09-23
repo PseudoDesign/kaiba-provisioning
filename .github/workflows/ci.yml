@@ -303,6 +303,11 @@ jobs:
           extraPullNames: nixos-raspberrypi
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
+      # Fail on ARM-specific Go regressions before images and VM checks. The
+      # remaining check graph reuses this exact result in the same Nix store.
+      - name: Run Go unit tests
+        run: nix --accept-flake-config build -L --no-link .#checks.aarch64-linux.unit
+
       # The hosted ARM64 runner currently falls back to TCG for NixOS VM
       # tests. Running the VM checks alongside kernel or filesystem-image
       # builds can starve the guest long enough to hit the test driver's fixed

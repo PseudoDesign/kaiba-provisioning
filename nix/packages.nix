@@ -33,10 +33,12 @@ let
   };
   sources = import ./go-sources.nix { inherit lib; };
   # Preserve explicit caller sources without filtering them a second time.
-  # Default hardware binaries use only their runtime imports, while tests and
-  # packages with embedded assets retain the complete application source.
+  # Runtime packages retain embedded assets but exclude Go test files. Tests
+  # keep the complete application source; hardware helpers use import closures.
   scopedSource = name: if moduleRoot == null then sources.${name} else moduleRoot;
   goSource = scopedSource "application";
+  runtimeGoSource = scopedSource "applicationRuntime";
+  campaignStagingVMSource = scopedSource "campaignStagingVM";
   verifierVMSource = scopedSource "verifierVM";
 
   # Keep the audited recovery firmware on the frozen Nixpkgs source while
@@ -126,7 +128,7 @@ let
   suite = pkgs.buildGoModule {
     pname = "kaiba-provisioning";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
 
     subPackages = [
       "cmd/kaiba-provision"
@@ -150,7 +152,7 @@ let
   serviceSuite = pkgs.buildGoModule {
     pname = "kaiba-provisioning-services";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
 
     subPackages = [
       "cmd/kaiba-provision-audit"
@@ -234,7 +236,7 @@ let
   stableCampaignPlanTool = pkgs.buildGoModule {
     pname = "kaiba-rpi5-stable-campaign-plan";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-rpi5-stable-campaign-plan" ];
     vendorHash = null;
     env.CGO_ENABLED = 0;
@@ -279,7 +281,7 @@ let
   stableCampaignMutationsTool = pkgs.buildGoModule {
     pname = "kaiba-rpi5-stable-campaign-mutations";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-rpi5-stable-campaign-mutations" ];
     vendorHash = null;
     env.CGO_ENABLED = 0;
@@ -290,7 +292,7 @@ let
   stableCampaignStagingPlanTool = pkgs.buildGoModule {
     pname = "kaiba-rpi5-stable-campaign-staging-plan";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-rpi5-stable-campaign-staging-plan" ];
     vendorHash = null;
     env.CGO_ENABLED = 0;
@@ -301,7 +303,7 @@ let
   stableCampaignRecoveryRequirementsTool = pkgs.buildGoModule {
     pname = "kaiba-rpi5-stable-campaign-recovery-requirements";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-rpi5-stable-campaign-recovery-requirements" ];
     vendorHash = null;
     env.CGO_ENABLED = 0;
@@ -336,7 +338,7 @@ let
   stableCampaignSandboxTool = pkgs.buildGoModule {
     pname = "kaiba-rpi5-stable-campaign-sandbox";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-rpi5-stable-campaign-sandbox" ];
     vendorHash = null;
     env.CGO_ENABLED = 0;
@@ -371,7 +373,7 @@ let
   stableCampaignStagingTool = pkgs.buildGoModule {
     pname = "kaiba-rpi5-stable-campaign-stage";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-rpi5-stable-campaign-stage" ];
     vendorHash = null;
     env.CGO_ENABLED = 0;
@@ -424,7 +426,7 @@ let
   stableCampaignStagingPlanCheck = pkgs.buildGoModule {
     pname = "kaiba-rpi5-stable-campaign-staging-plan-check";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-rpi5-stable-campaign-staging-plan-check" ];
     vendorHash = null;
     env.CGO_ENABLED = 0;
@@ -439,7 +441,7 @@ let
   stableCampaignPacketTool = pkgs.buildGoModule {
     pname = "kaiba-rpi5-stable-campaign-packet";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-rpi5-stable-campaign-packet" ];
     vendorHash = null;
     env.CGO_ENABLED = 0;
@@ -722,7 +724,7 @@ let
   signingApprovalTool = pkgs.buildGoModule {
     pname = "kaiba-provision-signing-approval";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-provision-signing-approval" ];
     vendorHash = null;
     # checks.unit runs the complete Go suite once for this source tree.
@@ -730,10 +732,10 @@ let
     postInstall = ''
       mkdir -p "$out/share/kaiba/schemas"
       install -m 0444 \
-        ${goSource}/schemas/rpi5-signing-approval-v1alpha1.schema.json \
+        ${runtimeGoSource}/schemas/rpi5-signing-approval-v1alpha1.schema.json \
         "$out/share/kaiba/schemas/rpi5-signing-approval-v1alpha1.schema.json"
       install -m 0444 \
-        ${goSource}/schemas/signing-grant-registry-v1alpha2.schema.json \
+        ${runtimeGoSource}/schemas/signing-grant-registry-v1alpha2.schema.json \
         "$out/share/kaiba/schemas/signing-grant-registry-v1alpha2.schema.json"
     '';
     passthru.kaibaSigningApproval = {
@@ -757,7 +759,7 @@ let
   signingReceiptsTool = pkgs.buildGoModule {
     pname = "kaiba-provision-signing-receipts";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-provision-signing-receipts" ];
     vendorHash = null;
     # checks.unit runs the complete Go suite once for this source tree.
@@ -765,13 +767,13 @@ let
     postInstall = ''
       mkdir -p "$out/share/kaiba/schemas"
       install -m 0444 \
-        ${goSource}/schemas/signing-gate-receipt-export-v1alpha2.schema.json \
+        ${runtimeGoSource}/schemas/signing-gate-receipt-export-v1alpha2.schema.json \
         "$out/share/kaiba/schemas/signing-gate-receipt-export-v1alpha2.schema.json"
       install -m 0444 \
-        ${goSource}/schemas/signing-gate-receipt-verification-v1alpha2.schema.json \
+        ${runtimeGoSource}/schemas/signing-gate-receipt-verification-v1alpha2.schema.json \
         "$out/share/kaiba/schemas/signing-gate-receipt-verification-v1alpha2.schema.json"
       install -m 0444 \
-        ${goSource}/schemas/signing-request-v1alpha2.schema.json \
+        ${runtimeGoSource}/schemas/signing-request-v1alpha2.schema.json \
         "$out/share/kaiba/schemas/signing-request-v1alpha2.schema.json"
     '';
     passthru.kaibaSigningReceipts = {
@@ -796,7 +798,7 @@ let
   laneOperator = pkgs.buildGoModule {
     pname = "kaiba-provision-lane-operator";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-provision-lane-operator" ];
     vendorHash = null;
     doCheck = false;
@@ -821,7 +823,7 @@ let
   laneWorkflow = pkgs.buildGoModule {
     pname = "kaiba-provision-lane-workflow";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-provision-lane-workflow" ];
     vendorHash = null;
     doCheck = false;
@@ -853,7 +855,7 @@ let
   signedBootTool = pkgs.buildGoModule {
     pname = "kaiba-provision-sign-boot";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-provision-sign-boot" ];
     vendorHash = null;
     doCheck = false;
@@ -882,7 +884,7 @@ let
   stableCampaignSigningTool = pkgs.buildGoModule {
     pname = "kaiba-rpi5-stable-campaign-signing";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-rpi5-stable-campaign-signing" ];
     vendorHash = null;
     doCheck = false;
@@ -908,7 +910,7 @@ let
   nativeOfflineSigningTool = pkgs.buildGoModule {
     pname = "kaiba-rpi5-native-offline-signing";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-rpi5-native-offline-signing" ];
     vendorHash = null;
     doCheck = false;
@@ -918,7 +920,7 @@ let
   stableVerifierSigningTool = pkgs.buildGoModule {
     pname = "kaiba-rpi5-stable-verifier-signing";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-rpi5-stable-verifier-signing" ];
     vendorHash = null;
     doCheck = false;
@@ -947,7 +949,7 @@ let
   rehearsal = pkgs.buildGoModule {
     pname = "kaiba-provision-rehearsal";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-provision-rehearsal" ];
     vendorHash = null;
     doCheck = false;
@@ -971,7 +973,7 @@ let
   integratedRehearsal = pkgs.buildGoModule {
     pname = "kaiba-provision-integrated-rehearsal";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-provision-integrated-rehearsal" ];
     vendorHash = null;
     doCheck = false;
@@ -996,7 +998,7 @@ let
   unfusedCompat = pkgs.buildGoModule {
     pname = "kaiba-provision-unfused-compat";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-provision-unfused-compat" ];
     vendorHash = null;
     doCheck = false;
@@ -1021,7 +1023,7 @@ let
   mediaContractTool = pkgs.buildGoModule {
     pname = "kaiba-provision-media-contract";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-provision-media-contract" ];
     vendorHash = null;
     doCheck = false;
@@ -1040,7 +1042,7 @@ let
   unfusedRuntimeRecordTool = pkgs.buildGoModule {
     pname = "kaiba-provision-unfused-runtime-record";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-provision-unfused-runtime-record" ];
     vendorHash = null;
     doCheck = false;
@@ -1065,7 +1067,7 @@ let
   mediaStager = pkgs.buildGoModule {
     pname = "kaiba-provision-media-stager";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-provision-media-stager" ];
     vendorHash = null;
     doCheck = false;
@@ -1090,7 +1092,7 @@ let
   fixtureSnapshot = pkgs.buildGoModule {
     pname = "kaiba-provision-fixture-snapshot";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-provision-fixture-snapshot" ];
     vendorHash = null;
     # checks.unit runs the complete Go suite once for this source tree.
@@ -1116,7 +1118,7 @@ let
   unfusedEvidence = pkgs.buildGoModule {
     pname = "kaiba-provision-unfused-evidence";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-provision-unfused-evidence" ];
     vendorHash = null;
     doCheck = false;
@@ -1157,7 +1159,7 @@ let
         }:
         pkgs.buildGoModule {
           inherit pname version;
-          src = goSource;
+          src = runtimeGoSource;
           subPackages = [ subPackage ];
           vendorHash = null;
           doCheck = false;
@@ -1239,7 +1241,7 @@ let
   fleetExport = pkgs.buildGoModule {
     pname = "kaiba-provision-export";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-provision-export" ];
     vendorHash = null;
     doCheck = false;
@@ -1351,7 +1353,7 @@ let
   eepromSigningTool = pkgs.buildGoModule {
     pname = "kaiba-provision-sign-eeprom";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-provision-sign-eeprom" ];
     vendorHash = null;
     doCheck = false;
@@ -1395,7 +1397,7 @@ let
   eepromReplayFinalizer = pkgs.buildGoModule {
     pname = "kaiba-provision-eeprom-replay-finalizer";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-provision-sign-eeprom" ];
     vendorHash = null;
     doCheck = false;
@@ -1427,7 +1429,7 @@ let
   signedReleaseTool = pkgs.buildGoModule {
     pname = "kaiba-provision-finalize-release";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-provision-finalize-release" ];
     vendorHash = null;
     # checks.unit runs the complete Go suite once for this source tree.
@@ -1468,7 +1470,7 @@ let
   rpibootBundleTool = pkgs.buildGoModule {
     pname = "kaiba-provision-rpiboot-bundles";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-provision-rpiboot-bundles" ];
     vendorHash = null;
     doCheck = false;
@@ -1539,7 +1541,7 @@ let
   inherit (signedReleaseFactories) mkRpi5VerifiedSignedRelease;
 
   productionMediaFactories = import ./media-staging.nix {
-    moduleRoot = goSource;
+    moduleRoot = runtimeGoSource;
     inherit
       lib
       mediaContractTool
@@ -1582,7 +1584,7 @@ let
 
   unfusedCapsuleFactories = import ./unfused-capsule.nix {
     inherit lib pkgs mkRpi5UnfusedVerifier;
-    unsignedArtifactSchema = goSource + "/schemas/unsigned-artifact-set-v1alpha1.schema.json";
+    unsignedArtifactSchema = runtimeGoSource + "/schemas/unsigned-artifact-set-v1alpha1.schema.json";
   };
   inherit (unfusedCapsuleFactories) mkRpi5VerifiedUnfusedCapsule;
 
@@ -1649,7 +1651,7 @@ let
     pkgs.buildGoModule {
       pname = name;
       inherit version;
-      src = goSource;
+      src = runtimeGoSource;
       subPackages = [ "cmd/kaiba-provision-lane-guard" ];
       vendorHash = null;
       doCheck = false;
@@ -2243,7 +2245,7 @@ let
         }:
         pkgs.buildGoModule {
           inherit pname version ldflags;
-          src = goSource;
+          src = runtimeGoSource;
           subPackages = [ subPackage ];
           vendorHash = null;
           doCheck = false;
@@ -2470,7 +2472,7 @@ let
   stationGraphGenerator = pkgs.buildGoModule {
     pname = "kaiba-provision-station-graph";
     inherit version;
-    src = goSource;
+    src = runtimeGoSource;
     subPackages = [ "cmd/kaiba-provision-station-graph" ];
     vendorHash = null;
     doCheck = false;
@@ -2487,10 +2489,10 @@ let
       ''
         set -eu
         mkdir -p "$out"
-        install -m 0444 ${goSource}/internal/provisioning/stationui/web/index.html "$out/index.html"
-        install -m 0444 ${goSource}/internal/provisioning/stationui/web/styles.css "$out/styles.css"
-        install -m 0444 ${goSource}/internal/provisioning/stationui/web/transport.js "$out/transport.js"
-        install -m 0444 ${goSource}/internal/provisioning/stationui/web/app.js "$out/app.js"
+        install -m 0444 ${runtimeGoSource}/internal/provisioning/stationui/web/index.html "$out/index.html"
+        install -m 0444 ${runtimeGoSource}/internal/provisioning/stationui/web/styles.css "$out/styles.css"
+        install -m 0444 ${runtimeGoSource}/internal/provisioning/stationui/web/transport.js "$out/transport.js"
+        install -m 0444 ${runtimeGoSource}/internal/provisioning/stationui/web/app.js "$out/app.js"
         printf '%s\n' \
           '{"schema_version":"provisioning.kaiba.network/station-demo-runtime/v1alpha1","mode":"transition-graph","graph_url":"./workflow-graph.json"}' \
           > "$out/runtime-config.json"
@@ -2515,47 +2517,47 @@ let
           "$out/share/kaiba/schemas"
         ln -s ${suite}/bin/kaiba-provision "$out/bin/kaiba-provision"
         ln -s ${rpiboot}/bin/rpiboot "$out/libexec/kaiba/rpiboot"
-        ln -s ${goSource}/profiles/device-classes/raspberry-pi-5-model-b-v1alpha1.json \
+        ln -s ${runtimeGoSource}/profiles/device-classes/raspberry-pi-5-model-b-v1alpha1.json \
           "$out/share/kaiba/device-profiles/raspberry-pi-5-model-b-v1alpha1.json"
-        ln -s ${goSource}/schemas/device-profile-v1alpha1.schema.json \
+        ln -s ${runtimeGoSource}/schemas/device-profile-v1alpha1.schema.json \
           "$out/share/kaiba/schemas/device-profile-v1alpha1.schema.json"
-        ln -s ${goSource}/schemas/rpi5-hardware-qualification-v1alpha1.schema.json \
+        ln -s ${runtimeGoSource}/schemas/rpi5-hardware-qualification-v1alpha1.schema.json \
           "$out/share/kaiba/schemas/rpi5-hardware-qualification-v1alpha1.schema.json"
-        ln -s ${goSource}/schemas/rpi5-device-media-layout-v1alpha1.schema.json \
+        ln -s ${runtimeGoSource}/schemas/rpi5-device-media-layout-v1alpha1.schema.json \
           "$out/share/kaiba/schemas/rpi5-device-media-layout-v1alpha1.schema.json"
-        ln -s ${goSource}/schemas/rpi5-media-binding-v1alpha1.schema.json \
+        ln -s ${runtimeGoSource}/schemas/rpi5-media-binding-v1alpha1.schema.json \
           "$out/share/kaiba/schemas/rpi5-media-binding-v1alpha1.schema.json"
-        ln -s ${goSource}/schemas/rpi5-media-cold-power-observation-v1alpha1.schema.json \
+        ln -s ${runtimeGoSource}/schemas/rpi5-media-cold-power-observation-v1alpha1.schema.json \
           "$out/share/kaiba/schemas/rpi5-media-cold-power-observation-v1alpha1.schema.json"
-        ln -s ${goSource}/schemas/rpi5-media-cold-power-observation-v1alpha2.schema.json \
+        ln -s ${runtimeGoSource}/schemas/rpi5-media-cold-power-observation-v1alpha2.schema.json \
           "$out/share/kaiba/schemas/rpi5-media-cold-power-observation-v1alpha2.schema.json"
-        ln -s ${goSource}/schemas/rpi5-media-device-preflight-v1alpha1.schema.json \
+        ln -s ${runtimeGoSource}/schemas/rpi5-media-device-preflight-v1alpha1.schema.json \
           "$out/share/kaiba/schemas/rpi5-media-device-preflight-v1alpha1.schema.json"
-        ln -s ${goSource}/schemas/rpi5-media-device-preflight-v1alpha2.schema.json \
+        ln -s ${runtimeGoSource}/schemas/rpi5-media-device-preflight-v1alpha2.schema.json \
           "$out/share/kaiba/schemas/rpi5-media-device-preflight-v1alpha2.schema.json"
-        ln -s ${goSource}/schemas/rpi5-media-device-preflight-v1alpha3.schema.json \
+        ln -s ${runtimeGoSource}/schemas/rpi5-media-device-preflight-v1alpha3.schema.json \
           "$out/share/kaiba/schemas/rpi5-media-device-preflight-v1alpha3.schema.json"
-        ln -s ${goSource}/schemas/rpi5-media-fixture-result-v1alpha1.schema.json \
+        ln -s ${runtimeGoSource}/schemas/rpi5-media-fixture-result-v1alpha1.schema.json \
           "$out/share/kaiba/schemas/rpi5-media-fixture-result-v1alpha1.schema.json"
-        ln -s ${goSource}/schemas/rpi5-media-stage-receipt-v1alpha1.schema.json \
+        ln -s ${runtimeGoSource}/schemas/rpi5-media-stage-receipt-v1alpha1.schema.json \
           "$out/share/kaiba/schemas/rpi5-media-stage-receipt-v1alpha1.schema.json"
-        ln -s ${goSource}/schemas/rpi5-media-stage-receipt-v1alpha2.schema.json \
+        ln -s ${runtimeGoSource}/schemas/rpi5-media-stage-receipt-v1alpha2.schema.json \
           "$out/share/kaiba/schemas/rpi5-media-stage-receipt-v1alpha2.schema.json"
-        ln -s ${goSource}/schemas/rpi5-media-staging-plan-v1alpha1.schema.json \
+        ln -s ${runtimeGoSource}/schemas/rpi5-media-staging-plan-v1alpha1.schema.json \
           "$out/share/kaiba/schemas/rpi5-media-staging-plan-v1alpha1.schema.json"
-        ln -s ${goSource}/schemas/rpi5-media-staging-plan-v1alpha2.schema.json \
+        ln -s ${runtimeGoSource}/schemas/rpi5-media-staging-plan-v1alpha2.schema.json \
           "$out/share/kaiba/schemas/rpi5-media-staging-plan-v1alpha2.schema.json"
-        ln -s ${goSource}/schemas/rpi5-media-staging-receipt-v1alpha1.schema.json \
+        ln -s ${runtimeGoSource}/schemas/rpi5-media-staging-receipt-v1alpha1.schema.json \
           "$out/share/kaiba/schemas/rpi5-media-staging-receipt-v1alpha1.schema.json"
-        ln -s ${goSource}/schemas/rpi5-media-staging-receipt-v1alpha2.schema.json \
+        ln -s ${runtimeGoSource}/schemas/rpi5-media-staging-receipt-v1alpha2.schema.json \
           "$out/share/kaiba/schemas/rpi5-media-staging-receipt-v1alpha2.schema.json"
-        ln -s ${goSource}/schemas/rpi5-media-verification-receipt-v1alpha1.schema.json \
+        ln -s ${runtimeGoSource}/schemas/rpi5-media-verification-receipt-v1alpha1.schema.json \
           "$out/share/kaiba/schemas/rpi5-media-verification-receipt-v1alpha1.schema.json"
-        ln -s ${goSource}/schemas/rpi5-media-verification-receipt-v1alpha2.schema.json \
+        ln -s ${runtimeGoSource}/schemas/rpi5-media-verification-receipt-v1alpha2.schema.json \
           "$out/share/kaiba/schemas/rpi5-media-verification-receipt-v1alpha2.schema.json"
-        ln -s ${goSource}/schemas/rpi5-media-verification-report-v1alpha1.schema.json \
+        ln -s ${runtimeGoSource}/schemas/rpi5-media-verification-report-v1alpha1.schema.json \
           "$out/share/kaiba/schemas/rpi5-media-verification-report-v1alpha1.schema.json"
-        ln -s ${goSource}/schemas/rpi5-unfused-runtime-facts-v1alpha1.schema.json \
+        ln -s ${runtimeGoSource}/schemas/rpi5-unfused-runtime-facts-v1alpha1.schema.json \
           "$out/share/kaiba/schemas/rpi5-unfused-runtime-facts-v1alpha1.schema.json"
         ln -s ${rpi5ProbeBundle}/bundle "$out/share/kaiba/rpi5-probe-bundle"
         ln -s ${rpi5ProbeBundle}/manifest.json "$out/share/kaiba/rpi5-probe-bundle-manifest.json"
@@ -2596,6 +2598,8 @@ in
     authorityBridge
     control
     goSource
+    runtimeGoSource
+    campaignStagingVMSource
     integratedRehearsal
     laneGuard
     laneOperator

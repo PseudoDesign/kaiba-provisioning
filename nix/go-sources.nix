@@ -35,21 +35,42 @@ let
     "internal/provisioning/rpi5kexecinput"
     "internal/provisioning/stableverifier"
   ];
+  applicationFiles = lib.fileset.unions (
+    map (path: root + "/${path}") [
+      "cmd"
+      "config/rpi5-prototype-release/platform-adapter-v1alpha1.json"
+      "go.mod"
+      "internal"
+      "policies/raspberry-pi-5-development-posture-v1alpha1.json"
+      "profiles/device-classes/raspberry-pi-5-model-b-v1alpha1.json"
+      "schemas"
+      "signers/development-prototype/independent-review-2026-08-27.json"
+    ]
+  );
 in
 {
-  application = source (
-    lib.fileset.unions (
-      map (path: root + "/${path}") [
-        "cmd"
-        "config/rpi5-prototype-release/platform-adapter-v1alpha1.json"
-        "go.mod"
-        "internal"
-        "policies/raspberry-pi-5-development-posture-v1alpha1.json"
-        "profiles/device-classes/raspberry-pi-5-model-b-v1alpha1.json"
-        "schemas"
-        "signers/development-prototype/independent-review-2026-08-27.json"
-      ]
+  application = source applicationFiles;
+  applicationRuntime = source (
+    lib.fileset.difference applicationFiles (
+      lib.fileset.fileFilter (file: lib.hasSuffix "_test.go" file.name) root
     )
+  );
+  campaignStagingVM = source (
+    lib.fileset.unions [
+      (root + "/go.mod")
+      (root + "/internal/provisioning/campaignstaging")
+      (runtimeFiles (
+        verifierLibraries
+        ++ [
+          "internal/provisioning/verifierevents"
+          "internal/provisioning/stablecampaign"
+          "internal/provisioning/campaignmedia"
+          "internal/provisioning/mediacontract"
+          "internal/provisioning/mediainventory"
+          "internal/provisioning/mediadevice"
+        ]
+      ))
+    ]
   );
   deviceEnrollment = runtimeSource [
     "cmd/kaiba-device-enrollment"

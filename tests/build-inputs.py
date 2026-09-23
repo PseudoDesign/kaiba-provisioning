@@ -22,19 +22,29 @@ PACKAGES = {
     "authority": "kaiba-rpi5-verifier-test-authority",
     "proof": "kaiba-rpi5-one-boot-prove",
 }
+GENERAL_PACKAGES = {
+    "control": "kaiba-provision-control",
+    "station": "kaiba-provision-station",
+    "gate": "kaiba-provision-signing-gate-foundation",
+    "campaign-plan": "kaiba-rpi5-stable-campaign-plan",
+    "boot-signing": "kaiba-provision-sign-boot",
+}
 SYSTEMS = {"x86": "x86_64-linux", "arm": "aarch64-linux"}
 VMS = {"x86-vm", "arm-verifier-vm", "arm-handoff-vm"}
 VERIFIER_IMAGES = {"legacy-verifier-image", "file-verifier-image"}
-RUNTIME = {f"{arch}-{name}" for arch in SYSTEMS for name in PACKAGES} | VMS | VERIFIER_IMAGES
+GENERAL = {f"{arch}-{name}" for arch in SYSTEMS for name in GENERAL_PACKAGES}
+STAGING_VM = {"staging-vm"}
+RUNTIME = {f"{arch}-{name}" for arch in SYSTEMS for name in PACKAGES} | VMS | VERIFIER_IMAGES | GENERAL | STAGING_VM
 
 
 def identities(source):
     attributes = [
         f'"{arch}-{name}" = flake.packages.{system}.{package}.drvPath;'
         for arch, system in SYSTEMS.items()
-        for name, package in PACKAGES.items()
+        for name, package in (PACKAGES | GENERAL_PACKAGES).items()
     ]
     attributes += [
+        '"staging-vm" = flake.checks.x86_64-linux.stable-campaign-staging-vm.drvPath;',
         '"x86-vm" = flake.checks.x86_64-linux.stable-verifier-initramfs-vm.drvPath;',
         '"arm-verifier-vm" = flake.checks.aarch64-linux.stable-verifier-aarch64-kexec-vm.drvPath;',
         '"arm-handoff-vm" = flake.checks.aarch64-linux.stable-handoff-aarch64-kexec-file-vm.drvPath;',
@@ -112,7 +122,7 @@ def main():
                 ("internal/provisioning/stationui/web/styles.css", "\n/* identity probe */\n"),
                 ("cmd/kaiba-provision-control/main.go", "\n// identity probe\n"),
             ],
-            set(), True,
+            GENERAL, True,
         )
         check(
             "test-only",
@@ -120,19 +130,39 @@ def main():
             set(), True,
         )
         check(
+            "signer-test-only",
+            [("internal/provisioning/yubikeysigner/signer_test.go", "\n// identity probe\n")],
+            set(), True,
+        )
+        check(
+            "staging-vm-tests",
+            [("internal/provisioning/campaignstaging/vm_integration_linux_test.go", "\n// identity probe\n")],
+            STAGING_VM, True,
+        )
+        check(
+            "embedded-ui-asset",
+            [("internal/provisioning/livestation/web/app.js", "\n// identity probe\n")],
+            GENERAL, True,
+        )
+        check(
+            "module-definition",
+            [("go.mod", "\n// identity probe\n")],
+            RUNTIME, True,
+        )
+        check(
             "runtime-entry-points",
             [(f"cmd/{package}/main.go", "\n// identity probe\n") for package in PACKAGES.values()],
-            RUNTIME - {"arm-handoff-vm"}, True,
+            RUNTIME - {"arm-handoff-vm"} - STAGING_VM, True,
         )
         check(
             "handoff-implementation",
             [("internal/provisioning/stablehandoff/archive.go", "\n// identity probe\n")],
-            {"x86-verifier", "arm-verifier"} | VMS | VERIFIER_IMAGES, True,
+            {"x86-verifier", "arm-verifier"} | VMS | VERIFIER_IMAGES | GENERAL, True,
         )
         check(
             "transitive-verifier-library",
             [("internal/provisioning/bundle/digest.go", "\n// identity probe\n")],
-            {"x86-verifier", "arm-verifier", "x86-inspector", "arm-inspector", "x86-vm", "arm-verifier-vm"} | VERIFIER_IMAGES,
+            {"x86-verifier", "arm-verifier", "x86-inspector", "arm-inspector", "x86-vm", "arm-verifier-vm"} | VERIFIER_IMAGES | GENERAL | STAGING_VM,
             True,
         )
         check(
