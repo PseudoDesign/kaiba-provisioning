@@ -6,6 +6,7 @@
     <meta name="color-scheme" content="dark">
     <title>Kaiba Live Provisioning Station</title>
     <link rel="stylesheet" href="/styles.css">
+    <script src="/campaign.js" defer></script>
     <script src="/app.js" defer></script>
   </head>
   <body>
@@ -20,7 +21,21 @@
       </div>
     </header>
 
-    <main>
+    <main id="station-main">
+      <section id="campaign-screen" class="campaign-screen" hidden aria-labelledby="campaign-title">
+        <p id="campaign-device" class="campaign-device"></p>
+        <p id="campaign-progress" class="eyebrow"></p>
+        <h2 id="campaign-title">Connecting to the station</h2>
+        <p id="campaign-instruction" class="instruction"></p>
+        <div class="campaign-result"><span class="eyebrow">Recorded result</span><p id="campaign-output"></p></div>
+        <div id="campaign-input" class="campaign-input"></div>
+        <div id="campaign-actions" class="campaign-actions"></div>
+        <p id="campaign-connection" class="connection" role="status" aria-live="polite"></p>
+        <div class="campaign-tools">
+          <button id="campaign-refresh" class="secondary" type="button">Refresh</button>
+          <button id="campaign-export" class="secondary" type="button">Export report and diagnostics</button>
+        </div>
+      </section>
       <section class="safety-banner" aria-labelledby="safety-title">
         <div>
           <p id="safety-label" class="eyebrow">Development security boundary</p>
@@ -108,11 +123,10 @@
       </section>
     </main>
 
-    <footer>
+    <footer id="station-footer">
       <span>Secret-free interface</span>
       <span>Enrollment disabled</span>
       <span id="revision">Revision —</span>
     </footer>
   </body>
 </html>
-

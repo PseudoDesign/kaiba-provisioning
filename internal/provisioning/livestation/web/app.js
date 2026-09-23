@@ -13,6 +13,7 @@
 })(typeof globalThis === "undefined" ? this : globalThis, function () {
   "use strict";
 
+  const guided = typeof module === "object" && module.exports ? require("./campaign.js") : globalThis.KaibaGuidedCampaign;
   const RUNTIME_SCHEMA = "provisioning.kaiba.network/station-live-runtime/v1alpha1";
   const LIVE_STATE_SCHEMA = "provisioning.kaiba.network/station-live-state/v1alpha1";
   const OBSERVATION_RUNTIME_SCHEMA = "provisioning.kaiba.network/station-observation-runtime/v1alpha1";
@@ -80,6 +81,7 @@
 
   function validateRuntimeConfig(value, browserOrigin) {
     const config = object(value, "runtime config");
+    if (config.schema_version === guided.RUNTIME) return guided.validateRuntime(config, browserOrigin);
     if (config.schema_version === OBSERVATION_RUNTIME_SCHEMA) return validateObservationRuntime(config, browserOrigin);
     exactKeys(config, [
       "schema_version", "state_schema_version", "expected_origin", "state_endpoint",
@@ -636,6 +638,7 @@
       method: "GET", credentials: "same-origin", redirect: "error", cache: "no-store", referrerPolicy: "no-referrer"
     });
     const runtime = validateRuntimeConfig(await readJSON(runtimeResponse, "Runtime config"), windowObject.location.origin);
+    if (runtime.schema_version === guided.RUNTIME) return guided.start(windowObject, runtime);
     const observer = runtime.schema_version === OBSERVATION_RUNTIME_SCHEMA;
     let lastState = null;
     let pending = null;

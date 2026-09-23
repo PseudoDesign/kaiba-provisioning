@@ -43,13 +43,14 @@ first-fleet applicability is determined by the admission policy.
 | [Fleet evidence exporter](fleet-export.md) | Authenticated development records, scoped authority reads and immutable export revisions |
 | [Device enrollment client](device-enrollment-client.md) | Development management-key persistence, bound proofs and restart recovery; device execution and production admission remain pending |
 | [Protected enrollment storage](enrollment-storage-development.md) | Bounded encrypted credential filesystem and mount guard; synthetic restart tests, physical execution pending |
+| [Guided station campaigns](guided-station-campaign.md) | Touchscreen inputs/results, authenticated fixed-packet execution and durable recovery; software demonstration implemented, Pi campaign integration pending |
 | [Contracts reference](contracts-reference.md) | JSON contracts, Go interfaces, Nix constructors, and modules |
 | [Hardware qualification](raspberry-pi-5-provisioning-probe.md) | Read-only observations and their limitations |
 | [Signed-boot workflow](raspberry-pi-5-signed-boot-workflow.md) | Full-release signing, verification, and publication |
 | [Development signing ceremony](ubuntu-rpi5-development-signing-ceremony.md) | Five-input full-release integration reference and outstanding composition requirements |
 | [Target-media staging](target-media-staging-prototype.md) | Exact-media plans, writer, and independent verification |
 | [Live provisioning](raspberry-pi-5-live-provisioning.md) | Required seven-operation fresh-device sequence, approvals, and reconciliation |
-| [Station interface](provisioning-station-kiosk.md) | Simulation and authenticated read-only transaction view; hardware actions and enrollment remain unavailable |
+| [Station interface](provisioning-station-kiosk.md) | Simulation, authenticated read-only transaction view and separate guided development campaign mode |
 | [Development target access](raspberry-pi-5-development-target-access.md) | Optional root-equivalent development access; excluded from fleet images |
 | [EEPROM crypto-lock update](rpi5-eeprom-crypto-update.md) | September firmware pin, public signing/recovery inputs and pending physical update |
 | [Device-secret feasibility](device-secret-feasibility.md) | Observed development HMAC/LUKS and lock path; final qualification, permitted-image boundary and copied-media test pending |

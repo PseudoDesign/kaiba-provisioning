@@ -14,16 +14,22 @@ import (
 	"syscall"
 
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/authorityhttp"
+	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/guidedcampaign"
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/livestation"
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/mtls"
 )
 
 type stationConfig struct {
-	listen      string
-	observation livestation.ObservationConfig
-	controlURL  string
-	tlsFiles    mtls.ClientFiles
-	observe     bool
+	listen         string
+	observation    livestation.ObservationConfig
+	controlURL     string
+	tlsFiles       mtls.ClientFiles
+	observe        bool
+	campaign       bool
+	campaignURL    string
+	campaignID     string
+	campaignDigest string
+	campaignCA     string
 }
 
 type identifiedControlReader interface {
@@ -36,8 +42,12 @@ var (
 	buildControlReader = func(origin string, files mtls.ClientFiles) (identifiedControlReader, error) {
 		return authorityhttp.NewControlReader(origin, files)
 	}
-	serveObservation = livestation.ListenAndServeObserver
-	serveFoundation  = livestation.ListenAndServe
+	serveObservation    = livestation.ListenAndServeObserver
+	serveFoundation     = livestation.ListenAndServe
+	buildCampaignClient = func(origin, id, digest, station, lane string, files mtls.ClientFiles) (guidedcampaign.Source, error) {
+		return guidedcampaign.NewClient(origin, id, digest, station, lane, files)
+	}
+	serveCampaign = livestation.ListenAndServeCampaign
 )
 
 func main() {
@@ -63,6 +73,10 @@ func parseConfig(arguments []string, output io.Writer) (stationConfig, error) {
 	flags.StringVar(&config.tlsFiles.Certificate, "tls-cert", "", "runtime station client certificate PEM path")
 	flags.StringVar(&config.tlsFiles.PrivateKey, "tls-key", "", "runtime station client private-key PEM path")
 	flags.StringVar(&config.tlsFiles.ServerCA, "control-server-ca", "", "exclusive control-service CA PEM path")
+	flags.StringVar(&config.campaignURL, "campaign-url", "", "authenticated campaign authority HTTPS origin")
+	flags.StringVar(&config.campaignID, "campaign-id", "", "fixed campaign ID")
+	flags.StringVar(&config.campaignDigest, "campaign-plan-digest", "", "exact reviewed plan SHA-256 binding")
+	flags.StringVar(&config.campaignCA, "campaign-server-ca", "", "exclusive campaign server CA")
 	enableMutations := flags.Bool("enable-mutations", false, "enable an explicitly installed hardware orchestration backend")
 	if err := flags.Parse(arguments); err != nil {
 		return stationConfig{}, err
@@ -78,10 +92,38 @@ func parseConfig(arguments []string, output io.Writer) (stationConfig, error) {
 	}
 	flags.Visit(func(option *flag.Flag) {
 		switch option.Name {
+		case "campaign-url", "campaign-id", "campaign-plan-digest", "campaign-server-ca":
+			config.campaign = true
 		case "transaction-id", "control-url", "tls-cert", "tls-key", "control-server-ca":
 			config.observe = true
 		}
 	})
+	if config.campaign {
+		mixed := false
+		flags.Visit(func(f *flag.Flag) {
+			if f.Name == "transaction-id" || f.Name == "control-url" || f.Name == "control-server-ca" {
+				mixed = true
+			}
+		})
+		if mixed {
+			return stationConfig{}, errors.New("campaign and observer configuration cannot be combined")
+		}
+		if config.campaignURL == "" || !stationIdentifier.MatchString(config.campaignID) || !regexp.MustCompile(`^sha256:[0-9a-f]{64}$`).MatchString(config.campaignDigest) || config.campaignCA == "" || config.tlsFiles.Certificate == "" || config.tlsFiles.PrivateKey == "" {
+			return stationConfig{}, errors.New("complete campaign configuration and station mTLS credentials are required")
+		}
+		for _, id := range []string{config.observation.StationID, config.observation.LaneID} {
+			if !stationIdentifier.MatchString(id) {
+				return stationConfig{}, errors.New("invalid station/lane identity")
+			}
+		}
+		for _, p := range []string{config.campaignCA, config.tlsFiles.Certificate, config.tlsFiles.PrivateKey} {
+			if !filepath.IsAbs(p) || filepath.Clean(p) != p || strings.ContainsRune(p, '\x00') || p == "/nix/store" || strings.HasPrefix(p, "/nix/store/") {
+				return stationConfig{}, errors.New("campaign credentials must use clean runtime paths outside the Nix store")
+			}
+		}
+		config.observe = false
+		return config, nil
+	}
 	if !config.observe {
 		return config, nil
 	}
@@ -117,6 +159,15 @@ func run(ctx context.Context, arguments []string) error {
 	config, err := parseConfig(arguments, os.Stderr)
 	if err != nil {
 		return err
+	}
+	if config.campaign {
+		files := config.tlsFiles
+		files.ServerCA = config.campaignCA
+		client, err := buildCampaignClient(config.campaignURL, config.campaignID, config.campaignDigest, config.observation.StationID, config.observation.LaneID, files)
+		if err != nil {
+			return fmt.Errorf("configure authenticated campaign authority: %w", err)
+		}
+		return serveCampaign(ctx, config.listen, client)
 	}
 	if config.observe {
 		reader, err := buildControlReader(config.controlURL, config.tlsFiles)

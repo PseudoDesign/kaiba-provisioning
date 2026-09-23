@@ -50,6 +50,8 @@ func (handler *HTTPHandler) ServeHTTP(response http.ResponseWriter, request *htt
 		handler.serveAsset(response, request, "index.html", "text/html; charset=utf-8")
 	case "/app.js":
 		handler.serveAsset(response, request, "app.js", "text/javascript; charset=utf-8")
+	case "/campaign.js":
+		handler.serveAsset(response, request, "campaign.js", "text/javascript; charset=utf-8")
 	case "/styles.css":
 		handler.serveAsset(response, request, "styles.css", "text/css; charset=utf-8")
 	case "/runtime-config.json":

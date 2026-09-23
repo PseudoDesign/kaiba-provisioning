@@ -38,6 +38,8 @@ func (handler *ObservationHandler) ServeHTTP(response http.ResponseWriter, reque
 		serveAsset(response, request, "index.html", "text/html; charset=utf-8")
 	case "/app.js":
 		serveAsset(response, request, "app.js", "text/javascript; charset=utf-8")
+	case "/campaign.js":
+		serveAsset(response, request, "campaign.js", "text/javascript; charset=utf-8")
 	case "/styles.css":
 		serveAsset(response, request, "styles.css", "text/css; charset=utf-8")
 	case "/runtime-config.json":

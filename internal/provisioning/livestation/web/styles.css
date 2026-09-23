@@ -292,3 +292,17 @@ footer {
 .record-details .facts { margin-top: 12px; }
 .record-details { margin-top: 14px; }
 .record-details .facts { grid-template-columns: minmax(110px, 0.6fr) 1fr; }
+
+.campaign-screen { width: min(820px, 100%); margin: 0 auto; padding: 28px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+.campaign-screen h2 { font-size: clamp(1.6rem, 4vw, 2.5rem); margin-bottom: 12px; }
+.campaign-device { color: var(--muted); font-size: 1rem; }
+.campaign-screen .instruction { font-size: 1.25rem; min-height: 3.5em; }
+.campaign-result { border-left: 4px solid var(--cyan); padding: 12px 18px; margin: 24px 0; background: var(--panel-raised); }
+.campaign-result p { margin: 8px 0 0; line-height: 1.6; }
+.campaign-input { display: grid; gap: 12px; margin: 24px 0; }
+.campaign-input select { min-height: 60px; padding: 12px; font: inherit; background: var(--panel-raised); color: var(--text); border: 1px solid var(--line); border-radius: 8px; width: 100%; }
+.campaign-actions { display: grid; gap: 16px; margin: 24px 0; }
+.campaign-screen button { min-height: 60px; font-size: 1.1rem; touch-action: manipulation; }
+.campaign-tools { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 24px; }
+.campaign-tools button { font-size: 0.95rem; }
+@media (max-width: 480px) { .campaign-screen { padding: 18px; } .campaign-tools { display: grid; } }

@@ -98,9 +98,12 @@ The isolated rehearsal covers this sequence:
    against INT-DB-01–04. Use disposable PKI and synthetic production candidates
    in an isolated test domain; real development records must fail production
    admission.
-5. Return authoritative status for subsequent station integration. Keep
-   enrollment actions out of the current observer until an authenticated action
-   interface and its authorization model are implemented and reviewed.
+5. Return authoritative status for station integration. The observer stays
+   read-only. The separate [guided campaign](guided-station-campaign.md) supplies
+   authenticated fixed-packet actions and durable recovery; real-device wrappers
+   and isolated development fleet eligibility remain to be integrated and
+   reviewed before it performs enrollment. The fleet authority continues to own
+   eligibility, identity assignment and activation.
 
 Candidate evidence may precede identity activation. Final completion evidence
 follows required identity and audit outcomes; do not make completion evidence a

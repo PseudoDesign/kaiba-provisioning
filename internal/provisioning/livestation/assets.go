@@ -4,7 +4,7 @@ import "embed"
 
 const RuntimeConfigSchemaVersion = "provisioning.kaiba.network/station-live-runtime/v1alpha1"
 
-//go:embed web/index.html web/app.js web/styles.css
+//go:embed web/index.html web/app.js web/campaign.js web/styles.css
 var liveAssets embed.FS
 
 type runtimeConfig struct {
