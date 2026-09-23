@@ -614,6 +614,7 @@
           kaiba-provision-control = built.control;
           kaiba-provision-export = built.fleetExport;
           kaiba-pilot-export = built.pilotExport;
+          kaiba-pilot-device = built.pilotDevice;
           kaiba-device-enrollment = built.deviceEnrollment;
           kaiba-enrollment-storage =
             (import ./nix/enrollment-storage.nix { pkgs = import nixpkgs { inherit system; }; }).helper;

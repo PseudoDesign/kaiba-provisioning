@@ -1238,6 +1238,17 @@ let
     meta.mainProgram = "kaiba-device-enrollment";
   };
 
+  pilotDevice = pkgs.buildGoModule {
+    pname = "kaiba-pilot-device";
+    inherit version;
+    src = scopedSource "pilotDevice";
+    subPackages = [ "cmd/kaiba-pilot-device" ];
+    vendorHash = null;
+    env.CGO_ENABLED = 0;
+    doCheck = false;
+    meta.mainProgram = "kaiba-pilot-device";
+  };
+
   pilotExport = pkgs.buildGoModule {
     pname = "kaiba-pilot-export";
     inherit version;
@@ -2670,6 +2681,7 @@ in
     serviceSuite
     fleetExport
     pilotExport
+    pilotDevice
     deviceEnrollment
     signerFoundation
     signingClientFoundation
