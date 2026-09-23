@@ -154,7 +154,9 @@ func newFixture(t *testing.T, runner Runner) fixture {
 			PublicKeyPEMPath:             publicKeyPath,
 			ExpectedPublicKeyFingerprint: bundle.Sum(der),
 			TrustedOwnerUID:              uint32(os.Geteuid()), RuntimeOwnerUID: uint32(os.Geteuid()),
-			OperationTimeout: time.Second, Runner: runner,
+			// Functional tests use the normal operation budget; timeout tests
+			// override it explicitly instead of racing CI scheduling here.
+			OperationTimeout: DefaultOperationTimeout, Runner: runner,
 		},
 		privateKey: privateKey, inputPath: inputPath, pinPath: pinPath,
 		configPath: configPath, openssl: opensslPath, artifact: artifact,
