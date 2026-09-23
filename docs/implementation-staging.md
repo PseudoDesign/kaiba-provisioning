@@ -125,8 +125,9 @@ the existing ownership procedure.
 
 The [Ace adoption plan](ace-adoption-plan.md) specializes these milestones for
 the selected first production target. It keeps the existing OTP storage secret
-as a proposed adoption input, uses the development Pi as the station, and
-bootstraps the authority on malak before transferring fleet services to Ace.
+as a proposed adoption input, uses malak for CLI provisioning and authority
+bootstrap, then transfers fleet services to Ace. Touchscreen/GUI provisioning
+and a development-Pi station are deferred until after this first-device work.
 Its profile, contract and deployment slices can proceed against fixtures while
 hardware qualification is pending; admission conditions are not relaxed.
 
@@ -138,7 +139,7 @@ start now; service selection gates the live enrollment interface.
 | --- | --- | --- |
 | Protected persistent state | The original device cold boots offline and reopens a private test record; copied storage on a functioning comparable board cannot decrypt it or use the original identity. | Slice B must establish the device-secret mechanism and required protections. Qualify the complete encrypted-state and credential path, not just a decryption failure on the second board. |
 | Fleet enrollment | Pending membership, fresh device-key proof, installed-key proof after restart, atomic activation, and retry/revocation behavior work against the selected service. | Confirm the fleet backing service and identity interface before live enrollment implementation; the contract producer adapter can proceed now. This choice does not block slice A or B. Real activation still requires every admission condition. |
-| Integrated admission | One eligible device completes the required hardware procedure and enrollment through the UI, including offline operation and interrupted-transaction recovery. | Approve the exact fleet profile and qualify final protections, recovery and applicable negative tests; retain all required evidence. The development-key-owned Pi is not eligible for a profile requiring a different customer root. |
+| Integrated admission | Ace completes the required hardware procedure and enrollment through malak's reviewed CLI path, including offline operation, interrupted-transaction recovery and a retained report. GUI delivery follows later. | Approve the exact fleet profile and qualify final protections, recovery and applicable negative tests; retain all required evidence. The development-key-owned Pi is not eligible for a profile requiring a different customer root. |
 
 Resolve these remaining decisions at their specific boundaries:
 

@@ -16,10 +16,16 @@ physical qualification has passed.
 | Enroll known-good devices in a fleet | An authenticated device identity is durably bound to its verified provisioning result and fleet membership. Failed or uncertain devices are not admitted. Membership can be retrieved after restart and enrollment retries cannot create conflicting identities. | Provisioning transactions persist, but fleet enrollment is not implemented. `security_applied` is not fleet membership. |
 | Guide the operator through a simple UI | The UI identifies the device, shows the current step and outcome, requests the next necessary human action, and confirms actual fleet enrollment. Backend services perform the handshakes and retain progress. | A simulation and a live-interface foundation exist; the live backend is disabled. |
 
+For the first Ace admission, the selected interface is a reviewed CLI procedure
+on malak. Touchscreen/GUI provisioning and a development-Pi station are deferred
+until later. The first milestone delivers the hardware-security and enrollment
+outcomes with retained diagnostics; the UI outcome remains a later deliverable,
+not a prerequisite or a condition claimed complete by CLI execution.
+
 The operator flow is: connect and identify the device, apply and verify its
 approved security configuration, enroll it, then show its fleet status.
 Physical instructions and meaningful approvals belong in that flow. Normal
-operation must not require copying digests, moving JSON between tools, or
+GUI operation must not require copying digests, moving JSON between tools, or
 running ceremony helper commands; backend components own those exchanges.
 Detailed evidence remains available for diagnosis.
 
@@ -57,17 +63,18 @@ admission; the draft does not itself change the approved hardware policy.
 
 The selected first production target is **Ace**, following the
 [existing-device adoption and bootstrap plan](ace-adoption-plan.md). The
-development Pi becomes the station, with initial authorities on malak and fleet
-services transferred to Ace after admission. Existing storage-secret reuse is
+provisioning station and initial authorities run on malak, with fleet services
+transferred to Ace after admission. Existing storage-secret reuse is
 a bounded review proposal, not evidence of completed protection or enrollment.
 The exact production profile, station deployment and operation authorities remain
 to be established; the three delivery outcomes and FA-01–FA-08 are unchanged.
 
-Deliver one real device through all three outcomes using the current
-components. The remaining work is to finish the existing physical path,
-implement the minimum fleet enrollment handoff, and connect the live UI.
-Confirm the fleet's backing service and device-identity interface before
-implementing enrollment; the current transaction store is not already a fleet.
+Deliver Ace through hardware qualification and enrollment using malak's CLI
+path. Finish the physical path, adoption record, production enrollment handoff
+and durable report; connect a GUI in a later milestone. The fleet repository
+owns enrollment/inventory, with PostgreSQL and a separate issuer interface in
+the rehearsal. Production issuer/trust configuration and contract adoption
+remain gates; the provisioning transaction store is not already a fleet.
 
 Follow the [implementation staging plan](implementation-staging.md) for the
 first two parallel slices: real station status with restart recovery, and

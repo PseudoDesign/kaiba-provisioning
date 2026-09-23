@@ -11,8 +11,8 @@ archived proposals do not add requirements to the first fleet.
 | [Delivery scope](delivery-scope.md) | The three outcomes: apply hardware security, enroll devices, and guide the operator through a simple live UI |
 | [Fleet admission policy](fleet-admission-policy.md) | Eight acceptance conditions, implementation/evidence mapping, and the selected offline and copied-storage requirements; remaining profile settings are proposed |
 | [Implementation staging](implementation-staging.md) | Parallel first slices for real station status and native offline boot/storage feasibility, with later admission gates |
-| [Ace adoption and first fleet bootstrap](ace-adoption-plan.md) | Selected first production target, proposed existing-secret reuse, development Pi station, external bootstrap and gated service transfer; production profile remains draft |
-| [Enrollment implementation handoff](enrollment-handoff.md) | Pinned shared contracts, first producer adapter PR, consumer decisions and isolated enrollment rehearsal |
+| [Ace adoption and first fleet bootstrap](ace-adoption-plan.md) | Selected first production target, proposed existing-secret reuse, malak CLI provisioning/bootstrap and gated service transfer; GUI deferred and production profile draft |
+| [Enrollment implementation handoff](enrollment-handoff.md) | Pinned shared contracts, implemented producer/consumer rehearsal and remaining production integration |
 | [Production readiness](production-readiness.md) | What exists, what has been observed, and what still prevents fleet admission |
 
 Normal device operation must work offline. Copied storage must not disclose
@@ -43,6 +43,7 @@ first-fleet applicability is determined by the admission policy.
 | [Raspberry Pi 5 secure-boot model](raspberry-pi-5-secure-boot.md) | Native boot chain, supported claims, and required hardware evidence |
 | [Fleet evidence exporter](fleet-export.md) | Authenticated development records, scoped authority reads and immutable export revisions |
 | [Device enrollment client](device-enrollment-client.md) | Development management-key persistence, bound proofs and restart recovery; device execution and production admission remain pending |
+| [Protected enrollment storage](enrollment-storage-development.md) | Bounded encrypted credential filesystem and mount guard; synthetic restart tests, physical execution pending |
 | [Contracts reference](contracts-reference.md) | JSON contracts, Go interfaces, Nix constructors, and modules |
 | [Hardware qualification](raspberry-pi-5-provisioning-probe.md) | Read-only observations and their limitations |
 | [Signed-boot workflow](raspberry-pi-5-signed-boot-workflow.md) | Full-release signing, verification, and publication |

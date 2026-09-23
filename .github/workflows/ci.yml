@@ -319,6 +319,8 @@ jobs:
           nix --accept-flake-config build -L --no-link \
             .#checks.aarch64-linux.device-secret-storage-development-vm
           nix --accept-flake-config build -L --no-link \
+            .#checks.aarch64-linux.enrollment-storage-vm
+          nix --accept-flake-config build -L --no-link \
             .#checks.aarch64-linux.copied-storage-vm
           nix --accept-flake-config build -L --no-link \
             .#checks.aarch64-linux.device-secret-offline-storage-vm
@@ -388,6 +390,42 @@ jobs:
           python3 .github/scripts/device_secret_candidate.py rehearse \
             --repository . --output "$RUNNER_TEMP/device-secret-export-rehearsal"
           cat "$RUNNER_TEMP/device-secret-export-rehearsal/SUMMARY.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Export the tested native enrollment storage bundle
+        run: |
+          test "$(uname -m)" = aarch64
+          export STORAGE_PACKAGE="$(nix --accept-flake-config build --no-link --print-out-paths .#kaiba-enrollment-storage)"
+          export STORAGE_EXPORT="$RUNNER_TEMP/enrollment-storage"
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, shutil, subprocess
+          source = pathlib.Path(os.environ["STORAGE_PACKAGE"])
+          output = pathlib.Path(os.environ["STORAGE_EXPORT"])
+          output.mkdir()
+          files = {}
+          for relative in ("bin/kaiba-enrollment-storage", "libexec/mke2fs", "libexec/e2fsck"):
+              target = output / relative
+              target.parent.mkdir(exist_ok=True)
+              shutil.copyfile(source / relative, target)
+              target.chmod(0o555)
+              files[relative] = hashlib.sha256(target.read_bytes()).hexdigest()
+          (output / "build.json").write_text(json.dumps({
+              "source_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "run_id": os.environ["GITHUB_RUN_ID"],
+              "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "system": "aarch64-linux", "store_path": str(source), "files": files,
+              "hardware_observation": False, "production_enrollment": False,
+              "requires_boot_image_signing": False,
+          }, indent=2) + "\n")
+          PY
+
+      - name: Upload the native enrollment storage bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: enrollment-storage-${{ github.sha }}-aarch64-linux
+          path: ${{ runner.temp }}/enrollment-storage/
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Export the tested native read-only metadata companion
         run: |

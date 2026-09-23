@@ -1,10 +1,11 @@
 # Ace adoption and first fleet bootstrap
 
 Status: **selected implementation direction; production profile draft**.
-Ace is the first production target. The existing development Pi becomes the
-provisioning station; malak hosts the initial authorities and separate signer.
-After admission, Ace hosts the first fleet services. This plan defines work and
-acceptance gates, not a hardware result or an executable authorization.
+Ace is the first production target. **malak is the provisioning station**, using
+reviewed CLI procedures, and hosts the initial authorities and separate signer.
+After admission, Ace hosts the first fleet services. Touchscreen/GUI provisioning
+and deployment of the development Pi as a station are deferred. This plan defines
+work and acceptance gates, not a hardware result or an executable authorization.
 
 The [delivery scope](delivery-scope.md), [FA-01–FA-08](fleet-admission-policy.md)
 and [enrollment handoff](enrollment-handoff.md) remain authoritative. Offline
@@ -81,31 +82,40 @@ missing evidence, quarantine, pending enrollment or production-readiness flags.
 
 | Host | Planned responsibility | State and trust boundary |
 | --- | --- | --- |
-| Development Pi | Touchscreen browser, loopback station relay, campaign controller and fixed-lane physical executors for Ace. | Dedicated station configuration, persistent private journal and scoped station/lane credentials. The browser accepts only reviewed inputs and actions. |
-| malak | Initial control/audit/export authorities, fleet registration/inventory service and separately isolated production issuer/signing integration. | Persistent stores, exact grants, independent operator/approver identity, explicit trust roots and protected backups. Signing custody remains separate from the station. |
+| malak: station | Reviewed CLI procedures, fixed-lane physical executors and diagnostic/report export for Ace. | Persistent private journals, authenticated target binding and scoped station/lane credentials. Restart or a lost response requires authoritative status and reconciliation before another action. |
+| malak: authorities | Initial control/audit/export authorities, fleet registration/inventory service and separately isolated production issuer/signing integration. | Persistent stores, exact grants, independent operator/approver identity, explicit trust roots and protected backups. Sharing a host does not combine station, approver, issuer or signing credentials. |
 | Ace | Provisioning target, then operational fleet member and service host. | Protected device credentials plus separately scoped service identities and encrypted database state. Hosting services does not grant self-admission or signer authority. |
 
 These are new deployment roles, not permission to repurpose existing development
-credentials or live services. The development Pi's boot root need not become
-Ace's root, but the station is a trusted authority in this model: review its OS,
-allowed software, administrative access, credential custody and recovery. Replace
-the RAM-backed inspection setup with a dedicated persistent station deployment
-before relying on its journal across reboot. Preserve existing experiments and
-media until a separate migration plan covers their disposition.
+credentials or live services. The station is a trusted authority in this model:
+review malak's allowed software, administrative access, credential custody and
+recovery. Use dedicated persistent state and service identities, keeping
+authority and signing boundaries intact. The development Pi remains available
+for scoped experiments; converting its inspection system into a persistent
+station is not a prerequisite for Ace. Preserve existing experiment state.
 
-Bind USB/UART/power selectors to the new Pi-to-Ace lane. A selector previously
-valid on malak is not transferable. Qualify power control and backfeed behavior
-under the existing [lane requirements](production-readiness.md#lane-power-and-topology);
+Bind USB/UART/power selectors to the malak-to-Ace lane. A selector used for a
+different target is not proof of Ace's attachment. Qualify power control and
+backfeed behavior under the existing
+[lane requirements](production-readiness.md#lane-power-and-topology);
 manual development mode does not acquire production status through this plan.
 Station software and disposable service tests can proceed while this gate is
 open. Select the production power arrangement before its physical campaign.
 
-Reuse the [guided campaign proposal](https://github.com/PseudoDesign/kaiba-provisioning/pull/65)
-for the screen: target, current step, bounded inputs, recorded result, next action
-and diagnostic export. The controller owns progress, records intent before each
-operation and reconciles uncertain outcomes after restart. Selecting an exception
-on the screen is not approval. An approved record must be resolved and verified
-by the authority; the UI cannot override a blocked condition.
+The CLI path must retain durable intent before each operation, exact execution
+authority, postcondition checks and reconciliation after interruption. Compose
+the existing bounded executors and authenticated service clients; do not rely on
+shell history as the workflow journal or restart a whole script to retry an
+uncertain operation. Return recorded status, the next required action and an
+exportable report. Adoption/enrollment orchestration for Ace remains to be
+implemented and reviewed; CLI use does not bypass missing backend work.
+
+The [guided campaign proposal](https://github.com/PseudoDesign/kaiba-provisioning/pull/65)
+is deferred, including its controller and browser integration. It is not a
+dependency of this first-device campaign. A later GUI can consume the same
+authoritative results. An exception decision must be resolved and verified by
+the authority regardless of interface; neither a CLI argument nor a button
+constitutes approval or overrides a blocked condition.
 
 ## Bootstrap and transfer to Ace
 
@@ -157,7 +167,7 @@ PR can close an unperformed physical check.
 | --- | --- | --- |
 | 1. Inventory and profile binding | Provisioning: authenticated, read-only Ace inventory; explicit secret-reuse review record; exact production profile draft and gap report. Deployment configuration is maintained in `nix-pseudo-design`. | Distinguish observations from intended values, preserve unknowns and authenticate the target. Read metadata only; no raw secret reads, HMAC/signing calls or mutations hidden in inventory. Root eligibility, data disposition and custody decisions block dependent changes. |
 | 2. Adoption record and consumer policy | `kaiba-provisioning`: durable adoption prestate, approved-decision references and evidence export. `kaiba-contracts`: reviewed shared semantics/version and conformance. `kaiba-fleet`: independent verification and production admission policy. | No fabricated fresh-device operation. Wrong-target, expired, altered or unknown exceptions and absent evidence are rejected. Producer and consumer pin the same reviewed contract. Can proceed with synthetic fixtures while hardware decisions remain open. |
-| 3. Station and bootstrap deployment | Provisioning supplies ARM packages and fixed executors; `nix-pseudo-design` composes the station and bootstrap hosts; `kaiba-fleet` supplies the service and issuer interface. | Browser/station/controller/service restart recovery, durable stores, authenticated roles and fixed-lane checks pass. Production issuer/custody and power qualification gate real execution, not package/service development. |
+| 3. Malak CLI and bootstrap deployment | Provisioning supplies native host packages, ARM target helpers, fixed executors and malak deployment; `kaiba-fleet` supplies the service and issuer interface. `nix-pseudo-design` composes Ace's target configuration. | CLI/service restart recovery, durable journals/stores, authenticated roles and fixed-lane checks pass. Production issuer/custody and power qualification gate real execution; a touchscreen or separate Pi station does not. |
 | 4. Ace protection and enrollment | Provisioning supplies the exact signed release, migration/recovery packet and acceptance campaign; fleet performs pending verification and activation. | All required device checks, encrypted credential cold reopen and negative/recovery cases pass for the selected profile/release. Activation rejects a blocked/quarantined or conflicting tuple. Depends on slices 1–3 and operation-specific authority. |
 | 5. Fleet service transfer | Fleet owns registry/issuer semantics; `nix-pseudo-design` owns Ace service deployment and protected data; provisioning retains its report. | Single-writer cutover and backup/restore preserve exact identities, receipts, revocation and pending states. Ace's service release is covered by its approved boot/update policy. Depends on Ace's admission and transfer rehearsal. |
 
@@ -172,11 +182,13 @@ boot/recovery and root-integrity evidence. Fresh-device behavior stays intact.
 
 The current [exporter](fleet-export.md) only produces development candidate
 evidence; the [device client](device-enrollment-client.md) is development-only.
-The [protected-state extension](https://github.com/PseudoDesign/kaiba-provisioning/pull/64),
-guided campaign and [fleet client rehearsal](https://github.com/PseudoDesign/kaiba-fleet/pull/2)
-are reusable software work, not production eligibility. Integrate their exact
-reviewed revisions; a PR merged into another feature branch is not necessarily
-present on `main`. Do not bypass their development guards for this campaign.
+The [protected-state extension](enrollment-storage-development.md) and
+[fleet client rehearsal](https://github.com/PseudoDesign/kaiba-fleet/pull/2) are
+reusable software work, not production eligibility. The storage extension is
+integrated independently of the deferred GUI: its guarded two-boot experiment
+does not yet implement the shipping credential-volume lifecycle. Do not bypass
+its development restrictions for Ace or describe the protected-mount check as
+hardware qualification.
 
 Shared contract changes belong in
 [kaiba-contracts](https://github.com/pd-codex/kaiba-contracts); fleet consumption
@@ -196,7 +208,7 @@ these tests independent of kernel builds, token signing and a connected board.
 | Existing secret versus boot ownership | Reuse never repeats OTP device-secret programming. Fresh boot-root and already-owned fixtures take their distinct reviewed paths with separate authority for any boot-root programming; neither invents history. |
 | Adoption decision validation | Unknown, expired, revoked, wrong-target/profile/release or altered decisions block admission. Acceptance of history alone cannot change an observed failure into success. |
 | Evidence and identity | Missing audit/source binding, uncertain mutation, copied evidence, substituted key, replay or wrong audience fails. A hostname cannot choose the canonical fleet identity. |
-| Screen and controller restart | Current step and required input return from durable authority state. Stale views disable actions; double taps and lost replies cannot repeat physical operations. |
+| CLI and service restart | Current progress and next action return from durable authority/executor state. Repeated commands and lost replies cannot repeat physical operations; stale or uncertain state requires reconciliation. |
 | Enrollment restart and failure | Persisted device identity survives a permitted restart; pending credentials are denied. Lost issuance/activation responses reconcile the same tuple without duplicate identities. |
 | Service transfer and restore | Preserve exact tuples, issuer references, evidence and revocations; prevent concurrent writers and stale-state rollback. A restored pending/revoked member stays denied. |
 | Development/production separation | Existing development fixtures, keys, client mode and incomplete profiles cannot activate as production. Unrecognized contract versions fail closed. |
@@ -216,15 +228,16 @@ action. Separately record exception disposition (`proposed`, `accepted`,
 planned report semantics, not additions to the current wire schema.
 
 Reports can be exported at every stop, including failure. A completed test
-campaign can still produce a blocked admission report. The screen shows
+campaign can still produce a blocked admission report. The CLI report may say
 **enrolled** only after authoritative FA-08 completion and the successful access
-check. Diagnostic details contain the longer identifiers and provenance; ordinary
-steps ask only for the inputs and physical actions needed to proceed. Public
-publication of real-device evidence remains distinct from a private report export.
+check. A later GUI must preserve that rule. Diagnostic details contain the longer
+identifiers and provenance; CLI procedures request the inputs and physical actions
+needed to proceed. Public publication of real-device evidence remains distinct
+from a private report export.
 
 Reduce human work by building and rehearsing first, reusing applicable artifacts,
 batching exact signing inputs when authorized, and exchanging receipts and
-results through the services. Install the station once and use its fixed lane;
+results through the services. Use malak's reviewed fixed lane and persistent state;
 do not make routine tests depend on drive shuttling or re-signing unchanged
 images. Human presence remains necessary for the chosen signer and any reviewed
 physical step that the qualified station cannot perform itself.

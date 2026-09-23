@@ -92,7 +92,8 @@ func newFixture(t *testing.T) *fixture {
 	f.server.StartTLS()
 	t.Cleanup(f.server.Close)
 	f.config = Config{Schema: Version, Mode: "development", FleetURL: f.server.URL, ServerCA: f.caPEM, IssuerCA: f.caPEM, IssuerID: "disposable-ca", Provisioning: RecordRef{"record-1", 1, "sha256:" + strings.Repeat("a", 64)}, Restart: "boot", Authority: "synthetic", Transaction: "candidate-1", Target: "target-1"}
-	f.runtime = Runtime{Now: func() time.Time { return f.now }, BootID: func() (string, error) { return firstBoot, nil }, Process: "process-1"}
+	f.config.ProtectedVolume = "12345678-1234-1234-1234-123456789abc"
+	f.runtime = Runtime{Now: func() time.Time { return f.now }, BootID: func() (string, error) { return firstBoot, nil }, Process: "process-1", CheckStorage: func(*os.File, string) error { return nil }}
 	st, e := Initialize(f.dir, f.config, f.runtime)
 	if e != nil {
 		t.Fatal("initialize", e)

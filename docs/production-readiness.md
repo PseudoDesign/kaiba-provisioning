@@ -13,10 +13,10 @@ index](README.md): implemented, tested, evidenced, and planned are distinct
 claims.
 
 The [Ace adoption plan](ace-adoption-plan.md) selects the first production
-target and the development Pi's future station role. It does not change this
-development-posture assessment or report Ace as qualified. Production profile,
-existing-secret reuse, station persistence/power, issuer integration and service
-transfer remain explicit gates in that plan.
+target and malak's CLI provisioning/bootstrap role; GUI and development-Pi
+station deployment are deferred. This does not change the development-posture
+assessment or report Ace as qualified. Production profile, existing-secret reuse,
+station persistence/power, issuer integration and service transfer remain gates.
 
 ## What is established
 
@@ -156,10 +156,10 @@ Use the [fleet admission implementation mapping](fleet-admission-policy.md#how-t
 under the [delivery scope](delivery-scope.md). Begin with the parallel
 [implementation slices](implementation-staging.md): real read-only station
 status and native offline boot/storage feasibility. Complete and qualify the
-selected device path, implement identity and fleet activation, and connect the
-remaining UI actions. Final profile approval and all admission conditions gate
-fleet entry; unresolved decisions block the work that depends on them. Bind
-the selected policy into the release and lane contracts and retain the
+selected device path and implement identity and fleet activation through malak's
+reviewed CLI procedure. GUI actions follow later. Final profile approval and all
+admission conditions gate fleet entry; unresolved decisions block the work that
+depends on them. Bind the selected policy into the release and lane contracts and retain the
 required physical and protocol evidence.
 The [earlier online production roadmap](archive/raspberry-pi-5-production-security-follow-on.md)
 is archived; its fresh-server and offline-refusal requirements do not define

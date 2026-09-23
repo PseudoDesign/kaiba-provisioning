@@ -28,6 +28,9 @@ type Runtime struct {
 	Now     func() time.Time
 	BootID  func() (string, error)
 	Process string
+	// Tests may supply a storage boundary. The executable always uses the real
+	// Linux check; there is no command-line or environment bypass.
+	CheckStorage func(*os.File, string) error
 }
 
 func SystemRuntime() Runtime {
@@ -60,6 +63,11 @@ func Open(path string, r Runtime) (*Client, error) {
 		s.close()
 		return nil, ErrState
 	}
+	if e = checkStorage(s, v.Config, r); e != nil {
+		clear(v.Key)
+		s.close()
+		return nil, e
+	}
 	return &Client{s, v, r}, nil
 }
 func Initialize(path string, c Config, r Runtime) (Status, error) {
@@ -71,6 +79,9 @@ func Initialize(path string, c Config, r Runtime) (Status, error) {
 		return Status{}, ErrState
 	}
 	defer s.close()
+	if e = checkStorage(s, c, r); e != nil {
+		return Status{}, e
+	}
 	old, e := s.load()
 	if e == nil {
 		if old.Config != c {
