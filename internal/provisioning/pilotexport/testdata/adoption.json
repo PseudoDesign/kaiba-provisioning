@@ -1,0 +1,98 @@
+{
+  "contract": "PilotAdoptionRecord",
+  "contract_version": "0.2.0-draft.1",
+  "record_id": "fixture:adoption-a",
+  "revision": 1,
+  "issued_at": "2026-09-23T12:00:00Z",
+  "authority_id": "fixture-station-authority",
+  "tenant_id": "fixture-tenant",
+  "security_domain_id": "pilot-fixture",
+  "correlation_id": "fixture:adoption-a",
+  "purpose": "existing_device_adoption",
+  "target": {
+    "asset_ref": "fixture-device-a",
+    "identity_ref": {
+      "uri": "urn:kaiba:fixture:identity-a",
+      "digest": "sha256:207554e1d17a88f402020c93f89102058dd1330d1f670ea6d50baa7ca1c9c836"
+    },
+    "storage_ref": {
+      "uri": "urn:kaiba:fixture:storage-a",
+      "digest": "sha256:0bfd2b35422979160f8695a84f6174f2e7510dbc4f3749e4c5dabab7e70f33f9"
+    }
+  },
+  "source": {
+    "kind": "existing_device_adoption",
+    "repository": "https://example.invalid/provisioning",
+    "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "observation_id": "fixture-observation-a",
+    "observed_at": "2026-09-23T12:00:00Z",
+    "inventory_ref": {
+      "uri": "urn:kaiba:fixture:inventory-a",
+      "digest": "sha256:0ddd2b3aaae9f72f78247dbf3d394ef6ac0114533db66c2fa89e246c967f34e5"
+    },
+    "custody_review_ref": {
+      "uri": "urn:kaiba:fixture:custody-a",
+      "digest": "sha256:013604e45f86242503184dfa9d145ca620b15361b29e217fd086f923b2944e9a"
+    },
+    "workload_review_ref": {
+      "uri": "urn:kaiba:fixture:workloads-a",
+      "digest": "sha256:74627f2a50d110e11b1eeb09a468792ab3e597ceca66e68c7cec59297e5de5f8"
+    }
+  },
+  "conditions": {
+    "target_authenticated": true,
+    "encrypted_persistence_observed": true,
+    "custody_review_complete": true,
+    "workloads_recorded": true,
+    "unresolved_mutation": false,
+    "conflicting_ownership": false,
+    "known_key_exposure": false
+  },
+  "qualification": {
+    "FA-01": {
+      "outcome": "blocked",
+      "reason": "Synthetic fixture: full hardware qualification remains incomplete.",
+      "evidence_refs": []
+    },
+    "FA-02": {
+      "outcome": "not_evaluated",
+      "reason": "Synthetic fixture: full hardware qualification remains incomplete.",
+      "evidence_refs": []
+    },
+    "FA-03": {
+      "outcome": "not_evaluated",
+      "reason": "Synthetic fixture: full hardware qualification remains incomplete.",
+      "evidence_refs": []
+    },
+    "FA-04": {
+      "outcome": "not_evaluated",
+      "reason": "Synthetic fixture: full hardware qualification remains incomplete.",
+      "evidence_refs": []
+    },
+    "FA-05": {
+      "outcome": "not_evaluated",
+      "reason": "Synthetic fixture: full hardware qualification remains incomplete.",
+      "evidence_refs": []
+    },
+    "FA-06": {
+      "outcome": "not_evaluated",
+      "reason": "Synthetic fixture: full hardware qualification remains incomplete.",
+      "evidence_refs": []
+    },
+    "FA-07": {
+      "outcome": "not_evaluated",
+      "reason": "Synthetic fixture: full hardware qualification remains incomplete.",
+      "evidence_refs": []
+    },
+    "FA-08": {
+      "outcome": "not_evaluated",
+      "reason": "Synthetic fixture: full hardware qualification remains incomplete.",
+      "evidence_refs": []
+    }
+  },
+  "full_qualification": false,
+  "qualification_policy_ref": {
+    "uri": "urn:kaiba:fixture:qualification-baseline",
+    "digest": "sha256:1816b3b87ca9e2b5d7527d27c287f5dccd6bba654fcddfde74a03ffba39e9532"
+  }
+}

@@ -137,3 +137,9 @@ change, not new fields accepted by today's API.
 This milestone completes when both real devices have completed the selected
 pilot lifecycle and the retained report shows the remaining qualification work.
 Adding them to this document or passing software fixtures does not complete it.
+
+The first runtime handoff boundary is described in
+[pilot handoff preflight](pilot-handoff-preflight.md). It exports reviewed
+observations for independent fleet checks; pilot credential issuance, installed-key
+proof and activation remain planned. Neither a preflight report nor merging this
+implementation enrolls Ace or Mako.
