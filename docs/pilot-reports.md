@@ -26,7 +26,9 @@ protected mount) and P-06 (populated authority restore) are complete in the
 September 25 snapshot. The later diagnostic run exercised transport outage, dependency-denial and
 recovery, reference submission, same-key repeat and changed-content rejection.
 Its privileged results are operator-reported, with cleanup independently checked.
-A fresh backup after that submission remains pending. Sustained serving,
+A fresh backup after that submission passed recovery unlock and read-only
+filesystem/database checks; isolated service startup of that newer snapshot
+was not repeated. Sustained serving,
 credential lifecycle, staged/revoked cases, real cross-device isolation and
 evidence review remain separate conditions.
 

@@ -52,8 +52,8 @@
         },
         {
           "name": "Backup after diagnostic submission",
-          "status": "pending",
-          "basis": "The diagnostic-reference row was added after the previous verified backup; a new encrypted copy and restoration check are prepared."
+          "status": "passed",
+          "basis": "Operator-reported encrypted copy, recovery unlock, read-only filesystem comparison and PostgreSQL checksum check with zero bad checksums. USB unmount, absent backup mapper, protected source remount and stopped services independently checked. Service startup of this new snapshot was not tested."
         }
       ],
       "remaining": [
