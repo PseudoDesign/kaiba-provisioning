@@ -36,11 +36,11 @@ run_ui() {
   node --check internal/provisioning/stationui/web/transport.js
   node --check internal/provisioning/livestation/web/app.js
   python3 -B tests/station-ui/test_validate.py
-  python3 -B -m unittest discover -s tests/pilot-reports -p "test_*.py"
   # The transport tests consume the real generated graph/runtime config.
   # Realize only the Pages bundle, without VM or image qualification.
   local pages
   pages="$(nix --accept-flake-config build --no-link --print-out-paths .#kaiba-provision-station-pages)"
+  KAIBA_STATION_PAGES="$pages" python3 -B -m unittest discover -s tests/pilot-reports -p "test_*.py"
   KAIBA_STATION_PAGES="$pages" node --test \
     tests/station-ui/transport.test.mjs internal/provisioning/livestation/web/app.test.cjs
 }

@@ -1,6 +1,7 @@
 import copy
 import importlib.util
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -56,4 +57,20 @@ class Reports(unittest.TestCase):
             self.assertIn('href="../index.html"', (p/'pilot/index.html').read_text())
             self.assertIn('href="./reports.json"', (p/'pilot/index.html').read_text())
 
-if __name__ == '__main__': unittest.main()
+class PublishedReports(unittest.TestCase):
+    @unittest.skipUnless(os.environ.get('KAIBA_STATION_PAGES'), 'requires built Pages bundle')
+    def test_packaged_site_has_only_expected_homepage_change(self):
+        pages = Path(os.environ['KAIBA_STATION_PAGES'])
+        original = (ROOT/'internal/provisioning/stationui/web/index.html').read_text()
+        published = (pages/'index.html').read_text()
+        navigation = '    <nav aria-label="Project reports"><a href="./pilot/index.html">Pilot enrollment reports</a></nav>\n\n'
+        self.assertEqual(published.count(navigation), 1)
+        self.assertEqual(published.replace(navigation, '', 1), original)
+        data = json.loads((ROOT/'docs/pilot-reports.json').read_text())
+        self.assertEqual(json.loads((pages/'pilot/reports.json').read_text()), data)
+        self.assertEqual((pages/'pilot/index.html').read_text(), r.render(data))
+        self.assertEqual((pages/'pilot/styles.css').read_bytes(), (ROOT/'web/pilot-reports/styles.css').read_bytes())
+
+
+if __name__ == '__main__':
+    unittest.main()

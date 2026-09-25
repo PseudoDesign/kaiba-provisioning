@@ -21,6 +21,9 @@
           ./internal/provisioning/livestation/web
           ./internal/provisioning/stationui/web
           ./tests/station-ui
+          ./tests/pilot-reports
+          ./web/pilot-reports
+          ./docs/pilot-reports.json
         ];
       };
       systems = [
@@ -1536,7 +1539,8 @@
                 export KAIBA_STATION_PAGES=${built.stationPages}
                 node --test tests/station-ui/transport.test.mjs
                 python3 -m unittest discover -s tests/station-ui -p 'test_*.py' -v
-                for asset in index.html styles.css transport.js app.js; do
+                python3 -m unittest discover -s tests/pilot-reports -p 'test_*.py' -v
+                for asset in styles.css transport.js app.js; do
                   cmp "internal/provisioning/stationui/web/$asset" "${built.stationPages}/$asset"
                 done
                 test "$(find ${built.stationPages} -maxdepth 1 -type f | wc -l)" -eq 6
