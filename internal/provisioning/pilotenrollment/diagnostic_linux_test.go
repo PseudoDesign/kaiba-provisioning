@@ -4,6 +4,7 @@ package pilotenrollment
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
@@ -21,6 +22,10 @@ import (
 )
 
 func readTestClient(t *testing.T, handler http.HandlerFunc) (*Client, *httptest.Server, string) {
+	c, s, d, _, _ := readTestClientIssuer(t, handler)
+	return c, s, d
+}
+func readTestClientIssuer(t *testing.T, handler http.HandlerFunc) (*Client, *httptest.Server, string, *x509.Certificate, *ecdsa.PrivateKey) {
 	t.Helper()
 	d, config, r, issuer, key := setup(t)
 	server := httptest.NewUnstartedServer(handler)
@@ -63,7 +68,7 @@ func readTestClient(t *testing.T, handler http.HandlerFunc) (*Client, *httptest.
 	if err = c.save(v); err != nil {
 		t.Fatal(err)
 	}
-	return c, server, d
+	return c, server, d, issuer, key
 }
 func requestFailure(t *testing.T, err error, kind string, status int) {
 	t.Helper()

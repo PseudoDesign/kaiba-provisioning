@@ -44,6 +44,18 @@ func main() {
 			}
 		}
 		switch flag.Arg(0) {
+		case "prepare-renewal":
+			value, e = c.PrepareRenewal(context.Background(), raw)
+		case "retry-renewal-proof":
+			value, e = c.RetryRenewalProof(context.Background())
+		case "install-renewal":
+			value, e = c.InstallRenewal(context.Background())
+		case "prove-renewal-installed":
+			value, e = c.ProveRenewalInstalled(context.Background())
+		case "retry-renewal-installed":
+			value, e = c.RetryRenewalInstalled(context.Background())
+		case "reconcile-renewal":
+			value, e = c.ReconcileRenewal(context.Background())
 		case "status":
 			value, e = c.Status()
 		case "bootstrap":

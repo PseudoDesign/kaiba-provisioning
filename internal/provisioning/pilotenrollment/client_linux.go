@@ -172,7 +172,16 @@ func (c *Client) request(ctx context.Context, method, path string, b []byte) ([]
 	return c.requestKey(ctx, method, path, b, "")
 }
 func (c *Client) requestKey(ctx context.Context, method, path string, b []byte, idempotencyKey string) ([]byte, error) {
-	leaf, e := c.value.leaf(c.runtime.Now())
+	cert := c.value.Certificate
+	if c.value.Renewal != nil && c.value.Renewal.Phase == "active" {
+		cert = c.value.Renewal.Certificate
+	}
+	return c.requestCertificate(ctx, method, path, b, idempotencyKey, cert)
+}
+func (c *Client) requestCertificate(ctx context.Context, method, path string, b []byte, idempotencyKey, cert string) ([]byte, error) {
+	v := c.value
+	v.Certificate = cert
+	leaf, e := v.leaf(c.runtime.Now())
 	if e != nil {
 		return nil, e
 	}

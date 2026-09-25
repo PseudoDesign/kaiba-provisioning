@@ -40,12 +40,16 @@ func main() {
 		defer c.Close()
 		var raw []byte
 		if *input != "" {
-			if flag.Arg(0) == "submit-diagnostic" {
+			if flag.Arg(0) == "submit-diagnostic" || flag.Arg(0) == "prepare-renewal" {
 				f, openErr := os.Open(*input)
 				if openErr != nil {
 					log.Fatal(openErr)
 				}
-				raw, err = io.ReadAll(io.LimitReader(f, 4097))
+				limit := int64(4097)
+				if flag.Arg(0) == "prepare-renewal" {
+					limit = 1048577
+				}
+				raw, err = io.ReadAll(io.LimitReader(f, limit))
 				f.Close()
 			} else {
 				raw, err = os.ReadFile(*input)
@@ -55,6 +59,18 @@ func main() {
 			}
 		}
 		switch flag.Arg(0) {
+		case "prepare-renewal":
+			value, e = c.PrepareRenewal(context.Background(), raw)
+		case "retry-renewal-proof":
+			value, e = c.RetryRenewalProof(context.Background())
+		case "install-renewal":
+			value, e = c.InstallRenewal(context.Background())
+		case "prove-renewal-installed":
+			value, e = c.ProveRenewalInstalled(context.Background())
+		case "retry-renewal-installed":
+			value, e = c.RetryRenewalInstalled(context.Background())
+		case "reconcile-renewal":
+			value, e = c.ReconcileRenewal(context.Background())
 		case "status":
 			value, e = c.Status()
 		case "bootstrap":
