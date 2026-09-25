@@ -10,19 +10,56 @@
       "authorization_expires_at": "2026-09-25T21:39:04Z",
       "summary": "Enrollment and activation completed under accepted pilot exceptions. The same identity survived a real OS reboot and subsequently accessed fleet authority. This is a historical test report, not a live membership query.",
       "tests": [
-        {"name": "Device key, credential installation and activation", "status": "passed", "basis": "Operator-reported successful execution; public device identity independently checked."},
-        {"name": "Process and authority restart recovery", "status": "passed", "basis": "Operator-reported bounded recovery checks."},
-        {"name": "Protected account and credential mount after OS reboot", "status": "passed", "basis": "Directly verified over authenticated SSH after one controlled reboot; same enrolled identity and required mount flags."},
-        {"name": "Live fleet access after OS reboot", "status": "passed", "basis": "Operator-reported authenticated self read with unchanged membership and key; stopped authority services independently checked afterward."},
-        {"name": "Encrypted backup and recovery unlock", "status": "passed", "basis": "Operator-reported recovery unlock, filesystem checks and offline database checksums."},
-        {"name": "Isolated restore of enrolled authority", "status": "passed", "basis": "Operator-reported restoration of active membership and matching issuance; stopped services and absent clone mapper independently checked."},
-        {"name": "Precise live failure diagnostics", "status": "pending", "basis": "Client software proposed in PR #73; deployment and real negative-result tests remain pending."},
-        {"name": "Live diagnostic-reference submission", "status": "pending", "basis": "Client software proposed in PR #73; no live diagnostic reference has been submitted by this test workflow."}
+        {
+          "name": "Device key, credential installation and activation",
+          "status": "passed",
+          "basis": "Operator-reported successful execution; public device identity independently checked."
+        },
+        {
+          "name": "Process and authority restart recovery",
+          "status": "passed",
+          "basis": "Operator-reported bounded recovery checks."
+        },
+        {
+          "name": "Protected account and credential mount after OS reboot",
+          "status": "passed",
+          "basis": "Directly verified over authenticated SSH after one controlled reboot; same enrolled identity and required mount flags."
+        },
+        {
+          "name": "Live fleet access after OS reboot",
+          "status": "passed",
+          "basis": "Operator-reported authenticated self read with unchanged membership and key; stopped authority services independently checked afterward."
+        },
+        {
+          "name": "Encrypted backup and recovery unlock",
+          "status": "passed",
+          "basis": "Operator-reported recovery unlock, filesystem checks and offline database checksums."
+        },
+        {
+          "name": "Isolated restore of enrolled authority",
+          "status": "passed",
+          "basis": "Operator-reported restoration of active membership and matching issuance; stopped services and absent clone mapper independently checked."
+        },
+        {
+          "name": "Classified outage, dependency denial and recovery",
+          "status": "passed",
+          "basis": "Operator-reported transport failure, HTTP 403 with the admission dependency unavailable, and successful access after recovery. This does not establish staged, revoked or cross-device rejection."
+        },
+        {
+          "name": "Live diagnostic-reference submission",
+          "status": "passed",
+          "basis": "Operator-reported original row and receipt reconciliation, same-key same-input repeat, and HTTP 409 for changed content under that key; existing membership and credential retained. Services stopped and temporary device files removed independently checked."
+        },
+        {
+          "name": "Backup after diagnostic submission",
+          "status": "pending",
+          "basis": "The diagnostic-reference row was added after the previous verified backup; a new encrypted copy and restoration check are prepared."
+        }
       ],
       "remaining": [
         "Sustained authority serving and a reviewed persistent network path. Authority services were stopped at the end of the tests.",
         "Policy and credential freshness, renewal, loss and retirement procedures; the recorded expiry has not been extended.",
-        "Deploy and exercise precise failure diagnostics and diagnostic-reference submission.",
+        "Staged/revoked and cross-device negative tests remain distinct from dependency-unavailable denial.",
         "Real cross-device isolation after Mako is enrolled.",
         "Review and consolidate retained evidence. Full fleet-admission conditions remain separately tracked; accepted pilot exceptions do not close them."
       ]
@@ -35,9 +72,21 @@
       "authorization_expires_at": null,
       "summary": "Selected for the same pilot cohort. Execution was deferred while Ace completed its enrollment and recovery workflow. Similar hardware or key history does not transfer Ace's test results to Mako.",
       "tests": [
-        {"name": "Device key, credential installation and activation", "status": "pending", "basis": "No completed pilot enrollment recorded for Mako."},
-        {"name": "Restart persistence and live fleet access", "status": "pending", "basis": "Requires Mako's own enrolled identity and protected storage checks."},
-        {"name": "Cross-device isolation", "status": "pending", "basis": "Requires two enrolled devices and explicit own-device/other-device access tests."}
+        {
+          "name": "Device key, credential installation and activation",
+          "status": "pending",
+          "basis": "No completed pilot enrollment recorded for Mako."
+        },
+        {
+          "name": "Restart persistence and live fleet access",
+          "status": "pending",
+          "basis": "Requires Mako's own enrolled identity and protected storage checks."
+        },
+        {
+          "name": "Cross-device isolation",
+          "status": "pending",
+          "basis": "Requires two enrolled devices and explicit own-device/other-device access tests."
+        }
       ],
       "remaining": [
         "Refresh and review Mako's own observations, exception decision and execution authority before enrollment.",

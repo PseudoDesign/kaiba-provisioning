@@ -23,10 +23,12 @@ not a promise that services are running. Mako must establish its own evidence.
 
 Review remaining work whenever tests complete. P-03 (Ace reboot persistence and
 protected mount) and P-06 (populated authority restore) are complete in the
-September 25 snapshot. Sustained serving, credential lifecycle, live diagnostics,
-real cross-device isolation and evidence review remain separate conditions.
-PR #73 supplies proposed client diagnostics; merging software alone does not
-mark those live tests passed.
+September 25 snapshot. The later diagnostic run exercised transport outage, dependency-denial and
+recovery, reference submission, same-key repeat and changed-content rejection.
+Its privileged results are operator-reported, with cleanup independently checked.
+A fresh backup after that submission remains pending. Sustained serving,
+credential lifecycle, staged/revoked cases, real cross-device isolation and
+evidence review remain separate conditions.
 
 ## Publication boundary
 
