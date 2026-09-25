@@ -53,25 +53,27 @@ type Config struct {
 	ProtectedVolume string       `json:"protected_volume_uuid"`
 }
 type Status struct {
-	Schema     string `json:"schema_version"`
-	Phase      string `json:"phase"`
-	SPKI       string `json:"spki"`
-	SPKIDigest string `json:"spki_digest"`
-	Enrollment string `json:"enrollment_id,omitempty"`
-	Logical    string `json:"logical_device_id,omitempty"`
-	Full       bool   `json:"full_qualification"`
+	Renewal    *RenewalStatus `json:"renewal,omitempty"`
+	Schema     string         `json:"schema_version"`
+	Phase      string         `json:"phase"`
+	SPKI       string         `json:"spki"`
+	SPKIDigest string         `json:"spki_digest"`
+	Enrollment string         `json:"enrollment_id,omitempty"`
+	Logical    string         `json:"logical_device_id,omitempty"`
+	Full       bool           `json:"full_qualification"`
 }
 type state struct {
-	Schema           string     `json:"schema_version"`
-	Config           Config     `json:"config"`
-	Key              []byte     `json:"private_key_pkcs8"`
-	Phase            string     `json:"phase"`
-	Bootstrap        *Challenge `json:"bootstrap,omitempty"`
-	BootstrapProof   string     `json:"bootstrap_proof,omitempty"`
-	Certificate      string     `json:"certificate,omitempty"`
-	InstalledProcess string     `json:"installed_process,omitempty"`
-	Pending          *Challenge `json:"pending_challenge,omitempty"`
-	PendingProof     string     `json:"pending_proof,omitempty"`
+	Renewal          *renewalState `json:"renewal,omitempty"`
+	Schema           string        `json:"schema_version"`
+	Config           Config        `json:"config"`
+	Key              []byte        `json:"private_key_pkcs8"`
+	Phase            string        `json:"phase"`
+	Bootstrap        *Challenge    `json:"bootstrap,omitempty"`
+	BootstrapProof   string        `json:"bootstrap_proof,omitempty"`
+	Certificate      string        `json:"certificate,omitempty"`
+	InstalledProcess string        `json:"installed_process,omitempty"`
+	Pending          *Challenge    `json:"pending_challenge,omitempty"`
+	PendingProof     string        `json:"pending_proof,omitempty"`
 }
 
 func canonical(v any) ([]byte, error) {
@@ -144,6 +146,10 @@ func (s state) status() (Status, error) {
 		out.Enrollment = s.Bootstrap.Enrollment
 		out.Logical = s.Bootstrap.Logical
 	}
+	if s.Renewal != nil {
+		r := s.Renewal
+		out.Renewal = &RenewalStatus{r.Approval.Request.Operation, r.Phase, r.Approval.Authorization.Next, CertificateDigest(r.Certificate)}
+	}
 	return out, nil
 }
 func (s state) checkChallenge(c Challenge, purpose string, now time.Time, checkTime bool) error {
@@ -181,6 +187,11 @@ func (s state) validate() error {
 	}
 	if _, e := privateKey(s.Key); e != nil {
 		return e
+	}
+	if s.Renewal != nil {
+		if s.Phase != "verified" || s.Renewal.validate(s) != nil {
+			return ErrState
+		}
 	}
 	if s.Phase == "initialized" {
 		if s.Bootstrap != nil || s.BootstrapProof != "" || s.Certificate != "" || s.InstalledProcess != "" || s.Pending != nil || s.PendingProof != "" {
