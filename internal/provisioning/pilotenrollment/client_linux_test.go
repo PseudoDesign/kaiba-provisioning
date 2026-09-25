@@ -12,6 +12,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"net"
 	"net/http"
@@ -222,14 +223,14 @@ func TestLostInstalledProofReply(t *testing.T) {
 		}
 		conn.Close()
 	}
-	if _, e = c.ProveInstalled(context.Background()); e != ErrReconcile {
+	if _, e = c.ProveInstalled(context.Background()); !errors.Is(e, ErrReconcile) {
 		t.Fatalf("wanted reconciliation: %v", e)
 	}
 	saved := c.value.PendingProof
 	if saved == "" || c.value.Phase != "proof_submitted" {
 		t.Fatal("proof not durable")
 	}
-	if _, e = c.ProveInstalled(context.Background()); e != ErrReconcile || calls != 2 {
+	if _, e = c.ProveInstalled(context.Background()); !errors.Is(e, ErrReconcile) || calls != 2 {
 		t.Fatal("automatic resubmit")
 	}
 	leaf, _ := c.value.leaf(time.Now())

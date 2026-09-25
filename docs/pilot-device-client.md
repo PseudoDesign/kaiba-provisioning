@@ -100,3 +100,59 @@ All software results remain synthetic. Real issuer key custody, per-device
 custody/workload reviews, protected-directory deployment, actual process-restart
 proofs and retained real membership reports remain required before pilot use.
 Accepted FA gaps remain gaps; `full_qualification` stays false.
+
+## Request diagnostics
+
+Authority request failures now preserve a bounded classification. The CLI exits
+nonzero, leaves stdout empty, and writes one JSON object to stderr:
+
+```json
+{"schema_version":"kaiba.pilot-device-error/v1alpha1","error":"http_status","http_status":403,"reconciliation_required":true}
+```
+
+Kinds are `http_status`, `transport`, `timeout`, `canceled`, `tls_verification`,
+`redirect`, and `invalid_response`. HTTP status is included when available.
+Response bodies, URLs, certificates and underlying transport error strings are
+excluded. A 403 establishes rejection of that request, not whether its cause was
+membership, policy, or a dependency which the service maps to denial. Local
+input/storage/binding failures retain their existing error behavior.
+
+The Go error still matches `ErrReconcile` through `errors.Is`. Request failure
+does not prove that a write was uncommitted. Installed-proof failures still
+retain the saved proof and require authoritative reconciliation; diagnostics do
+not authorize automatic retries or a new proof.
+
+## Submit a diagnostic reference
+
+The `submit-diagnostic` command sends a reference with the existing verified
+pilot credential. It neither uploads diagnostic contents nor fetches the URI.
+The fleet independently checks current membership and policy.
+
+```json
+{"reference":{"uri":"urn:example:diagnostic:001","digest":"sha256:1111111111111111111111111111111111111111111111111111111111111111"}}
+```
+
+```sh
+kaiba-pilot-device --state /var/lib/kaiba-pilot-device \
+  --input reference.json --idempotency-key diagnostic-001 submit-diagnostic
+```
+
+Input is limited to 4096 bytes, URI to 2048 bytes, and the digest must be a
+lowercase SHA-256 reference. The explicit idempotency key is 1–128 ASCII letters,
+numbers, dots, underscores, colons or hyphens, starting with a letter or number.
+The URI must be absolute. Treat reference metadata as disclosed to the fleet;
+do not put credentials or secrets in it.
+
+Retain the exact input file and key outside the credential state. Following an
+ambiguous result, an operator can explicitly resend the same reference and key;
+the server's existing idempotency rule prevents another logical submission.
+Changed content under that key is rejected. There is no automatic resend,
+new key, local credential-state mutation, or caller-selected device identity.
+A successful receipt must name this enrollment and match the digest of the
+canonical request. Receipt validation failure remains ambiguous and must not
+be worked around by choosing a fresh idempotency key.
+
+Synthetic mTLS tests cover status classifications, lost replies, input bounds,
+receipt substitution and unchanged credential state. Live diagnostic submission
+and deployment of this client remain separate execution steps; these software
+tests do not close those real-device evidence conditions.
