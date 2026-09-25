@@ -14,6 +14,7 @@ func main() {
 	state := flag.String("state", "", "existing protected 0700 directory")
 	config := flag.String("config", "", "reviewed pilot config for init")
 	input := flag.String("input", "", "public challenge, certificate or station reconciliation response")
+	recoveryDigest := flag.String("recovery-digest", "", "reviewed recovery packet digest")
 	flag.Parse()
 	if *state == "" || flag.NArg() != 1 {
 		log.Fatal("state and one command required")
@@ -44,6 +45,8 @@ func main() {
 			}
 		}
 		switch flag.Arg(0) {
+		case "prepare-recovery":
+			value, e = c.PrepareRecovery(raw, *recoveryDigest)
 		case "prepare-renewal":
 			value, e = c.PrepareRenewal(context.Background(), raw)
 		case "retry-renewal-proof":

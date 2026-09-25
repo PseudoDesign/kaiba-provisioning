@@ -16,6 +16,7 @@ func main() {
 	config := flag.String("config", "", "reviewed pilot config for init")
 	input := flag.String("input", "", "public challenge, certificate or station reconciliation response")
 	idempotency := flag.String("idempotency-key", "", "stable key for diagnostic submission; retain with exact input")
+	recoveryDigest := flag.String("recovery-digest", "", "independently reviewed canonical SHA-256 of recovery packet")
 	flag.Parse()
 	if *state == "" || flag.NArg() != 1 {
 		log.Fatal("state and one command required")
@@ -40,13 +41,13 @@ func main() {
 		defer c.Close()
 		var raw []byte
 		if *input != "" {
-			if flag.Arg(0) == "submit-diagnostic" || flag.Arg(0) == "prepare-renewal" {
+			if flag.Arg(0) == "submit-diagnostic" || (flag.Arg(0) == "prepare-renewal" || flag.Arg(0) == "prepare-recovery") {
 				f, openErr := os.Open(*input)
 				if openErr != nil {
 					log.Fatal(openErr)
 				}
 				limit := int64(4097)
-				if flag.Arg(0) == "prepare-renewal" {
+				if flag.Arg(0) == "prepare-renewal" || flag.Arg(0) == "prepare-recovery" {
 					limit = 1048577
 				}
 				raw, err = io.ReadAll(io.LimitReader(f, limit))
@@ -59,6 +60,8 @@ func main() {
 			}
 		}
 		switch flag.Arg(0) {
+		case "prepare-recovery":
+			value, e = c.PrepareRecovery(raw, *recoveryDigest)
 		case "prepare-renewal":
 			value, e = c.PrepareRenewal(context.Background(), raw)
 		case "retry-renewal-proof":

@@ -137,3 +137,6 @@ trimming, compaction or history deletion is provided; a capacity failure preserv
 state for review. Expired historical records remain loadable, but network use
 continues to enforce the selected credential's current validity. Loading history
 is not expired-key recovery or permission to renew a revoked identity.
+
+Expired access uses the separate [protected recovery proof relay](pilot-device-recovery.md).
+Normal renewal never accepts an expired credential or bypasses a pending recovery.
