@@ -47,6 +47,9 @@ jobs:
           PYTHONDONTWRITEBYTECODE: '1'
         run: python3 -m unittest discover -s tests/release-candidate -p 'test_*.py' -v
 
+      - name: Test public pilot report rendering
+        run: python3 -B -m unittest discover -s tests/pilot-reports -p 'test_*.py' -v
+
       - name: Test CI selection and required-result handling
         run: python3 -B -m unittest discover -s tests/ci -p 'test_*.py' -v
 
@@ -166,7 +169,10 @@ jobs:
             transport.js \
             app.js \
             runtime-config.json \
-            workflow-graph.json
+            workflow-graph.json \
+            pilot/index.html \
+            pilot/reports.json \
+            pilot/styles.css
           do
             test -s "_site/$asset"
           done

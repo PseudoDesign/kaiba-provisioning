@@ -2519,7 +2519,11 @@ let
           '{"schema_version":"provisioning.kaiba.network/station-demo-runtime/v1alpha1","mode":"transition-graph","graph_url":"./workflow-graph.json"}' \
           > "$out/runtime-config.json"
         ${stationGraphGenerator}/bin/kaiba-provision-station-graph > "$out/workflow-graph.json"
-        chmod 0444 "$out/runtime-config.json" "$out/workflow-graph.json"
+        chmod u+w "$out/index.html"
+        ${pkgs.python3}/bin/python3 ${../web/pilot-reports/render.py} \
+          ${../docs/pilot-reports.json} "$out/pilot" "$out/index.html"
+        install -m 0444 ${../web/pilot-reports/styles.css} "$out/pilot/styles.css"
+        chmod 0444 "$out/index.html" "$out/pilot/index.html" "$out/pilot/reports.json" "$out/runtime-config.json" "$out/workflow-graph.json"
       '';
 
   provision =
