@@ -1,6 +1,6 @@
-# Protected first-renewal client
+# Protected renewal client
 
-These commands implement the device side of the first 0.2-to-0.3 pilot renewal.
+These commands implement initial 0.2-to-0.3 and successive 0.3 pilot renewals.
 They use the existing operational key and protected state directory. They do not
 approve admission, configure issuer grants, activate fleet membership, renew an
 expired predecessor or change hardware. Use them only with the matching fleet
@@ -8,8 +8,8 @@ renewal implementation and reviewed current records.
 
 The source contract is the proposed 0.3 protocol at kaiba-contracts commit
 `6b42c0f1a1b55570aeb1e1f03662f5ef3e0242a4`. Integration with fleet commit
-`372975dad170006c6598323db755940182a7cf39` tests the first renewal. Later 0.3-to-0.3
-renewal and supervised expired-key recovery remain unsupported.
+`b5cf406ab79168f0b8ca586fc46380e1bbadae41` tests the first and successive renewals.
+Supervised expired-key recovery remains unsupported.
 
 ## Protected state and current credential
 
@@ -107,3 +107,33 @@ PostgreSQL and generated synthetic credentials. The fixture substitutes only the
 protected-filesystem observation; the packaged production client still rejects
 ordinary test storage. Tests do not claim real LUKS, firmware or live renewal
 qualification. No device deployment or deadline change is included in this change.
+
+
+## Subsequent operations and retained history
+
+After the current renewal is locally `active`, `prepare-renewal` can accept a new
+operation bound to that exact active binding and certificate. It performs a fresh
+current self read, validates the new approval and saves the completed operation
+in `renewal_history` together with the new prepared proof in one atomic write.
+A failed read or storage guard leaves the previous state unchanged. A lost proof
+reply leaves both the completed history and new proof available after restart.
+
+While the new operation is pending, ordinary requests use the last archived
+active certificate. Only authenticated cutover plus current successor access
+selects the new certificate. Neither preparation nor installation replaces the
+original enrollment fields. Approval references follow the current predecessor;
+key and storage generations remain unchanged as credential revision advances.
+
+Every load validates the complete ordered chain from the original enrollment,
+including signatures, certificates, staged bindings, receipts and active records.
+Missing, reordered, duplicated or incomplete entries fail closed. Archived
+operation IDs cannot be reused; commands address only the current operation.
+Original single-renewal state loads without migration; older binaries reject
+state containing `renewal_history`, so do not downgrade or remove fields.
+
+At most 127 completed operations can precede the current operation. The existing
+1 MiB state-file limit also applies and can be reached earlier. No automatic
+trimming, compaction or history deletion is provided; a capacity failure preserves
+state for review. Expired historical records remain loadable, but network use
+continues to enforce the selected credential's current validity. Loading history
+is not expired-key recovery or permission to renew a revoked identity.

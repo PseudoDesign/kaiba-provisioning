@@ -48,6 +48,23 @@ func renewalChallengeWindow(nonce, issued, expires string, at time.Time) bool {
 	return len(nonce) == 48 && wire.Hex.MatchString(nonce+"0000000000000000") && renewalInterval(issued, expires, at) && renewalTime(expires).Sub(renewalTime(issued)) <= 5*time.Minute
 }
 func validateRenewalApproval(s state, p renewalBinding, v renewalApproval, at time.Time) error {
+	revision := uint64(1)
+	version := "0.2.0-draft.1"
+	if len(s.History) > 0 {
+		prior := s.History[len(s.History)-1]
+		if prior.Phase != "active" || prior.Active == nil || !sameRenewal(*prior.Active, p) || renewalTime(prior.Active.Issued).After(at) {
+			return ErrBinding
+		}
+		revision = prior.Active.CredentialRevision
+		if revision < 2 || revision >= 9007199254740991 {
+			return ErrBinding
+		}
+		version = "0.3.0-draft.1"
+	} else if p.CredentialRevision != 0 || p.CertificateDigest != "" || p.RenewalRef != nil || p.PredecessorRef != nil || p.InstallationRef != nil {
+		return ErrBinding
+	}
+	s = s.renewalBase()
+
 	status, e := s.status()
 	if e != nil {
 		return e
@@ -60,14 +77,14 @@ func validateRenewalApproval(s state, p renewalBinding, v renewalApproval, at ti
 	a := v.Authorization
 	ch := v.Challenge
 	req := v.Request
-	if !renewalMetadataValid(p.renewalMetadata, "PilotDeviceBinding", "0.2.0-draft.1") || p.State != "active" || p.Full || p.Logical != status.Logical || p.Instance != status.Enrollment || p.Storage != 1 || p.Target != b.Target || p.Adoption != b.Adoption || p.Policy != b.Policy || p.Admission != b.Decision || p.Audience != b.Audience || p.Profile != b.Profile || p.Activation == nil || p.CredentialRevision != 0 || p.CertificateDigest != "" || p.RenewalRef != nil || p.PredecessorRef != nil || p.InstallationRef != nil {
+	if !renewalMetadataValid(p.renewalMetadata, "PilotDeviceBinding", version) || p.State != "active" || p.Full || p.Logical != status.Logical || p.Instance != status.Enrollment || p.Storage != 1 || p.Target != b.Target || p.Adoption != b.Adoption || p.Policy != b.Policy || p.Admission != b.Decision || p.Audience != b.Audience || p.Profile != b.Profile || p.Activation == nil {
 		return ErrBinding
 	}
 	expected := credential{"management", "pilot_management", 1, status.SPKIDigest, b.Issuer, leaf.SerialNumber.Text(16), leaf.NotBefore.UTC().Format(time.RFC3339Nano), leaf.NotAfter.UTC().Format(time.RFC3339Nano)}
 	if p.Credential != expected || !slices.Equal(p.Permissions, []string{"pilot:self:read", "pilot:diagnostic-reference:submit"}) {
 		return ErrBinding
 	}
-	if !renewalMetadataValid(a.renewalMetadata, "PilotRenewalAuthorization", "0.3.0-draft.1") || a.Authority != p.Authority || a.Tenant != p.Tenant || a.Domain != p.Domain || a.Full || a.Mode != "same_key_unexpired" || !wire.ID.MatchString(a.Operation) || a.Correlation != a.Operation || a.Logical != p.Logical || a.Instance != p.Instance || a.Storage != p.Storage || a.Target != p.Target || a.Audience != p.Audience || a.Profile != p.Profile || !slices.Equal(a.Permissions, p.Permissions) || a.Previous != 1 || a.Next != 2 || a.Slot != p.Credential.Slot || a.Generation != p.Credential.Generation || a.SPKI != p.Credential.SPKI || a.Issuer != p.Credential.Issuer || a.Predecessor != renewalRef(p, p.renewalMetadata) || a.Certificate != CertificateDigest(s.Certificate) {
+	if !renewalMetadataValid(a.renewalMetadata, "PilotRenewalAuthorization", "0.3.0-draft.1") || a.Authority != p.Authority || a.Tenant != p.Tenant || a.Domain != p.Domain || a.Full || a.Mode != "same_key_unexpired" || !wire.ID.MatchString(a.Operation) || a.Correlation != a.Operation || a.Logical != p.Logical || a.Instance != p.Instance || a.Storage != p.Storage || a.Target != p.Target || a.Audience != p.Audience || a.Profile != p.Profile || !slices.Equal(a.Permissions, p.Permissions) || a.Previous != revision || a.Next != revision+1 || a.Slot != p.Credential.Slot || a.Generation != p.Credential.Generation || a.SPKI != p.Credential.SPKI || a.Issuer != p.Credential.Issuer || a.Predecessor != renewalRef(p, p.renewalMetadata) || a.Certificate != CertificateDigest(s.Certificate) {
 		return ErrBinding
 	}
 	if a.Issued != a.From || !renewalInterval(a.From, a.Expires, at) || renewalTime(a.Expires).Sub(renewalTime(a.From)) > 7*24*time.Hour || req.Operation != a.Operation || req.Predecessor != a.Predecessor || req.Certificate != a.Certificate || req.Expires != a.Expires || req.Records.Adoption.Ref != a.Adoption || req.Records.Policy.Ref != a.Policy || req.Records.Decision.Ref != a.Admission {
@@ -113,7 +130,7 @@ func (r renewalState) validateStaged(s state, b renewalBinding, cert string, at 
 	expected.Adoption = a.Adoption
 	expected.Policy = a.Policy
 	expected.Admission = a.Admission
-	expected.CredentialRevision = 2
+	expected.CredentialRevision = a.Next
 	expected.CertificateDigest = CertificateDigest(cert)
 	ref := renewalRef(a, a.renewalMetadata)
 	expected.RenewalRef = &ref
@@ -214,4 +231,20 @@ func (r renewalState) validate(s state) error {
 		return ErrState
 	}
 	return nil
+}
+
+// Project the exact predecessor for the current operation without rewriting the
+// original enrollment, configuration or proofs in protected storage.
+func (s state) renewalBase() state {
+	if len(s.History) > 0 {
+		last := s.History[len(s.History)-1]
+		s.Certificate = last.Certificate
+		if last.Active != nil {
+			s.Config.Binding = renewalProofBinding(*last.Active)
+		}
+	}
+	return s
+}
+func renewalProofBinding(b renewalBinding) ProofBinding {
+	return ProofBinding{b.Target, b.Adoption, b.Policy, b.Admission, b.Audience, b.Profile, b.Credential.Issuer}
 }

@@ -3,6 +3,7 @@
 package pilotenrollment
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/x509"
@@ -16,6 +17,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -43,7 +45,7 @@ func TestRenewalDurableRecoveryAndCredentialSelection(t *testing.T) {
 	keyPosts, installPosts := 0, 0
 	dropKey, dropInstall, denySelf := true, true, false
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		path := r.URL.Path
+		path := strings.ReplaceAll(r.URL.Path, "renewal-3", "renewal-2")
 		write := func(v any) { w.Header().Set("Content-Type", "application/json"); w.Write(canon(v)) }
 		switch path {
 		case "/api/v1/pilot/self":
@@ -226,6 +228,93 @@ func TestRenewalDurableRecoveryAndCredentialSelection(t *testing.T) {
 	if json.Unmarshal(saved, &stored) != nil || stored.Renewal.Phase != "active" || stored.Certificate != original || !sameRenewal(stored.Key, key) {
 		t.Fatal("protected history lost")
 	}
+	// Start a second renewal without rewriting the first operation or original
+	// enrollment. Every attempt below opens the same protected state directory.
+	archived := *c.value.Renewal
+	var next renewalApproval
+	if json.Unmarshal(canon(archived.Approval), &next) != nil {
+		t.Fatal("fixture")
+	}
+	next.Request.Operation = "renewal-3"
+	next.Authorization.Operation = "renewal-3"
+	next.Authorization.ID = "authorization-3"
+	next.Authorization.Correlation = "renewal-3"
+	next.Authorization.Previous = 2
+	next.Authorization.Next = 3
+	next.Authorization.Predecessor = renewalRef(*archived.Active, archived.Active.renewalMetadata)
+	next.Authorization.Certificate = CertificateDigest(archived.Certificate)
+	next.Request.Predecessor = next.Authorization.Predecessor
+	next.Request.Certificate = next.Authorization.Certificate
+	next.Challenge.Operation = "renewal-3"
+	next.Challenge.Authorization = renewalRef(next.Authorization, next.Authorization.renewalMetadata)
+	next.Challenge.Certificate = next.Authorization.Certificate
+	approved = next
+	beforeState := canon(c.value)
+	denySelf = true
+	if _, e := c.PrepareRenewal(context.Background(), canon(next)); e == nil || !bytes.Equal(beforeState, canon(c.value)) {
+		t.Fatal("outage archived current credential")
+	}
+	denySelf = false
+	guard = c.runtime.CheckStorage
+	c.runtime.CheckStorage = func(*os.File, string) error { return ErrStorage }
+	if _, e := c.PrepareRenewal(context.Background(), canon(next)); !errors.Is(e, ErrStorage) || !bytes.Equal(beforeState, canon(c.value)) {
+		t.Fatal("failed save changed current history")
+	}
+	c.runtime.CheckStorage = guard
+	dropKey = true
+	if _, e := c.PrepareRenewal(context.Background(), canon(next)); !errors.Is(e, ErrReconcile) {
+		t.Fatalf("next lost reply: %v", e)
+	}
+	if len(c.value.History) != 1 || !sameRenewal(c.value.History[0], archived) || c.value.Renewal.Phase != "prepared" {
+		t.Fatal("archive and preparation not retained together")
+	}
+	sig := c.value.Renewal.Proof
+	restart("second-renewal-recovery")
+	if _, e := c.CheckAccess(context.Background()); e != nil {
+		t.Fatalf("pending operation discarded active predecessor: %v", e)
+	}
+	if _, e := c.PrepareRenewal(context.Background(), input); !errors.Is(e, ErrBinding) {
+		t.Fatal("archived operation replay accepted")
+	}
+	if _, e := c.RetryRenewalProof(context.Background()); e != nil || c.value.Renewal.Proof != sig {
+		t.Fatalf("second exact retry: %v", e)
+	}
+	if keyPosts != 4 || c.value.Certificate != original || !sameRenewal(c.value.Key, key) {
+		t.Fatal("proof re-signed or original state changed")
+	}
+	for name, mutate := range map[string]func(*state){
+		"missing history":     func(v *state) { v.History = nil },
+		"duplicate history":   func(v *state) { v.History = append(v.History, v.History[0]) },
+		"incomplete history":  func(v *state) { v.History[0].Phase = "verified" },
+		"changed certificate": func(v *state) { v.History[0].Certificate = original },
+		"changed receipt":     func(v *state) { v.History[0].Receipt.Proof.Digest = "sha256:" + strings.Repeat("0", 64) },
+		"revision jump":       func(v *state) { v.Renewal.Approval.Authorization.Next++ },
+		"reused operation":    func(v *state) { v.Renewal.Approval.Request.Operation = v.History[0].Approval.Request.Operation },
+		"missing current":     func(v *state) { v.Renewal = nil },
+	} {
+		t.Run(name, func(t *testing.T) {
+			var changed state
+			json.Unmarshal(canon(c.value), &changed)
+			mutate(&changed)
+			if changed.validate() == nil {
+				t.Fatal("invalid renewal chain accepted")
+			}
+		})
+	}
+
+	// Expired history must remain readable for supervised diagnosis, while
+	// current network requests still reject expired credentials.
+	rt := c.runtime
+	rt.Now = func() time.Time { return time.Now().Add(48 * time.Hour) }
+	c.Close()
+	c, e = Open(d, rt)
+	if e != nil {
+		t.Fatalf("expired history could not be reopened: %v", e)
+	}
+	if _, e = c.CheckAccess(context.Background()); e == nil {
+		t.Fatal("expired credential granted access")
+	}
+
 }
 func TestRenewalApprovalRejectsChangedBindings(t *testing.T) {
 	c, _, _ := readTestClient(t, func(http.ResponseWriter, *http.Request) { t.Error("unexpected request") })
