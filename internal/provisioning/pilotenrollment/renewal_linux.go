@@ -23,6 +23,9 @@ func (r renewalState) path() string {
 // PrepareRenewal validates reviewed approval against an authenticated current
 // binding, persists one signature, then sends it. A lost reply never re-signs.
 func (c *Client) PrepareRenewal(ctx context.Context, raw []byte) (Status, error) {
+	if c.value.Recovery != nil {
+		return Status{}, ErrReconcile
+	}
 	var approval renewalApproval
 	if decode(raw, &approval) != nil || approval.State != "awaiting_proof" || approval.Signature != "" || approval.Verified != "" {
 		return Status{}, ErrInput

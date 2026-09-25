@@ -235,6 +235,39 @@ func TestRenewalDurableRecoveryAndCredentialSelection(t *testing.T) {
 	if json.Unmarshal(canon(archived.Approval), &next) != nil {
 		t.Fatal("fixture")
 	}
+	t.Run("expired active predecessor recovery", func(t *testing.T) {
+		copyClient := *c
+		packet := recoveryFixture(t, &copyClient)
+		p := *archived.Active
+		a := &packet.Approval.Authorization
+		leaf, err := certificate(archived.Certificate)
+		if err != nil {
+			t.Fatal(err)
+		}
+		now := leaf.NotAfter.Add(time.Second)
+		a.Operation, a.Correlation = "expired-recovery", "expired-recovery"
+		a.Previous, a.Next = 2, 3
+		a.Predecessor = renewalRef(p, p.renewalMetadata)
+		a.Certificate = CertificateDigest(archived.Certificate)
+		a.Adoption, a.Policy, a.Admission = p.Adoption, p.Policy, p.Admission
+		a.Deadline = leaf.NotAfter.UTC().Format(time.RFC3339Nano)
+		a.Issued, a.From, a.Expires = now.UTC().Format(time.RFC3339Nano), now.UTC().Format(time.RFC3339Nano), now.Add(time.Hour).UTC().Format(time.RFC3339Nano)
+		packet.Predecessor = p
+		req := &packet.Approval.Request
+		req.Operation, req.Predecessor, req.Certificate, req.Expires = a.Operation, a.Predecessor, a.Certificate, a.Expires
+		req.Records.Adoption.Ref, req.Records.Policy.Ref, req.Records.Decision.Ref = a.Adoption, a.Policy, a.Admission
+		ch := &packet.Approval.Challenge
+		ch.Operation, ch.Correlation, ch.Issued = a.Operation, a.Operation, a.Issued
+		ch.Authorization, ch.Predecessor, ch.Certificate = renewalRef(*a, a.renewalMetadata), a.Predecessor, a.Certificate
+		ch.Expires = now.Add(time.Minute).UTC().Format(time.RFC3339Nano)
+		if err := validateRecovery(c.value, packet, now); err != nil {
+			t.Fatal(err)
+		}
+		packet.Predecessor.Revision++
+		if validateRecovery(c.value, packet, now) == nil {
+			t.Fatal("changed active predecessor accepted")
+		}
+	})
 	next.Request.Operation = "renewal-3"
 	next.Authorization.Operation = "renewal-3"
 	next.Authorization.ID = "authorization-3"

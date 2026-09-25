@@ -53,16 +53,18 @@ type Config struct {
 	ProtectedVolume string       `json:"protected_volume_uuid"`
 }
 type Status struct {
-	Renewal    *RenewalStatus `json:"renewal,omitempty"`
-	Schema     string         `json:"schema_version"`
-	Phase      string         `json:"phase"`
-	SPKI       string         `json:"spki"`
-	SPKIDigest string         `json:"spki_digest"`
-	Enrollment string         `json:"enrollment_id,omitempty"`
-	Logical    string         `json:"logical_device_id,omitempty"`
-	Full       bool           `json:"full_qualification"`
+	Recovery   *RecoveryStatus `json:"recovery,omitempty"`
+	Renewal    *RenewalStatus  `json:"renewal,omitempty"`
+	Schema     string          `json:"schema_version"`
+	Phase      string          `json:"phase"`
+	SPKI       string          `json:"spki"`
+	SPKIDigest string          `json:"spki_digest"`
+	Enrollment string          `json:"enrollment_id,omitempty"`
+	Logical    string          `json:"logical_device_id,omitempty"`
+	Full       bool            `json:"full_qualification"`
 }
 type state struct {
+	Recovery         *recoveryState `json:"recovery,omitempty"`
 	History          []renewalState `json:"renewal_history,omitempty"`
 	Renewal          *renewalState  `json:"renewal,omitempty"`
 	Schema           string         `json:"schema_version"`
@@ -151,6 +153,9 @@ func (s state) status() (Status, error) {
 		r := s.Renewal
 		out.Renewal = &RenewalStatus{r.Approval.Request.Operation, r.Phase, r.Approval.Authorization.Next, CertificateDigest(r.Certificate)}
 	}
+	if s.Recovery != nil {
+		out.Recovery = &RecoveryStatus{s.Recovery.Packet.Approval.Request.Operation, "proof_prepared"}
+	}
 	return out, nil
 }
 func (s state) checkChallenge(c Challenge, purpose string, now time.Time, checkTime bool) error {
@@ -206,6 +211,9 @@ func (s state) validate() error {
 		if s.Phase != "verified" || seen[s.Renewal.Approval.Request.Operation] || s.Renewal.validate(s) != nil {
 			return ErrState
 		}
+	}
+	if s.Recovery != nil && s.Recovery.validate(s) != nil {
+		return ErrState
 	}
 	if s.Phase == "initialized" {
 		if s.Bootstrap != nil || s.BootstrapProof != "" || s.Certificate != "" || s.InstalledProcess != "" || s.Pending != nil || s.PendingProof != "" {
