@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -168,6 +169,9 @@ func (c *Client) Install(raw []byte) (Status, error) {
 	return c.Status()
 }
 func (c *Client) request(ctx context.Context, method, path string, b []byte) ([]byte, error) {
+	return c.requestKey(ctx, method, path, b, "")
+}
+func (c *Client) requestKey(ctx context.Context, method, path string, b []byte, idempotencyKey string) ([]byte, error) {
 	leaf, e := c.value.leaf(c.runtime.Now())
 	if e != nil {
 		return nil, e
@@ -184,19 +188,43 @@ func (c *Client) request(ctx context.Context, method, path string, b []byte) ([]
 	roots.AddCert(ca)
 	tr := &http.Transport{TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS13, RootCAs: roots, Certificates: []tls.Certificate{{Certificate: [][]byte{leaf.Raw}, PrivateKey: key, Leaf: leaf}}}, TLSHandshakeTimeout: 5 * time.Second, ResponseHeaderTimeout: 10 * time.Second}
 	defer tr.CloseIdleConnections()
-	h := &http.Client{Transport: tr, Timeout: 15 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("redirect denied") }}
+	h := &http.Client{Transport: tr, Timeout: 15 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return &RequestError{Kind: "redirect"} }}
 	req, e := http.NewRequestWithContext(ctx, method, strings.TrimSuffix(c.value.Config.FleetURL, "/")+path, bytes.NewReader(b))
 	if e != nil {
 		return nil, e
 	}
+	if idempotencyKey != "" {
+		req.Header.Set("Idempotency-Key", idempotencyKey)
+	}
+	if b != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	res, e := h.Do(req)
 	if e != nil {
-		return nil, ErrReconcile
+		var existing *RequestError
+		if errors.As(e, &existing) {
+			return nil, existing
+		}
+		kind := "transport"
+		var verify *tls.CertificateVerificationError
+		var network net.Error
+		switch {
+		case errors.Is(e, context.Canceled):
+			kind = "canceled"
+		case errors.As(e, &verify):
+			kind = "tls_verification"
+		case errors.As(e, &network) && network.Timeout():
+			kind = "timeout"
+		}
+		return nil, &RequestError{Kind: kind}
 	}
 	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return nil, &RequestError{Kind: "http_status", HTTPStatus: res.StatusCode}
+	}
 	raw, e := io.ReadAll(io.LimitReader(res.Body, maxBytes+1))
-	if e != nil || len(raw) > maxBytes || res.StatusCode != 200 {
-		return nil, ErrReconcile
+	if e != nil || len(raw) > maxBytes {
+		return nil, &RequestError{Kind: "invalid_response", HTTPStatus: res.StatusCode}
 	}
 	return raw, nil
 }
@@ -281,7 +309,7 @@ func (c *Client) ProveInstalled(ctx context.Context) (Status, error) {
 	}
 	raw, e = c.request(ctx, "POST", path+"/pending-proof", canon(proof))
 	if e != nil {
-		return Status{}, ErrReconcile
+		return Status{}, errors.Join(ErrReconcile, e)
 	}
 	return c.Reconcile(raw)
 }
@@ -320,6 +348,9 @@ func (c *Client) Reconcile(raw []byte) (Status, error) {
 	return c.Status()
 }
 func (c *Client) CheckAccess(ctx context.Context) (json.RawMessage, error) {
+	if c.value.Bootstrap == nil {
+		return nil, ErrState
+	}
 	raw, e := c.request(ctx, "GET", "/api/v1/pilot/self", nil)
 	if e != nil {
 		return nil, e
@@ -331,7 +362,7 @@ func (c *Client) CheckAccess(ctx context.Context) (json.RawMessage, error) {
 		Full       bool            `json:"full_qualification"`
 	}
 	if decode(raw, &v) != nil || v.Authorized != "pilot" || v.Instance != c.value.Bootstrap.Enrollment || v.Full {
-		return nil, ErrBinding
+		return nil, &RequestError{Kind: "invalid_response", HTTPStatus: 200}
 	}
 	return raw, nil
 }
@@ -357,7 +388,7 @@ func (c *Client) RetryInstalled(ctx context.Context, raw []byte) (Status, error)
 	}
 	reply, e := c.request(ctx, "POST", "/api/v1/pilot/enrollments/"+r.ID+"/pending-proof", canon(Proof{c.value.PendingProof}))
 	if e != nil {
-		return Status{}, ErrReconcile
+		return Status{}, errors.Join(ErrReconcile, e)
 	}
 	return c.Reconcile(reply)
 }
