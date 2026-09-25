@@ -172,7 +172,7 @@ func (c *Client) request(ctx context.Context, method, path string, b []byte) ([]
 	return c.requestKey(ctx, method, path, b, "")
 }
 func (c *Client) requestKey(ctx context.Context, method, path string, b []byte, idempotencyKey string) ([]byte, error) {
-	cert := c.value.Certificate
+	cert := c.value.renewalBase().Certificate
 	if c.value.Renewal != nil && c.value.Renewal.Phase == "active" {
 		cert = c.value.Renewal.Certificate
 	}

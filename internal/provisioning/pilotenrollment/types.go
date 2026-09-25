@@ -63,17 +63,18 @@ type Status struct {
 	Full       bool           `json:"full_qualification"`
 }
 type state struct {
-	Renewal          *renewalState `json:"renewal,omitempty"`
-	Schema           string        `json:"schema_version"`
-	Config           Config        `json:"config"`
-	Key              []byte        `json:"private_key_pkcs8"`
-	Phase            string        `json:"phase"`
-	Bootstrap        *Challenge    `json:"bootstrap,omitempty"`
-	BootstrapProof   string        `json:"bootstrap_proof,omitempty"`
-	Certificate      string        `json:"certificate,omitempty"`
-	InstalledProcess string        `json:"installed_process,omitempty"`
-	Pending          *Challenge    `json:"pending_challenge,omitempty"`
-	PendingProof     string        `json:"pending_proof,omitempty"`
+	History          []renewalState `json:"renewal_history,omitempty"`
+	Renewal          *renewalState  `json:"renewal,omitempty"`
+	Schema           string         `json:"schema_version"`
+	Config           Config         `json:"config"`
+	Key              []byte         `json:"private_key_pkcs8"`
+	Phase            string         `json:"phase"`
+	Bootstrap        *Challenge     `json:"bootstrap,omitempty"`
+	BootstrapProof   string         `json:"bootstrap_proof,omitempty"`
+	Certificate      string         `json:"certificate,omitempty"`
+	InstalledProcess string         `json:"installed_process,omitempty"`
+	Pending          *Challenge     `json:"pending_challenge,omitempty"`
+	PendingProof     string         `json:"pending_proof,omitempty"`
 }
 
 func canonical(v any) ([]byte, error) {
@@ -188,8 +189,21 @@ func (s state) validate() error {
 	if _, e := privateKey(s.Key); e != nil {
 		return e
 	}
+	if len(s.History) > 127 || (len(s.History) > 0 && s.Renewal == nil) {
+		return ErrState
+	}
+	seen := map[string]bool{}
+	for i, r := range s.History {
+		prefix := s
+		prefix.History = s.History[:i]
+		prefix.Renewal = nil
+		if s.Phase != "verified" || r.Phase != "active" || seen[r.Approval.Request.Operation] || r.validate(prefix) != nil {
+			return ErrState
+		}
+		seen[r.Approval.Request.Operation] = true
+	}
 	if s.Renewal != nil {
-		if s.Phase != "verified" || s.Renewal.validate(s) != nil {
+		if s.Phase != "verified" || seen[s.Renewal.Approval.Request.Operation] || s.Renewal.validate(s) != nil {
 			return ErrState
 		}
 	}

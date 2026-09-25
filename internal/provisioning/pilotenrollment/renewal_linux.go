@@ -27,14 +27,24 @@ func (c *Client) PrepareRenewal(ctx context.Context, raw []byte) (Status, error)
 	if decode(raw, &approval) != nil || approval.State != "awaiting_proof" || approval.Signature != "" || approval.Verified != "" {
 		return Status{}, ErrInput
 	}
-	if c.value.Renewal != nil {
-		if !sameRenewal(c.value.Renewal.Approval, approval) {
+	next := c.value
+	for _, prior := range next.History {
+		if prior.Approval.Request.Operation == approval.Request.Operation {
 			return Status{}, ErrBinding
 		}
-		if c.value.Renewal.Phase == "prepared" {
-			return Status{}, ErrReconcile
+	}
+	if next.Renewal != nil {
+		if sameRenewal(next.Renewal.Approval, approval) {
+			if next.Renewal.Phase == "prepared" {
+				return Status{}, ErrReconcile
+			}
+			return c.Status()
 		}
-		return c.Status()
+		if next.Renewal.Phase != "active" || next.Renewal.Approval.Request.Operation == approval.Request.Operation || len(next.History) >= 127 {
+			return Status{}, ErrBinding
+		}
+		next.History = append(append([]renewalState(nil), next.History...), *next.Renewal)
+		next.Renewal = nil
 	}
 	if c.value.Phase != "verified" {
 		return Status{}, ErrState
@@ -49,7 +59,7 @@ func (c *Client) PrepareRenewal(ctx context.Context, raw []byte) (Status, error)
 		return Status{}, ErrBinding
 	}
 	now := c.runtime.Now()
-	if e = validateRenewalApproval(c.value, predecessor, approval, now); e != nil {
+	if e = validateRenewalApproval(next, predecessor, approval, now); e != nil {
 		return Status{}, e
 	}
 	proof, e := renewalSign(c.value, approval.Challenge)
@@ -57,7 +67,11 @@ func (c *Client) PrepareRenewal(ctx context.Context, raw []byte) (Status, error)
 		return Status{}, e
 	}
 	r := renewalState{Phase: "prepared", PreparedAt: now.UTC().Format(time.RFC3339Nano), Approval: approval, Predecessor: predecessor, Proof: proof}
-	if e = c.saveRenewal(r); e != nil {
+	next.Renewal = &r
+	if e = checkStorage(c.store, c.value.Config, c.runtime); e != nil {
+		return Status{}, e
+	}
+	if e = c.save(next); e != nil {
 		return Status{}, e
 	}
 	return c.sendRenewalProof(ctx)
@@ -104,7 +118,7 @@ func (c *Client) installation(raw []byte, r renewalState) (renewalInstallation, 
 	approved.Signature = ""
 	approved.Verified = ""
 	var old renewalBinding
-	if !sameRenewal(approved, r.Approval) || out.Predecessor.ID != r.Approval.Authorization.Instance || out.Predecessor.Logical != r.Approval.Authorization.Logical || out.Predecessor.State != "active" || out.Predecessor.Certificate != c.value.Certificate || out.Predecessor.Intent != c.value.Config.Binding || decode(out.Predecessor.Binding, &old) != nil || !sameRenewal(old, r.Predecessor) {
+	if !sameRenewal(approved, r.Approval) || out.Predecessor.ID != r.Approval.Authorization.Instance || out.Predecessor.Logical != r.Approval.Authorization.Logical || out.Predecessor.State != "active" || out.Predecessor.Certificate != c.value.renewalBase().Certificate || out.Predecessor.Intent != c.value.renewalBase().Config.Binding || decode(out.Predecessor.Binding, &old) != nil || !sameRenewal(old, r.Predecessor) {
 		return out, ErrBinding
 	}
 	if e := r.validateStaged(c.value, out.Staged, out.Certificate, c.runtime.Now()); e != nil {
