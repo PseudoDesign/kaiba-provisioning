@@ -53,25 +53,32 @@ type Config struct {
 	ProtectedVolume string       `json:"protected_volume_uuid"`
 }
 type Status struct {
-	Schema     string `json:"schema_version"`
-	Phase      string `json:"phase"`
-	SPKI       string `json:"spki"`
-	SPKIDigest string `json:"spki_digest"`
-	Enrollment string `json:"enrollment_id,omitempty"`
-	Logical    string `json:"logical_device_id,omitempty"`
-	Full       bool   `json:"full_qualification"`
+	Recovery   *RecoveryStatus `json:"recovery,omitempty"`
+	Renewal    *RenewalStatus  `json:"renewal,omitempty"`
+	Schema     string          `json:"schema_version"`
+	Phase      string          `json:"phase"`
+	SPKI       string          `json:"spki"`
+	SPKIDigest string          `json:"spki_digest"`
+	Enrollment string          `json:"enrollment_id,omitempty"`
+	Logical    string          `json:"logical_device_id,omitempty"`
+	Full       bool            `json:"full_qualification"`
 }
 type state struct {
-	Schema           string     `json:"schema_version"`
-	Config           Config     `json:"config"`
-	Key              []byte     `json:"private_key_pkcs8"`
-	Phase            string     `json:"phase"`
-	Bootstrap        *Challenge `json:"bootstrap,omitempty"`
-	BootstrapProof   string     `json:"bootstrap_proof,omitempty"`
-	Certificate      string     `json:"certificate,omitempty"`
-	InstalledProcess string     `json:"installed_process,omitempty"`
-	Pending          *Challenge `json:"pending_challenge,omitempty"`
-	PendingProof     string     `json:"pending_proof,omitempty"`
+	// Number of normal renewals completed before the retained recovery.
+	RecoveryRenewalStart *int           `json:"recovery_renewal_start,omitempty"`
+	Recovery             *recoveryState `json:"recovery,omitempty"`
+	History              []renewalState `json:"renewal_history,omitempty"`
+	Renewal              *renewalState  `json:"renewal,omitempty"`
+	Schema               string         `json:"schema_version"`
+	Config               Config         `json:"config"`
+	Key                  []byte         `json:"private_key_pkcs8"`
+	Phase                string         `json:"phase"`
+	Bootstrap            *Challenge     `json:"bootstrap,omitempty"`
+	BootstrapProof       string         `json:"bootstrap_proof,omitempty"`
+	Certificate          string         `json:"certificate,omitempty"`
+	InstalledProcess     string         `json:"installed_process,omitempty"`
+	Pending              *Challenge     `json:"pending_challenge,omitempty"`
+	PendingProof         string         `json:"pending_proof,omitempty"`
 }
 
 func canonical(v any) ([]byte, error) {
@@ -144,6 +151,17 @@ func (s state) status() (Status, error) {
 		out.Enrollment = s.Bootstrap.Enrollment
 		out.Logical = s.Bootstrap.Logical
 	}
+	if s.Renewal != nil {
+		r := s.Renewal
+		out.Renewal = &RenewalStatus{r.Approval.Request.Operation, r.Phase, r.Approval.Authorization.Next, CertificateDigest(r.Certificate)}
+	}
+	if s.Recovery != nil {
+		phase := "proof_prepared"
+		if s.Recovery.Installation != nil {
+			phase = s.Recovery.Installation.Phase
+		}
+		out.Recovery = &RecoveryStatus{s.Recovery.Packet.Approval.Request.Operation, phase}
+	}
 	return out, nil
 }
 func (s state) checkChallenge(c Challenge, purpose string, now time.Time, checkTime bool) error {
@@ -181,6 +199,51 @@ func (s state) validate() error {
 	}
 	if _, e := privateKey(s.Key); e != nil {
 		return e
+	}
+	if len(s.History) > 127 || (len(s.History) > 0 && s.Renewal == nil) {
+		return ErrState
+	}
+	if s.RecoveryRenewalStart != nil {
+		n := *s.RecoveryRenewalStart
+		if n < 0 || n > len(s.History) || s.Renewal == nil || s.Recovery == nil || s.Recovery.Installation == nil || s.Recovery.Installation.Phase != "active" {
+			return ErrState
+		}
+		prefix := s
+		prefix.History = s.History[:n]
+		prefix.Renewal = nil
+		prefix.RecoveryRenewalStart = nil
+		if n > 0 {
+			prefix.Renewal = &s.History[n-1]
+			prefix.History = s.History[:n-1]
+		}
+		if s.Recovery.validate(prefix) != nil {
+			return ErrState
+		}
+	}
+	seen := map[string]bool{}
+	if s.Recovery != nil {
+		seen[s.Recovery.Packet.Approval.Request.Operation] = true
+	}
+	for i, r := range s.History {
+		prefix := s
+		prefix.History = s.History[:i]
+		prefix.Renewal = nil
+		if s.RecoveryRenewalStart != nil && i < *s.RecoveryRenewalStart {
+			prefix.Recovery = nil
+			prefix.RecoveryRenewalStart = nil
+		}
+		if s.Phase != "verified" || r.Phase != "active" || seen[r.Approval.Request.Operation] || r.validate(prefix) != nil {
+			return ErrState
+		}
+		seen[r.Approval.Request.Operation] = true
+	}
+	if s.Renewal != nil {
+		if s.Phase != "verified" || seen[s.Renewal.Approval.Request.Operation] || s.Renewal.validate(s) != nil {
+			return ErrState
+		}
+	}
+	if s.RecoveryRenewalStart == nil && s.Recovery != nil && s.Recovery.validate(s) != nil {
+		return ErrState
 	}
 	if s.Phase == "initialized" {
 		if s.Bootstrap != nil || s.BootstrapProof != "" || s.Certificate != "" || s.InstalledProcess != "" || s.Pending != nil || s.PendingProof != "" {

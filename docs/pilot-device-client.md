@@ -156,3 +156,10 @@ Synthetic mTLS tests cover status classifications, lost replies, input bounds,
 receipt substitution and unchanged credential state. Live diagnostic submission
 and deployment of this client remain separate execution steps; these software
 tests do not close those real-device evidence conditions.
+
+## First renewal
+
+The [protected renewal commands](pilot-device-renewal.md) retain the predecessor
+while installing and proving a same-key successor. They require the matching
+fleet approval/issuance/cutover implementation; they do not extend an expired
+pilot or initiate enrollment again.
