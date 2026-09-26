@@ -89,6 +89,32 @@ class SelectionTests(unittest.TestCase):
             with self.subTest(malformed=malformed), self.assertRaises(ValueError):
                 ci.ordinary_checks(malformed)
 
+    def test_ordinary_evaluation_precedes_readonly_validation_without_building_vms(self):
+        events = []
+        names = list(ci.SELECTIVE_CHECKS) + ["unit", "future-check"]
+
+        def evaluate(command, **kwargs):
+            events.append("evaluate")
+            self.assertIn("checks: builtins.mapAttrs (_: check: check.drvPath) checks", command)
+            return json.dumps(dict.fromkeys(names, "/nix/store/example.drv"))
+
+        def run(command, **kwargs):
+            if "check" in command:
+                self.assertEqual(events, ["evaluate"])
+                events.append("validate")
+            else:
+                self.assertEqual(events, ["evaluate", "validate"])
+                self.assertEqual(command, ci.NIX + ["build", "-L", "--no-link"] + [
+                    f"{ROOT}#checks.{ci.SYSTEM}.{name}" for name in ("unit", "future-check")
+                ])
+                events.append("build")
+
+        with patch.object(ci.platform, "machine", return_value="aarch64"), patch.object(
+            ci.subprocess, "check_output", side_effect=evaluate
+        ), patch.object(ci.subprocess, "run", side_effect=run):
+            ci.build_ordinary(ROOT)
+        self.assertEqual(events, ["evaluate", "validate", "build"])
+
     def test_ordinary_build_refuses_non_native_host(self):
         with patch.object(ci.platform, "machine", return_value="x86_64"), patch.object(
             ci.subprocess, "run"
