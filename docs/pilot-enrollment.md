@@ -112,6 +112,14 @@ deployment and service changes use the reviewed execution packet. A GUI and a
 development-Pi station remain deferred; a controlled physical lane is required
 only when the selected operation needs it.
 
+## Bounded execution
+
+The [enrollment runner](pilot-enrollment-runner.md) packages the fixed job sequence,
+progress journal, read-only reconciliation and one local recovery-passphrase
+prompt. Its operation adapter and subprocess rehearsal are implemented. A live
+Mako packet still requires fresh observations, exact reviewed operations/probes
+and execution authority; neither software tests nor packet validation enroll it.
+
 ## Automated acceptance and retained report
 
 Extend the existing packaged producer/consumer/client rehearsal with two distinct

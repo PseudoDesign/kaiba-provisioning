@@ -615,6 +615,8 @@
           kaiba-provision-export = built.fleetExport;
           kaiba-pilot-export = built.pilotExport;
           kaiba-pilot-device = built.pilotDevice;
+          kaiba-pilot-enrollment-runner =
+            (import ./nix/pilot-enrollment-runner.nix { pkgs = import nixpkgs { inherit system; }; }).package;
           kaiba-device-enrollment = built.deviceEnrollment;
           kaiba-enrollment-storage =
             (import ./nix/enrollment-storage.nix { pkgs = import nixpkgs { inherit system; }; }).helper;
@@ -912,6 +914,7 @@
               }).media;
           };
           device-secret-runner = (import ./nix/device-secret-runner.nix { inherit pkgs; }).check;
+          pilot-enrollment-runner = (import ./nix/pilot-enrollment-runner.nix { inherit pkgs; }).check;
           firmware-rejection-observer =
             (import ./nix/firmware-rejection-observer.nix {
               inherit pkgs;
