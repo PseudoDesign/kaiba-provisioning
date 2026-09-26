@@ -179,12 +179,14 @@ jobs:
           path: _site
 
   verifier-plan:
-    name: Select older verifier image checks
+    name: Select expensive ARM64 checks
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     outputs:
       required: ${{ steps.plan.outputs.required }}
       checks: ${{ steps.plan.outputs.checks }}
+      heavy_required: ${{ steps.plan.outputs.heavy_required }}
+      heavy_checks: ${{ steps.plan.outputs.heavy_checks }}
     steps:
       - name: Check out the repository and PR base
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -196,7 +198,7 @@ jobs:
         with:
           enable_kvm: false
           github_access_token: ${{ github.token }}
-      - name: Compare complete verifier build inputs
+      - name: Compare complete ARM64 build inputs
         id: plan
         run: python3 -B .github/scripts/verifier_ci.py plan
 
@@ -239,8 +241,48 @@ jobs:
           VERIFIER_CHECK: ${{ matrix.check }}
         run: nix --accept-flake-config build -L --no-link ".#checks.aarch64-linux.$VERIFIER_CHECK"
 
-  # Preserve the required-check context. A verifier skip is valid only after
-  # successful input comparison explicitly established that neither changed.
+  arm64-heavy:
+    name: ARM64 hardware check (${{ matrix.check }})
+    needs: verifier-plan
+    if: needs.verifier-plan.outputs.heavy_required == 'true'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        check: ${{ fromJSON(needs.verifier-plan.outputs.heavy_checks) }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Nix
+        uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342 # v31.11.0
+        with:
+          enable_kvm: false
+          github_access_token: ${{ github.token }}
+      - name: Configure binary caches (read-only)
+        if: github.event_name != 'push' || github.ref != 'refs/heads/main'
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: ${{ env.CACHIX_CACHE }}
+          extraPullNames: nixos-raspberrypi
+          skipPush: true
+      - name: Cache trusted ARM64 hardware builds
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: ${{ env.CACHIX_CACHE }}
+          extraPullNames: nixos-raspberrypi
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - name: Build the selected ARM64 hardware check
+        env:
+          HARDWARE_CHECK: ${{ matrix.check }}
+        run: nix --accept-flake-config build -L --no-link ".#checks.aarch64-linux.$HARDWARE_CHECK"
+
+  # Preserve the required-check context. A matrix skip is valid only after
+  # successful input comparison explicitly established that its inputs match.
   x86_64:
     name: x86_64 Nix checks
     if: always()
@@ -250,6 +292,7 @@ jobs:
       - device-secret-development
       - verifier-plan
       - verifier-images
+      - arm64-heavy
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -267,6 +310,8 @@ jobs:
           PLAN_RESULT: ${{ needs.verifier-plan.result }}
           VERIFIER_REQUIRED: ${{ needs.verifier-plan.outputs.required }}
           VERIFIER_RESULT: ${{ needs.verifier-images.result }}
+          HEAVY_REQUIRED: ${{ needs.verifier-plan.outputs.heavy_required }}
+          HEAVY_RESULT: ${{ needs.arm64-heavy.result }}
         run: python3 -B .github/scripts/verifier_ci.py require-results
 
   aarch64:
@@ -308,33 +353,8 @@ jobs:
       - name: Run Go unit tests
         run: nix --accept-flake-config build -L --no-link .#checks.aarch64-linux.unit
 
-      # The hosted ARM64 runner currently falls back to TCG for NixOS VM
-      # tests. Running the VM checks alongside kernel or filesystem-image
-      # builds can starve the guest long enough to hit the test driver's fixed
-      # shell-connect limit. Build the large ARM64 checks one at a time; the
-      # ordinary checks below then reuse the outputs.
-      - name: Build large ARM64 checks without build contention
-        run: |
-          nix --accept-flake-config build -L --no-link \
-            .#checks.aarch64-linux.stable-verifier-aarch64-kexec-vm
-          nix --accept-flake-config build -L --no-link \
-            .#checks.aarch64-linux.stable-handoff-aarch64-kexec-file-vm
-          nix --accept-flake-config build -L --no-link \
-            .#checks.aarch64-linux.device-secret-target-luks-vm
-          nix --accept-flake-config build -L --no-link \
-            .#checks.aarch64-linux.device-secret-storage-development-vm
-          nix --accept-flake-config build -L --no-link \
-            .#checks.aarch64-linux.enrollment-storage-vm
-          nix --accept-flake-config build -L --no-link \
-            .#checks.aarch64-linux.copied-storage-vm
-          nix --accept-flake-config build -L --no-link \
-            .#checks.aarch64-linux.device-secret-offline-storage-vm
-          nix --accept-flake-config build -L --no-link \
-            .#checks.aarch64-linux.device-secret-execution-vm
-          nix --accept-flake-config build -L --no-link \
-            .#checks.aarch64-linux.stable-campaign-provisioner-unsigned-artifacts
-          nix --accept-flake-config build -L --no-link \
-            .#checks.aarch64-linux.device-secret-target-artifacts
+      # VM/image checks run separately in the input-selected arm64-heavy matrix.
+      # Do not realize them here: doing so defeats the PR selection.
 
       # Public configured outputs need realization coverage beyond fixtures.
       # A PR's synthetic merge revision is an integration input, not the source
@@ -356,7 +376,8 @@ jobs:
       - name: Export the tested native device enrollment client
         run: |
           test "$(uname -m)" = aarch64
-          export ENROLLMENT_PACKAGE="$(nix --accept-flake-config build --no-link --print-out-paths .#kaiba-device-enrollment)"
+          ENROLLMENT_PACKAGE="$(nix --accept-flake-config build --no-link --print-out-paths .#kaiba-device-enrollment)"
+          export ENROLLMENT_PACKAGE
           export ENROLLMENT_EXPORT="$RUNNER_TEMP/device-enrollment"
           python3 - <<'PY'
           import hashlib, json, os, pathlib, shutil, subprocess
@@ -399,7 +420,8 @@ jobs:
       - name: Export the tested native enrollment storage bundle
         run: |
           test "$(uname -m)" = aarch64
-          export STORAGE_PACKAGE="$(nix --accept-flake-config build --no-link --print-out-paths .#kaiba-enrollment-storage)"
+          STORAGE_PACKAGE="$(nix --accept-flake-config build --no-link --print-out-paths .#kaiba-enrollment-storage)"
+          export STORAGE_PACKAGE
           export STORAGE_EXPORT="$RUNNER_TEMP/enrollment-storage"
           python3 - <<'PY'
           import hashlib, json, os, pathlib, shutil, subprocess
@@ -559,7 +581,8 @@ jobs:
         run: |
           test "$(uname -m)" = aarch64
           nix --accept-flake-config build -L --no-link .#checks.aarch64-linux.copied-storage
-          export COMPARISON_PACKAGE="$(nix --accept-flake-config build --no-link --print-out-paths .#kaiba-copied-storage)"
+          COMPARISON_PACKAGE="$(nix --accept-flake-config build --no-link --print-out-paths .#kaiba-copied-storage)"
+          export COMPARISON_PACKAGE
           export COMPARISON_EXPORT="$RUNNER_TEMP/copied-storage"
           python3 - <<'PYTHON'
           import hashlib, json, os, pathlib, shutil, subprocess
