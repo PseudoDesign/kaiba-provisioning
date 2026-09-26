@@ -47,15 +47,16 @@ network calls. Relay that response using current management credentials to
 `POST /api/v1/pilot/enrollments/{id}/recoveries/{operation}/proof`.
 An exact command repeat, including after restart or expiry, returns the saved
 signature without signing again. A different packet or pending normal renewal
-requires reconciliation. A saved recovery blocks a new normal-renewal operation;
+requires reconciliation. An unfinished recovery blocks a new normal-renewal operation;
 there is no reset or replacement-operation escape hatch. Status reports
 `recovery.phase=proof_prepared`, which does not imply server acceptance.
 
 The original key, certificate, membership and renewal history remain intact.
 Current software supports initial 0.2 and normally renewed 0.3 predecessors.
-Subsequent renewal or recovery from a recovered 0.4 binding remains unsupported;
-normal renewal stays blocked while recovery state is retained. Complete that
-follow-on lifecycle support before using this as a live seven-day recovery. The deployable
+After recovery is active and freshly confirmed, normal renewal may use the
+recovered 0.4 binding. The saved recovery and any earlier renewals remain intact.
+A second expired-access recovery on this client remains unsupported and requires
+review; it cannot overwrite the retained recovery packet. The deployable
 binary still requires protected storage. Software fixtures replace only storage
 observation and make no hardware qualification claim.
 
@@ -95,3 +96,20 @@ Disposable tests cover protected-state failure, process restart, lost replies,
 explicit same-proof reconciliation, tampered receipts, denied current access and
 unchanged original key/certificate. Fleet integration adds persistence-fault
 rollback and shared-contract checks. No test result is a live recovery receipt.
+
+
+## Normal renewal after recovery
+
+Use the existing `prepare-renewal`, installation, fresh-process proof and
+reconciliation commands with a fresh operator-approved normal renewal. The
+predecessor must still be current and unexpired. Recovery grants never authorize
+normal renewal, and normal renewal cannot bypass an unfinished recovery.
+
+When starting the first subsequent renewal, protected state records the boundary
+between renewals completed before and after recovery. State loading validates
+the entire ordered chain, including the original recovery packet, installation
+receipt and active binding. Missing history or a changed boundary fails closed.
+Pending renewal continues to use the recovered credential; only confirmed
+activation selects its successor. Later normal renewals preserve that same
+history. `reconcile-recovery` refuses to alter a state that has entered this later
+renewal chain; use `reconcile-renewal` for the current operation.

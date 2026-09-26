@@ -181,6 +181,46 @@ func TestRecoveryInstallationRestartAndLostReply(t *testing.T) {
 	if tampered.validate() == nil {
 		t.Fatal("wrong receipt contract accepted")
 	}
+	t.Run("renewal retains recovery anchor", func(t *testing.T) {
+		base := c.value
+		zero := 0
+		base.RecoveryRenewalStart = &zero
+		projected := *c
+		projected.value = base.renewalBase()
+		_, next := renewalFixture(t, &projected)
+		a := &next.Authorization
+		a.Operation, a.Correlation = "renewal-after-recovery", "renewal-after-recovery"
+		a.Issued, a.From = stamp(time.Now()), stamp(time.Now())
+		a.Issued = a.From
+		a.Previous, a.Next = 2, 3
+		a.Predecessor = renewalRef(active, active.renewalMetadata)
+		next.Request.Operation, next.Request.Predecessor = a.Operation, a.Predecessor
+		next.Challenge.Operation = a.Operation
+		next.Challenge.Issued = a.From
+		next.Challenge.Authorization = renewalRef(*a, a.renewalMetadata)
+		proof, err := renewalSign(base, next.Challenge)
+		if err != nil {
+			t.Fatal(err)
+		}
+		base.Renewal = &renewalState{Phase: "prepared", PreparedAt: stamp(time.Now()), Approval: next, Predecessor: active, Proof: proof}
+		if err := base.validate(); err != nil {
+			t.Fatal("valid anchored renewal", err)
+		}
+		for _, mutate := range []func(*state){
+			func(s *state) { s.RecoveryRenewalStart = nil },
+			func(s *state) { one := 1; s.RecoveryRenewalStart = &one },
+			func(s *state) { s.Recovery = nil },
+			func(s *state) { s.Recovery.Installation.Phase = "verified" },
+			func(s *state) { s.Renewal.Predecessor.RecoveryRef = nil },
+		} {
+			var bad state
+			decode(canon(base), &bad)
+			mutate(&bad)
+			if bad.validate() == nil {
+				t.Fatal("broken recovery history accepted")
+			}
+		}
+	})
 	allowSelf = false
 	if _, e = c.ReconcileRecovery(context.Background()); e == nil {
 		t.Fatal("revocation ignored")

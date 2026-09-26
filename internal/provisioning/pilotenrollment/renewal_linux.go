@@ -23,7 +23,7 @@ func (r renewalState) path() string {
 // PrepareRenewal validates reviewed approval against an authenticated current
 // binding, persists one signature, then sends it. A lost reply never re-signs.
 func (c *Client) PrepareRenewal(ctx context.Context, raw []byte) (Status, error) {
-	if c.value.Recovery != nil {
+	if c.value.Recovery != nil && (c.value.Recovery.Installation == nil || c.value.Recovery.Installation.Phase != "active") {
 		return Status{}, ErrReconcile
 	}
 	var approval renewalApproval
@@ -31,6 +31,9 @@ func (c *Client) PrepareRenewal(ctx context.Context, raw []byte) (Status, error)
 		return Status{}, ErrInput
 	}
 	next := c.value
+	if next.Recovery != nil && next.Recovery.Packet.Approval.Request.Operation == approval.Request.Operation {
+		return Status{}, ErrBinding
+	}
 	for _, prior := range next.History {
 		if prior.Approval.Request.Operation == approval.Request.Operation {
 			return Status{}, ErrBinding
@@ -48,6 +51,10 @@ func (c *Client) PrepareRenewal(ctx context.Context, raw []byte) (Status, error)
 		}
 		next.History = append(append([]renewalState(nil), next.History...), *next.Renewal)
 		next.Renewal = nil
+	}
+	if next.Recovery != nil && next.RecoveryRenewalStart == nil {
+		n := len(next.History)
+		next.RecoveryRenewalStart = &n
 	}
 	if c.value.Phase != "verified" {
 		return Status{}, ErrState

@@ -64,19 +64,21 @@ type Status struct {
 	Full       bool            `json:"full_qualification"`
 }
 type state struct {
-	Recovery         *recoveryState `json:"recovery,omitempty"`
-	History          []renewalState `json:"renewal_history,omitempty"`
-	Renewal          *renewalState  `json:"renewal,omitempty"`
-	Schema           string         `json:"schema_version"`
-	Config           Config         `json:"config"`
-	Key              []byte         `json:"private_key_pkcs8"`
-	Phase            string         `json:"phase"`
-	Bootstrap        *Challenge     `json:"bootstrap,omitempty"`
-	BootstrapProof   string         `json:"bootstrap_proof,omitempty"`
-	Certificate      string         `json:"certificate,omitempty"`
-	InstalledProcess string         `json:"installed_process,omitempty"`
-	Pending          *Challenge     `json:"pending_challenge,omitempty"`
-	PendingProof     string         `json:"pending_proof,omitempty"`
+	// Number of normal renewals completed before the retained recovery.
+	RecoveryRenewalStart *int           `json:"recovery_renewal_start,omitempty"`
+	Recovery             *recoveryState `json:"recovery,omitempty"`
+	History              []renewalState `json:"renewal_history,omitempty"`
+	Renewal              *renewalState  `json:"renewal,omitempty"`
+	Schema               string         `json:"schema_version"`
+	Config               Config         `json:"config"`
+	Key                  []byte         `json:"private_key_pkcs8"`
+	Phase                string         `json:"phase"`
+	Bootstrap            *Challenge     `json:"bootstrap,omitempty"`
+	BootstrapProof       string         `json:"bootstrap_proof,omitempty"`
+	Certificate          string         `json:"certificate,omitempty"`
+	InstalledProcess     string         `json:"installed_process,omitempty"`
+	Pending              *Challenge     `json:"pending_challenge,omitempty"`
+	PendingProof         string         `json:"pending_proof,omitempty"`
 }
 
 func canonical(v any) ([]byte, error) {
@@ -201,11 +203,35 @@ func (s state) validate() error {
 	if len(s.History) > 127 || (len(s.History) > 0 && s.Renewal == nil) {
 		return ErrState
 	}
+	if s.RecoveryRenewalStart != nil {
+		n := *s.RecoveryRenewalStart
+		if n < 0 || n > len(s.History) || s.Renewal == nil || s.Recovery == nil || s.Recovery.Installation == nil || s.Recovery.Installation.Phase != "active" {
+			return ErrState
+		}
+		prefix := s
+		prefix.History = s.History[:n]
+		prefix.Renewal = nil
+		prefix.RecoveryRenewalStart = nil
+		if n > 0 {
+			prefix.Renewal = &s.History[n-1]
+			prefix.History = s.History[:n-1]
+		}
+		if s.Recovery.validate(prefix) != nil {
+			return ErrState
+		}
+	}
 	seen := map[string]bool{}
+	if s.Recovery != nil {
+		seen[s.Recovery.Packet.Approval.Request.Operation] = true
+	}
 	for i, r := range s.History {
 		prefix := s
 		prefix.History = s.History[:i]
 		prefix.Renewal = nil
+		if s.RecoveryRenewalStart != nil && i < *s.RecoveryRenewalStart {
+			prefix.Recovery = nil
+			prefix.RecoveryRenewalStart = nil
+		}
 		if s.Phase != "verified" || r.Phase != "active" || seen[r.Approval.Request.Operation] || r.validate(prefix) != nil {
 			return ErrState
 		}
@@ -216,7 +242,7 @@ func (s state) validate() error {
 			return ErrState
 		}
 	}
-	if s.Recovery != nil && s.Recovery.validate(s) != nil {
+	if s.RecoveryRenewalStart == nil && s.Recovery != nil && s.Recovery.validate(s) != nil {
 		return ErrState
 	}
 	if s.Phase == "initialized" {
