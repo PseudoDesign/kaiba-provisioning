@@ -50,17 +50,16 @@ func renewalChallengeWindow(nonce, issued, expires string, at time.Time) bool {
 func validateRenewalApproval(s state, p renewalBinding, v renewalApproval, at time.Time) error {
 	revision := uint64(1)
 	version := "0.2.0-draft.1"
-	if len(s.History) > 0 {
-		prior := s.History[len(s.History)-1]
-		if prior.Phase != "active" || prior.Active == nil || !sameRenewal(*prior.Active, p) || renewalTime(prior.Active.Issued).After(at) {
+	if prior := s.renewalPredecessorBinding(); prior != nil {
+		if !sameRenewal(*prior, p) || renewalTime(prior.Issued).After(at) {
 			return ErrBinding
 		}
-		revision = prior.Active.CredentialRevision
+		revision = prior.CredentialRevision
 		if revision < 2 || revision >= 9007199254740991 {
 			return ErrBinding
 		}
-		version = "0.3.0-draft.1"
-	} else if p.CredentialRevision != 0 || p.CertificateDigest != "" || p.RenewalRef != nil || p.PredecessorRef != nil || p.InstallationRef != nil {
+		version = prior.Version
+	} else if p.CredentialRevision != 0 || p.CertificateDigest != "" || p.RenewalRef != nil || p.RecoveryRef != nil || p.PredecessorRef != nil || p.InstallationRef != nil {
 		return ErrBinding
 	}
 	s = s.renewalBase()
@@ -134,6 +133,7 @@ func (r renewalState) validateStaged(s state, b renewalBinding, cert string, at 
 	expected.CertificateDigest = CertificateDigest(cert)
 	ref := renewalRef(a, a.renewalMetadata)
 	expected.RenewalRef = &ref
+	expected.RecoveryRef = nil
 	pre := a.Predecessor
 	expected.PredecessorRef = &pre
 	if !sameRenewal(expected, b) {
@@ -235,7 +235,24 @@ func (r renewalState) validate(s state) error {
 
 // Project the exact predecessor for the current operation without rewriting the
 // original enrollment, configuration or proofs in protected storage.
+func (s state) recoveryIsRenewalBase() bool {
+	return s.RecoveryRenewalStart != nil && *s.RecoveryRenewalStart == len(s.History) && s.Recovery != nil && s.Recovery.Installation != nil && s.Recovery.Installation.Phase == "active"
+}
+func (s state) renewalPredecessorBinding() *renewalBinding {
+	if s.recoveryIsRenewalBase() {
+		return s.Recovery.Installation.Active
+	}
+	if len(s.History) > 0 {
+		return s.History[len(s.History)-1].Active
+	}
+	return nil
+}
 func (s state) renewalBase() state {
+	if s.recoveryIsRenewalBase() {
+		s.Certificate = s.Recovery.Installation.Certificate
+		s.Config.Binding = renewalProofBinding(*s.Recovery.Installation.Active)
+		return s
+	}
 	if len(s.History) > 0 {
 		last := s.History[len(s.History)-1]
 		s.Certificate = last.Certificate

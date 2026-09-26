@@ -176,7 +176,7 @@ func (c *Client) requestKey(ctx context.Context, method, path string, b []byte, 
 	if c.value.Renewal != nil && c.value.Renewal.Phase == "active" {
 		cert = c.value.Renewal.Certificate
 	}
-	if r := c.value.Recovery; r != nil && r.Installation != nil && r.Installation.Phase == "active" {
+	if r := c.value.Recovery; c.value.RecoveryRenewalStart == nil && r != nil && r.Installation != nil && r.Installation.Phase == "active" {
 		cert = r.Installation.Certificate
 	}
 	return c.requestCertificate(ctx, method, path, b, idempotencyKey, cert)

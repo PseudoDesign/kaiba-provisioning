@@ -166,6 +166,9 @@ func (c *Client) acceptRecoveryResult(ctx context.Context, raw []byte) (Status, 
 	return c.Status()
 }
 func (c *Client) ReconcileRecovery(ctx context.Context) (Status, error) {
+	if c.value.RecoveryRenewalStart != nil {
+		return Status{}, ErrReconcile
+	}
 	if c.value.Recovery == nil || c.value.Recovery.Installation == nil || c.value.Recovery.Installation.Challenge == nil {
 		return Status{}, ErrState
 	}
