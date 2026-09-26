@@ -45,6 +45,7 @@ first-fleet applicability is determined by the admission policy.
 | [Native-build policy](../README.md#native-build-policy) | Native builders, cache reuse, and narrow exceptions |
 | [Architecture and trust boundaries](architecture-and-trust-boundaries.md) | Implemented authority, execution, audit, and UI boundaries |
 | [Raspberry Pi 5 secure-boot model](raspberry-pi-5-secure-boot.md) | Native boot chain, supported claims, and required hardware evidence |
+| [Bounded enrollment runner](pilot-enrollment-runner.md) | One owner launch, scoped operation/probe adapter, durable reconciliation and RAM-only backup credential handling; live Mako packet remains separately reviewed |
 | [Pilot device client](pilot-device-client.md) | Protected operational keys and bound process-restart proofs; real pilot execution pending |
 | [Pilot handoff preflight](pilot-handoff-preflight.md) | Retained, authenticated existing-device observations; fleet preflight grants no membership |
 | [Fleet evidence exporter](fleet-export.md) | Authenticated development records, scoped authority reads and immutable export revisions |

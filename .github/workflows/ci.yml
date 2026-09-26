@@ -47,6 +47,9 @@ jobs:
           PYTHONDONTWRITEBYTECODE: '1'
         run: python3 -m unittest discover -s tests/release-candidate -p 'test_*.py' -v
 
+      - name: Test bounded pilot enrollment runner
+        run: python3 -B -m unittest discover -s tests/pilot-enrollment-runner -p 'test_*.py' -v
+
       - name: Test CI selection and required-result handling
         run: python3 -B -m unittest discover -s tests/ci -p 'test_*.py' -v
 
