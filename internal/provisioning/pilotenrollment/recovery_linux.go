@@ -49,10 +49,11 @@ type recoveryPacket struct {
 	Approval    recoveryApproval `json:"approval"`
 }
 type recoveryState struct {
-	Packet    recoveryPacket `json:"packet"`
-	Digest    string         `json:"reviewed_digest"`
-	Prepared  string         `json:"prepared_at"`
-	Signature string         `json:"signature"`
+	Installation *recoveryInstallState `json:"installation,omitempty"`
+	Packet       recoveryPacket        `json:"packet"`
+	Digest       string                `json:"reviewed_digest"`
+	Prepared     string                `json:"prepared_at"`
+	Signature    string                `json:"signature"`
 }
 type RecoveryStatus struct {
 	Operation string `json:"operation_id"`
@@ -85,7 +86,7 @@ func (c *Client) PrepareRecovery(raw []byte, reviewedDigest string) (Proof, erro
 		return Proof{}, e
 	}
 	v := c.value
-	v.Recovery = &recoveryState{packet, reviewedDigest, now.UTC().Format(time.RFC3339Nano), signature}
+	v.Recovery = &recoveryState{Packet: packet, Digest: reviewedDigest, Prepared: now.UTC().Format(time.RFC3339Nano), Signature: signature}
 	if e = checkStorage(c.store, c.value.Config, c.runtime); e != nil {
 		return Proof{}, e
 	}
@@ -97,6 +98,9 @@ func (c *Client) PrepareRecovery(raw []byte, reviewedDigest string) (Proof, erro
 func (r recoveryState) validate(s state) error {
 	if r.Digest != wire.Digest(canon(r.Packet)) || validateRecovery(s, r.Packet, renewalTime(r.Prepared)) != nil || !renewalVerify(s, r.Packet.Approval.Challenge, r.Signature) {
 		return ErrState
+	}
+	if r.Installation != nil {
+		return r.Installation.validate(s)
 	}
 	return nil
 }

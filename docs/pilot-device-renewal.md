@@ -9,7 +9,7 @@ renewal implementation and reviewed current records.
 The source contract is the proposed 0.3 protocol at kaiba-contracts commit
 `6b42c0f1a1b55570aeb1e1f03662f5ef3e0242a4`. Integration with fleet commit
 `b5cf406ab79168f0b8ca586fc46380e1bbadae41` tests the first and successive renewals.
-Supervised expired-key recovery remains unsupported.
+Expired-access recovery uses the separate [recovery workflow](pilot-device-recovery.md).
 
 ## Protected state and current credential
 

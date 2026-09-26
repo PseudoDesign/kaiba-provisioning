@@ -81,6 +81,7 @@ type renewalActivation struct {
 	Restart string    `json:"restart_kind"`
 }
 type renewalBinding struct {
+	RecoveryRef *RecordRef `json:"recovery_authorization_ref,omitempty"`
 	renewalMetadata
 	Logical            string             `json:"logical_device_id"`
 	Instance           string             `json:"instance_id"`

@@ -1,9 +1,10 @@
-# Protected pilot recovery proof
+# Protected pilot recovery and installation
 
-The planned expired-access recovery path now has a device-side proof relay.
-It does **not** issue or install a successor certificate, activate a binding,
-renew access, or establish production qualification. Ace's expired access is
-unchanged until a separately reviewed live recovery completes.
+The expired-access recovery path supports a management-relayed key proof,
+protected successor installation and installed-key proof after a client-process
+restart. Fleet activation is a separate operator action. These software paths do
+not establish production qualification or change Ace until a reviewed live
+recovery completes.
 
 The management operator uses current management credentials to request the
 fleet recovery approval. Device authentication with an expired certificate is
@@ -51,7 +52,46 @@ there is no reset or replacement-operation escape hatch. Status reports
 `recovery.phase=proof_prepared`, which does not imply server acceptance.
 
 The original key, certificate, membership and renewal history remain intact.
-Current software supports initial 0.2 and renewed 0.3 predecessors; recovery
-cutover and subsequent recovery-history support remain planned. The deployable
+Current software supports initial 0.2 and normally renewed 0.3 predecessors.
+Subsequent renewal or recovery from a recovered 0.4 binding remains unsupported;
+normal renewal stays blocked while recovery state is retained. Complete that
+follow-on lifecycle support before using this as a live seven-day recovery. The deployable
 binary still requires protected storage. Software fixtures replace only storage
 observation and make no hardware qualification claim.
+
+
+## Install, restart, prove and reconcile
+
+After fleet verifies the relayed proof, the management operator calls the exact
+recovery operation's `issue` route and transfers its complete public installation
+response. Run as the existing protected-client account:
+
+```sh
+kaiba-pilot-device --state /existing/protected/state \
+  --input /reviewed/recovery-installation.json install-recovery
+# A separate invocation establishes the required new client process.
+kaiba-pilot-device --state /existing/protected/state prove-recovery-installed
+```
+
+Installation compares the full saved authorization, predecessor and key proof,
+then validates the successor certificate, same key/identity, fresh record
+references and bounded validity window. The original credential remains intact;
+the successor is saved separately. Installing twice cannot replace the tuple.
+The installed-key challenge uses the successor certificate for mTLS and a
+recovery-specific proof purpose. The client persists one signature before sending
+it. A failed or lost response leaves `proof_submitted`; another ordinary proof
+command refuses to sign or submit again.
+
+After reviewing an interrupted attempt, `retry-recovery-installed` first reads
+the authenticated retained installation. It retrieves an already verified receipt
+or explicitly resubmits the same saved proof. `reconcile-recovery` only reads the
+installation and, after operator activation, the current authenticated self view.
+A historical activation response alone never switches ordinary access: the fresh
+self view must authorize the exact recovered binding. Once confirmed, ordinary
+requests use the successor; old credentials and history remain available for
+reconciliation. Revocation or dependency denial leaves access denied.
+
+Disposable tests cover protected-state failure, process restart, lost replies,
+explicit same-proof reconciliation, tampered receipts, denied current access and
+unchanged original key/certificate. Fleet integration adds persistence-fault
+rollback and shared-contract checks. No test result is a live recovery receipt.
