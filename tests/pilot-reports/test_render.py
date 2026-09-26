@@ -36,7 +36,7 @@ class Reports(unittest.TestCase):
         with self.assertRaises(ValueError): r.render(self.data)
 
     def test_newer_device_rejected(self):
-        self.data['devices'][0]['as_of'] = '2026-09-26'
+        self.data['devices'][0]['as_of'] = '9999-12-31'
         with self.assertRaises(ValueError): r.render(self.data)
 
     def test_text_escaped(self):

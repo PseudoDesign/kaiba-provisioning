@@ -21,16 +21,22 @@ reviewed execution; the page must not imply that historic active membership is
 current access. The present Ace authorization window is a recorded deadline,
 not a promise that services are running. Mako must establish its own evidence.
 
-Review remaining work whenever tests complete. P-03 (Ace reboot persistence and
-protected mount) and P-06 (populated authority restore) are complete in the
-September 25 snapshot. The later diagnostic run exercised transport outage, dependency-denial and
-recovery, reference submission, same-key repeat and changed-content rejection.
-Its privileged results are operator-reported, with cleanup independently checked.
-A fresh backup after that submission passed recovery unlock and read-only
-filesystem/database checks; isolated service startup of that newer snapshot
-was not repeated. Sustained serving,
-credential lifecycle, staged/revoked cases, real cross-device isolation and
-evidence review remain separate conditions.
+Review remaining work whenever milestones complete. The September 25 snapshot
+records Ace reboot persistence, a populated authority restore, diagnostic
+submission and outage/dependency checks. The September 26 update adds same-key
+recovery, normal renewal to revision 3, still-valid predecessor rejection on a
+fresh connection, supervisor shutdown checks and guarded serving startup.
+Privileged execution results are operator-reported; service activity was checked
+independently after startup. The existing deadline is October 3 at 02:06:35 UTC.
+
+The renewed-authority backup passed recovery unlock and read-only filesystem and
+database checks. Isolated startup of that exact snapshot was not repeated.
+A subsequent encrypted backup includes the active-serving controls; recovery
+unlock, restored filesystem/database checks and authenticated access after
+resume passed. The serving deadline did not change. Ongoing uptime,
+remaining live loss/revocation/retirement cases, Mako enrollment, cross-device
+isolation and full fleet qualification remain separate conditions. Do not mark
+a prepared execution packet as a completed hardware or deployment result.
 
 ## Publication boundary
 
