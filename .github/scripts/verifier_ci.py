@@ -101,12 +101,15 @@ def build_ordinary(repository):
     # Keep flake-wide validation and automatically include every other check,
     # including new checks, rather than maintaining an ordinary-check allowlist.
     # Selective VM/image checks are built only in their individual matrix jobs.
-    subprocess.run(NIX + ["flake", "check", "--no-build"], cwd=repository, check=True)
-    names = json.loads(subprocess.check_output(
+    # flake check evaluates in read-only mode. Materialize filtered source
+    # paths during ordinary evaluation first; source-presence assertions must
+    # not depend on a previous VM build having populated the store.
+    derivations = json.loads(subprocess.check_output(
         NIX + ["eval", "--json", f"{repository}#checks.{SYSTEM}",
-               "--apply", "builtins.attrNames"], text=True,
+               "--apply", "checks: builtins.mapAttrs (_: check: check.drvPath) checks"], text=True,
     ))
-    checks = ordinary_checks(names)
+    checks = ordinary_checks(list(derivations))
+    subprocess.run(NIX + ["flake", "check", "--no-build"], cwd=repository, check=True)
     subprocess.run(
         NIX + ["build", "-L", "--no-link"]
         + [f"{repository}#checks.{SYSTEM}.{name}" for name in checks], check=True,
