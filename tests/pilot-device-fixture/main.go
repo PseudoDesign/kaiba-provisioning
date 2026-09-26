@@ -45,6 +45,14 @@ func main() {
 			}
 		}
 		switch flag.Arg(0) {
+		case "install-recovery":
+			value, e = c.InstallRecovery(raw)
+		case "prove-recovery-installed":
+			value, e = c.ProveRecoveryInstalled(context.Background())
+		case "retry-recovery-installed":
+			value, e = c.RetryRecoveryInstalled(context.Background())
+		case "reconcile-recovery":
+			value, e = c.ReconcileRecovery(context.Background())
 		case "prepare-recovery":
 			value, e = c.PrepareRecovery(raw, *recoveryDigest)
 		case "prepare-renewal":

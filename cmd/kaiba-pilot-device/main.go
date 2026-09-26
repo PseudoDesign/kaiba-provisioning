@@ -41,13 +41,13 @@ func main() {
 		defer c.Close()
 		var raw []byte
 		if *input != "" {
-			if flag.Arg(0) == "submit-diagnostic" || (flag.Arg(0) == "prepare-renewal" || flag.Arg(0) == "prepare-recovery") {
+			if flag.Arg(0) == "submit-diagnostic" || (flag.Arg(0) == "prepare-renewal" || (flag.Arg(0) == "prepare-recovery" || flag.Arg(0) == "install-recovery")) {
 				f, openErr := os.Open(*input)
 				if openErr != nil {
 					log.Fatal(openErr)
 				}
 				limit := int64(4097)
-				if flag.Arg(0) == "prepare-renewal" || flag.Arg(0) == "prepare-recovery" {
+				if flag.Arg(0) == "prepare-renewal" || (flag.Arg(0) == "prepare-recovery" || flag.Arg(0) == "install-recovery") {
 					limit = 1048577
 				}
 				raw, err = io.ReadAll(io.LimitReader(f, limit))
@@ -60,6 +60,14 @@ func main() {
 			}
 		}
 		switch flag.Arg(0) {
+		case "install-recovery":
+			value, e = c.InstallRecovery(raw)
+		case "prove-recovery-installed":
+			value, e = c.ProveRecoveryInstalled(context.Background())
+		case "retry-recovery-installed":
+			value, e = c.RetryRecoveryInstalled(context.Background())
+		case "reconcile-recovery":
+			value, e = c.ReconcileRecovery(context.Background())
 		case "prepare-recovery":
 			value, e = c.PrepareRecovery(raw, *recoveryDigest)
 		case "prepare-renewal":

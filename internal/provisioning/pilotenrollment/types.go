@@ -154,7 +154,11 @@ func (s state) status() (Status, error) {
 		out.Renewal = &RenewalStatus{r.Approval.Request.Operation, r.Phase, r.Approval.Authorization.Next, CertificateDigest(r.Certificate)}
 	}
 	if s.Recovery != nil {
-		out.Recovery = &RecoveryStatus{s.Recovery.Packet.Approval.Request.Operation, "proof_prepared"}
+		phase := "proof_prepared"
+		if s.Recovery.Installation != nil {
+			phase = s.Recovery.Installation.Phase
+		}
+		out.Recovery = &RecoveryStatus{s.Recovery.Packet.Approval.Request.Operation, phase}
 	}
 	return out, nil
 }
