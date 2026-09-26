@@ -1,0 +1,127 @@
+{
+  "schema_version": "kaiba.public-pilot-reports/v1",
+  "updated": "2026-09-26",
+  "devices": [
+    {
+      "slug": "ace",
+      "name": "Ace",
+      "enrollment": "Pilot enrolled",
+      "as_of": "2026-09-26",
+      "authorization_expires_at": "2026-10-03T02:06:35Z",
+      "summary": "Ace is pilot enrolled with credential revision 3 and the same device key. Recovery, normal renewal and guarded serving startup completed under accepted pilot exceptions. This dated report is not a live membership or uptime query.",
+      "tests": [
+        {
+          "name": "Device key, credential installation and activation",
+          "status": "passed",
+          "basis": "Operator-reported successful execution; public device identity independently checked."
+        },
+        {
+          "name": "Process and authority restart recovery",
+          "status": "passed",
+          "basis": "Operator-reported bounded recovery checks."
+        },
+        {
+          "name": "Protected account and credential mount after OS reboot",
+          "status": "passed",
+          "basis": "Directly verified over authenticated SSH after one controlled reboot; same enrolled identity and required mount flags."
+        },
+        {
+          "name": "Live fleet access after OS reboot",
+          "status": "passed",
+          "basis": "Operator-reported authenticated self read with unchanged membership and key; stopped authority services independently checked afterward."
+        },
+        {
+          "name": "Encrypted backup and recovery unlock",
+          "status": "passed",
+          "basis": "Operator-reported recovery unlock, filesystem checks and offline database checksums."
+        },
+        {
+          "name": "Isolated restore of enrolled authority",
+          "status": "passed",
+          "basis": "Operator-reported restoration of active membership and matching issuance; stopped services and absent clone mapper independently checked."
+        },
+        {
+          "name": "Classified outage, dependency denial and recovery",
+          "status": "passed",
+          "basis": "Operator-reported transport failure, HTTP 403 with the admission dependency unavailable, and successful access after recovery. This does not establish staged, revoked or cross-device rejection."
+        },
+        {
+          "name": "Live diagnostic-reference submission",
+          "status": "passed",
+          "basis": "Operator-reported original row and receipt reconciliation, same-key same-input repeat, and HTTP 409 for changed content under that key; existing membership and credential retained. Services stopped and temporary device files removed independently checked."
+        },
+        {
+          "name": "Backup after diagnostic submission",
+          "status": "passed",
+          "basis": "Operator-reported encrypted copy, recovery unlock, read-only filesystem comparison and PostgreSQL checksum check with zero bad checksums. USB unmount, absent backup mapper, protected source remount and stopped services independently checked. Service startup of this new snapshot was not tested."
+        },
+        {
+          "name": "Same-key recovery and successor activation",
+          "status": "passed",
+          "basis": "Operator-reported retained-key proof, successor installation, activation and authenticated access after authority restart. No new device key."
+        },
+        {
+          "name": "Normal renewal and predecessor cutover",
+          "status": "passed",
+          "basis": "Operator-reported revision 3 activation with the same key, HTTP 403 for the still-valid predecessor on a fresh connection, and successor access after authority restart. Renewal retained the existing deadline; rejection on an already-open TLS connection was not exercised live."
+        },
+        {
+          "name": "Guarded supervisor shutdown conditions",
+          "status": "passed",
+          "basis": "Operator-reported bounded supervisor, firewall-drift and encrypted-mount dependency checks. These checks do not establish future uptime."
+        },
+        {
+          "name": "Backup after normal renewal",
+          "status": "passed",
+          "basis": "Operator-reported encrypted copy, recovery unlock, restored filesystem comparison and offline PostgreSQL checksums with zero bad checksums. Isolated startup of this exact snapshot was not tested."
+        },
+        {
+          "name": "Ace-only guarded serving startup",
+          "status": "passed",
+          "basis": "Operator-reported revision 3 serving startup with authenticated self reads. The supervisor and authority service activity were independently checked afterward. No boot enablement or automatic storage unlock; serving remains subject to guards and the recorded deadline."
+        },
+        {
+          "name": "Serving deployment backup and verified resume",
+          "status": "passed",
+          "basis": "Operator-reported encrypted backup including current serving controls, recovery unlock, restored filesystem comparison and offline PostgreSQL checksums with zero bad checksums. Exported completion metadata confirms authenticated revision 3 access after resume with the same deadline and no new certificate. USB unmounted; isolated service startup from this exact backup was not tested."
+        }
+      ],
+      "remaining": [
+        "Observe ongoing serving through the pilot window. The historical startup result does not establish uninterrupted future availability; host restart needs owner unlock and reviewed restart.",
+        "Exercise remaining live lifecycle cases: loss, revocation and retirement. Normal renewal and supervised same-key recovery are complete; retained-connection rejection remains software-tested only.",
+        "Complete Mako enrollment and real cross-device isolation. Staged/revoked rejection remains distinct from dependency-unavailable denial.",
+        "Keep the report current as milestones complete. Full fleet-admission conditions remain separately tracked; accepted pilot exceptions do not close them."
+      ]
+    },
+    {
+      "slug": "mako",
+      "name": "Mako",
+      "enrollment": "Not yet pilot enrolled",
+      "as_of": "2026-09-25",
+      "authorization_expires_at": null,
+      "summary": "Selected for the same pilot cohort. Execution was deferred while Ace completed its enrollment and recovery workflow. Similar hardware or key history does not transfer Ace's test results to Mako.",
+      "tests": [
+        {
+          "name": "Device key, credential installation and activation",
+          "status": "pending",
+          "basis": "No completed pilot enrollment recorded for Mako."
+        },
+        {
+          "name": "Restart persistence and live fleet access",
+          "status": "pending",
+          "basis": "Requires Mako's own enrolled identity and protected storage checks."
+        },
+        {
+          "name": "Cross-device isolation",
+          "status": "pending",
+          "basis": "Requires two enrolled devices and explicit own-device/other-device access tests."
+        }
+      ],
+      "remaining": [
+        "Refresh and review Mako's own observations, exception decision and execution authority before enrollment.",
+        "Preserve existing workloads and complete its own key, credential, activation, restart and recovery tests.",
+        "Retain a new enrollment-bearing authority backup and exercise cross-device isolation."
+      ]
+    }
+  ]
+}

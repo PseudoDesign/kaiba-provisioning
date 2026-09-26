@@ -40,6 +40,7 @@ run_ui() {
   # Realize only the Pages bundle, without VM or image qualification.
   local pages
   pages="$(nix --accept-flake-config build --no-link --print-out-paths .#kaiba-provision-station-pages)"
+  KAIBA_STATION_PAGES="$pages" python3 -B -m unittest discover -s tests/pilot-reports -p "test_*.py"
   KAIBA_STATION_PAGES="$pages" node --test \
     tests/station-ui/transport.test.mjs internal/provisioning/livestation/web/app.test.cjs
 }
