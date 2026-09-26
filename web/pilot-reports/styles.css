@@ -1,0 +1,14 @@
+:root { color-scheme: light dark; font-family: system-ui, sans-serif; line-height: 1.6; background: #101923; color: #ecf1f5; }
+body { max-width: 76rem; margin: auto; padding: 1.5rem; }
+a { color: #9fd7ff; text-underline-offset: .2em; }
+a:focus-visible, [tabindex]:focus-visible { outline: 3px solid #ffdc86; outline-offset: 4px; }
+.skip { position: absolute; top: -8rem; }.skip:focus { top: .5rem; background: #101923; }
+h1 { font-size: clamp(2rem, 5vw, 3rem); line-height: 1.2; }h2 { font-size: 1.8rem; margin-bottom: .25rem; }
+section { margin: 2rem 0; padding: 1.5rem; background: #192634; border: 1px solid #435568; border-radius: .6rem; }
+aside { padding: 1rem 1.5rem; border-left: .3rem solid #ffdc86; background: #292c2c; }
+.enrollment { font-weight: 700; }.enrollment span, footer { color: #c0ccd7; font-weight: 400; }
+dl { display: grid; grid-template-columns: minmax(12rem, 1fr) 2fr; gap: .4rem 1rem; }dt { font-weight: 600; }dd { margin: 0; overflow-wrap: anywhere; }
+.table-scroll { overflow-x: auto; }table { width: 100%; border-collapse: collapse; min-width: 38rem; }th, td { padding: .8rem; text-align: left; border-bottom: 1px solid #435568; vertical-align: top; }thead { background: #101923; }tbody th { width: 32%; font-weight: 500; }
+.status { font-weight: 700; }.passed { color: #a8edc2; }.pending, .blocked { color: #ffdc86; }.failed { color: #ffb5b5; }
+li { margin: .6rem 0; }footer { margin: 2rem 0; font-size: .9rem; }
+@media (max-width: 38rem) { body { padding: .75rem; }section { padding: 1rem; }dl { display: block; }dd { margin-bottom: .75rem; } }
