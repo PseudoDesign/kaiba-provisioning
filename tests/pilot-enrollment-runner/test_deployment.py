@@ -2,6 +2,7 @@ import copy
 import datetime as dt
 import importlib.util
 import os
+import sys
 from pathlib import Path
 import tempfile
 import types
@@ -31,6 +32,25 @@ def plan():
 
 
 class Scope(unittest.TestCase):
+    def test_host_command_can_find_system_helper_without_inheriting_path(self):
+        # Model UFW resolving sysctl from /usr/sbin, without calling real UFW,
+        # requiring root, or depending on the test host's system directories.
+        with tempfile.TemporaryDirectory() as tmp:
+            helper=Path(tmp)/'sysctl'
+            helper.write_text('#!'+sys.executable+'\nprint("fixture-sysctl-read-only")\n')
+            helper.chmod(0o755)
+            host=object.__new__(d.Deployment);host.plan=plan();host.cleaning=False
+            real_popen=d.subprocess.Popen
+            def launch(argv,**kwargs):
+                env=kwargs['env']
+                self.assertEqual(set(env),{'PATH','LC_ALL'})
+                self.assertNotIn('/untrusted',env['PATH'].split(':'))
+                env['PATH']=':'.join(tmp if p=='/usr/sbin' else p for p in env['PATH'].split(':'))
+                return real_popen(argv,**kwargs)
+            child='import subprocess; print(subprocess.check_output(["sysctl", "net.ipv4.ip_forward"], text=True).strip())'
+            with patch.dict(os.environ,{'PATH':'/untrusted','SECRET_TEST_INPUT':'must-not-inherit'}),patch.object(d.subprocess,'Popen',side_effect=launch):
+                self.assertEqual(host.call([sys.executable,'-c',child]),b'fixture-sysctl-read-only\n')
+
     def test_target_scope_and_refresh_binding(self):
         d.validate(plan())
         for target in ('issuer/config.json','fleet/reader.key','admission/../issuer/config.json','/etc/passwd'):
