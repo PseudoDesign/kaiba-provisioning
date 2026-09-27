@@ -3,12 +3,17 @@
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/70ce234312134a463ba7728e94da2486a1d237ac";
   inputs.nixos-raspberrypi.url = "github:nvmd/nixos-raspberrypi/7e39508bcf9c1da82cf11c1e22f74f9d9fd0fe10";
+  inputs.kaiba-infra = {
+    url = "github:PseudoDesign/kaiba-infra";
+    flake = false;
+  };
 
   outputs =
     {
       self,
       nixpkgs,
       nixos-raspberrypi,
+      kaiba-infra,
     }:
     let
       lib = nixpkgs.lib;
@@ -766,6 +771,12 @@
               };
         }
       );
+
+      # Keep infrastructure policy pinned without overriding application inputs.
+      hydraJobs = import "${kaiba-infra}/ci/hydra-jobs.nix" {
+        inherit (self) checks;
+        inherit lib;
+      };
 
       checks = forAllSystems (
         system:
