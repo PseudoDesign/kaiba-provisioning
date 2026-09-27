@@ -1,3 +1,4 @@
+import errno
 import importlib.util
 import os
 from pathlib import Path
@@ -29,12 +30,31 @@ class Files(unittest.TestCase):
             with self.assertRaises(FileExistsError):b.copy_exclusive(src,dst,8192)
             with self.assertRaises(b.r.Stop):b.copy_exclusive(src,Path(tmp)/'wrong',8193)
     def test_snapshot_metadata_and_symlinks(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory() as tmp, patch.object(b.os,'listxattr',return_value=[]):
             root=Path(tmp);path=root/'fixture';path.write_text('not a secret')
             first=b.snapshot(root);path.chmod(0o400)
             self.assertNotEqual(b.snapshot(root),first)
             (root/'link').symlink_to(path)
             with self.assertRaises(b.r.Stop):b.snapshot(root)
+    def test_snapshot_preserves_xattr_values_and_detects_changes(self):
+        # CI's build filesystem may reject xattrs. Supply synthetic syscall
+        # results while exercising the actual snapshot comparison.
+        with tempfile.TemporaryDirectory() as tmp, patch.object(b.os,'listxattr',return_value=['user.fixture']) as names:
+            root=Path(tmp)
+            with patch.object(b.os,'getxattr',return_value=b'original') as values:
+                first=b.snapshot(root)
+                values.assert_called_once_with(root,'user.fixture',follow_symlinks=False)
+            names.assert_called_once_with(root,follow_symlinks=False)
+            self.assertEqual(first['.']['xattrs'],{'user.fixture':b'original'.hex()})
+            with patch.object(b.os,'getxattr',return_value=b'changed'):
+                self.assertNotEqual(b.snapshot(root),first)
+    def test_snapshot_refuses_unreadable_xattrs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for code in (errno.EOPNOTSUPP,errno.EACCES):
+                with self.subTest(code=code), patch.object(b.os,'listxattr',side_effect=OSError(code,'synthetic xattr failure')):
+                    with self.assertRaises(OSError):b.snapshot(Path(tmp))
+                with self.subTest(value_code=code), patch.object(b.os,'listxattr',return_value=['user.fixture']), patch.object(b.os,'getxattr',side_effect=OSError(code,'synthetic xattr failure')):
+                    with self.assertRaises(OSError):b.snapshot(Path(tmp))
     def test_reject_path_escape_and_oversized_mapping_name(self):
         for change in ({'run_id':'x'*57},{'preserved_files':{'../elsewhere':'a'*64}},
                        {'postgres':'/usr/bin'},{'usb':plan()['usb']|{'path':'/dev/sda'}}):
@@ -42,7 +62,7 @@ class Files(unittest.TestCase):
 
 
 class Sequence(unittest.TestCase):
-    """Root/mount actions substituted; real temporary-file copy and comparisons."""
+    """Root/mount/xattr calls substituted; real file copy and comparisons."""
     def scenario(self, failure=None):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);src=root/'source';src.mkdir(mode=0o700)
@@ -82,7 +102,7 @@ class Sequence(unittest.TestCase):
                 self.assertEqual(os.read(fd,100),b'synthetic credential');os.close(fd)
                 self.assertEqual(kw['mapper'],fixture.restore_name)
                 if failure=='credential':raise b.r.Stop('synthetic-credential-rejection')
-            with patch.object(b,'IMAGE',image),patch.object(b,'SOURCE',src),patch.object(b,'SIZE',size),patch.object(b.r,'trusted_parent'),patch.object(b.recovery,'consume',side_effect=consume):
+            with patch.object(b,'IMAGE',image),patch.object(b,'SOURCE',src),patch.object(b,'SIZE',size),patch.object(b.r,'trusted_parent'),patch.object(b.recovery,'consume',side_effect=consume), patch.object(b.os,'listxattr',return_value=[]):
                 if failure:
                     with self.assertRaises(b.r.Stop):fixture.run(rd)
                     self.assertFalse((fixture.state/'result.json').exists())
