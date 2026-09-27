@@ -183,9 +183,9 @@ to rediscover it. A retained identifier permits observation of completed proof o
 activation without repeating key use or issuance.
 
 This is a library for the reviewed host adapter, not an independently runnable
-Mako packet. Root/account setup, authenticated SSH dispatch, authority deployment,
-passphrase verification, encrypted USB backup and serving controls still need
-packet-specific hooks and approval. The actual protocol library and HTTPS
+Mako packet. Device setup, SSH transport and encrypted backup have library implementations
+below. Authority deployment and serving controls still need packet-specific
+integration and approval. The actual protocol library and HTTPS
 transport are exercised against disposable fleet services in the companion fleet
 rehearsal; its device dispatch substitutes only the storage observation.
 
@@ -225,8 +225,58 @@ across a NixOS switch/reboot is not established by this hook.
 
 This executable must be delivered through the packet's authenticated SSH path;
 shipping it does not grant general root access. The host still must bind the SSH
-principal/host key, stage the exact root-owned plan and call only approved steps.
+principal/host key and exact plan, then call only approved steps. The SSH library
+can deliver the reviewed modules and plan in memory without a remote helper file.
 Unit tests use synthetic sysfs trees and temporary directories, substituting
 privileged account/mount/process actions. They do not claim live root deployment
 qualification. The complete owner packet remains pending host backup, authority
 transition and serving integration.
+
+## Authenticated SSH dispatcher
+
+`transport.Device` supplies the device callback for the protocol library. The
+reviewed host adapter pins an immutable OpenSSH executable, target, principal,
+private-key path/owner, public known-hosts file and digest, and the target's
+immutable Python interpreter. Public host keys must be in the Nix store or a
+root-controlled directory. It checks identity-file permissions without reading
+private-key bytes; OpenSSH loads the key.
+
+Each invocation disables SSH configuration files, agents, interactive prompts,
+forwarding, proxy commands and connection reuse. It sends the bundled device
+hook and exact plan over authenticated SSH stdin to noninteractive sudo/Python.
+The response binds a fresh nonce and the entire request. Input/output sizes and
+elapsed time are bounded. Failed or lost responses never trigger a retry;
+remote mutation may have happened and must be reconciled using the device
+journal. The `observe` action runs only the device's read-only host guard.
+
+This transport assumes the separately approved SSH principal can execute the
+reviewed root helper. It neither installs that access nor turns a general sudo
+account into a restricted account. Packet approval must cover the delivered
+code and every allowed device action.
+
+## Encrypted backup host hook
+
+`backup.Backup` implements the stopped-writer backup on the existing Ubuntu pilot
+host. Its plan pins the host boot, deadline, LUKS UUID, USB serial/UUID/sizes,
+immutable cryptsetup/PostgreSQL tools and hashes of preserved deployment inputs.
+The host adapter must first stop all pilot writers and save the updated serving
+and deployment configuration inside the encrypted authority filesystem.
+
+The hook checks the original mapping and mount, clean database shutdown, absent
+swap and unmounted destination. It records one-use intent, snapshots filesystem
+content/ownership/modes/xattrs in memory, unmounts the source, creates a new
+exclusive encrypted copy and verifies its readback. It consumes the inherited
+recovery pipe once to open that copy read-only, compares the restored filesystem,
+and runs offline PostgreSQL checksum checks. It then closes the copy, unmounts
+the USB and remounts the original protected filesystem, leaving services stopped.
+A prior attempt or existing destination prevents execution; failures preserve
+state for reconciliation. Serving may resume only through the separate reviewed
+host step after this hook's result and current postconditions are verified.
+
+Tests exercise transport bounds and response binding, and the backup's real
+file-copy/comparison logic with substituted privileged operations. They cover
+wrong credentials, mismatched restored content and repeated attempts. These
+checks do not qualify actual USB/mount handling or demonstrate restored service
+startup. The complete Mako packet still needs authority/grant transition,
+isolation/restart checks, safe-stop, backup result probing and serving handoff
+integrated and reviewed together before live execution.
