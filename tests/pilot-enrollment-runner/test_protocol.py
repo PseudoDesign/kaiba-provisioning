@@ -18,7 +18,7 @@ class ProtocolTests(unittest.TestCase):
         ref = {'record_id': 'fixture', 'revision': 1, 'digest': 'sha256:'+'a'*64}
         self.plan = {'run_id': 'fixture', 'target': {'asset_ref': 'b'},
                      'records': {role: {'handle': role, 'ref': ref} for role in ('adoption', 'policy', 'decision')},
-                     'binding': {'target': {'asset_ref': 'b'}, 'adoption_ref': ref, 'policy_ref': ref, 'admission_ref': ref}}
+                     'binding': {'target': {'asset_ref': 'b'}, 'adoption_ref': ref, 'policy_ref': ref, 'admission_ref': ref, 'audience': 'fixture', 'certificate_profile': 'pilot', 'issuer_id': 'fixture-issuer'}}
         self.store = p.Store(self.path, self.plan)
         self.status = {'schema_version': 'kaiba.pilot-device-client/v1alpha1', 'phase': 'initialized',
                        'spki': base64.b64encode(b'synthetic-spki').decode(),
@@ -48,7 +48,11 @@ class ProtocolTests(unittest.TestCase):
                      'challenge': {'binding': self.plan['binding'], 'enrollment_id': 'enrollment-b', 'logical_device_id': 'logical-b'}}
             self.rows['b'] = copy.deepcopy(value)
         elif path.endswith('/proof'):
-            self.rows['b']['state'] = 'staged'; value = self.rows['b']
+            self.rows['b']['state'] = 'staged'
+            self.rows['b']['binding'] = {**{k: self.plan['binding'][k] for k in ('target', 'adoption_ref', 'policy_ref', 'admission_ref', 'audience')},
+                'full_qualification': False, 'profile': 'pilot', 'instance_id': 'enrollment-b',
+                'logical_device_id': 'logical-b', 'credential': {'spki_digest': self.status['spki_digest'], 'issuer_id': 'fixture-issuer'}}
+            value = self.rows['b']
         elif path.endswith('/activate'):
             self.rows['b']['state'] = 'active'; value = self.rows['b']
         else:
@@ -91,6 +95,13 @@ class ProtocolTests(unittest.TestCase):
         self.hook.execute('start-enrollment')
         self.rows['b']['request']['records']['decision']['handle'] = 'another'
         with self.assertRaisesRegex(p.r.Stop, 'request-mismatch'): self.hook.probe('start-enrollment')
+
+    def test_authority_cannot_substitute_the_issued_binding(self):
+        self.hook.execute('start-enrollment'); self.hook.execute('submit-bootstrap')
+        self.rows['b']['binding']['credential']['spki_digest'] = 'sha256:'+'0'*64
+        with self.assertRaisesRegex(p.r.Stop, 'binding-credential'):
+            self.hook.probe('submit-bootstrap')
+        self.assertNotIn(('device', 'install'), self.calls)
 
     def test_plan_and_existing_journal_are_bound(self):
         changed = copy.deepcopy(self.plan); changed['run_id'] = 'other'

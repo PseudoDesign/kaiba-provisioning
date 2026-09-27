@@ -127,6 +127,8 @@ class Protocol:
         r.fields(plan, ('run_id', 'target', 'records', 'binding'))
         r.require(isinstance(plan['run_id'], str) and ID.fullmatch(plan['run_id']), 'protocol-run-id')
         binding = plan['binding']
+        r.fields(binding, ('target', 'adoption_ref', 'policy_ref', 'admission_ref',
+                           'audience', 'certificate_profile', 'issuer_id'))
         r.require(binding['target'] == plan['target'], 'protocol-target')
         for field, role in (('adoption_ref', 'adoption'), ('policy_ref', 'policy'), ('admission_ref', 'decision')):
             r.require(binding[field] == plan['records'][role]['ref'], 'protocol-record-binding')
@@ -168,6 +170,18 @@ class Protocol:
         if status['phase'] != 'initialized':
             r.require(status.get('enrollment_id') == value['id'] and
                       status.get('logical_device_id') == value['logical_device_id'], 'client-identity-changed')
+        if value.get('state') in ('staged', 'verified', 'active'):
+            bound = value.get('binding')
+            r.require(isinstance(bound, dict) and bound.get('full_qualification') is False,
+                      'binding-qualification')
+            for field in ('target', 'adoption_ref', 'policy_ref', 'admission_ref', 'audience'):
+                r.require(bound.get(field) == self.plan['binding'][field], 'binding-plan-mismatch')
+            r.require(bound.get('profile') == self.plan['binding']['certificate_profile'] and
+                      bound.get('instance_id') == value['id'] and
+                      bound.get('logical_device_id') == value['logical_device_id'], 'binding-identity')
+            credential = bound.get('credential', {})
+            r.require(credential.get('spki_digest') == status['spki_digest'] and
+                      credential.get('issuer_id') == self.plan['binding']['issuer_id'], 'binding-credential')
         return value
 
     def current(self):
