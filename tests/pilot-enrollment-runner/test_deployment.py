@@ -1,0 +1,125 @@
+import copy
+import datetime as dt
+import importlib.util
+import os
+from pathlib import Path
+import tempfile
+import types
+import unittest
+from unittest.mock import patch
+
+SOURCE=Path(os.environ.get('KAIBA_PILOT_RUNNER_SOURCE',Path(__file__).resolve().parents[2]/'scripts/pilot-enrollment'))
+spec=importlib.util.spec_from_file_location('deployment',SOURCE/'deployment.py')
+d=importlib.util.module_from_spec(spec);spec.loader.exec_module(d)
+
+
+def plan():
+    now=dt.datetime.now(dt.timezone.utc)
+    start=(now-dt.timedelta(seconds=2)).isoformat().replace('+00:00','Z')
+    end=(now+dt.timedelta(minutes=5)).isoformat().replace('+00:00','Z')
+    q={'schema_version':'kaiba.pilot-issuer-refresh/v1alpha1','run_id':'fixture','boot_id':'fixture',
+       'issued_at':start,'expires_at':end,'approval_digest':'a'*64,'issuer':'/nix/store/new/bin/kaiba-pilot-issuer',
+       'storage_guard':'/nix/store/storage.py','storage_guard_sha256':'b'*64,'unit_sha256':'c'*64,
+       'old_config_sha256':d.r.sha(b'old issuer'),'replacement':'/nix/store/issuer.json','replacement_sha256':d.r.sha(b'new issuer'),
+       'old_scope_digest':'sha256:'+'d'*64,'fleet_certificate_sha256':'e'*64,'target':{'asset':'b'}}
+    return {'schema_version':'kaiba.pilot-host-deployment/v1alpha1','run_id':'fixture','boot_id':'fixture',
+            'issued_at':start,'expires_at':end,'storage_guard':q['storage_guard'],'storage_guard_sha256':q['storage_guard_sha256'],
+            'controller':'/nix/store/control','controller_sha256':'f'*64,
+            'issuer_before':'/nix/store/old/bin/kaiba-pilot-issuer','issuer_after':q['issuer'],
+            'issuer_unit_sha256':'a'*64,'units':{u:'a'*64 for u in (d.SUPERVISOR,*d.SERVICES)},'peer_id':'peer-a','refresh_plan':q,
+            'files':[{'target':role+'/config.json','source':'/nix/store/'+role+'.json','before_sha256':d.r.sha(b'old reader'),'after_sha256':d.r.sha(b'new reader')} for role in ('observation','admission')]}
+
+
+class Scope(unittest.TestCase):
+    def test_target_scope_and_refresh_binding(self):
+        d.validate(plan())
+        for target in ('issuer/config.json','fleet/reader.key','admission/../issuer/config.json','/etc/passwd'):
+            p=plan();p['files'][0]['target']=target
+            with self.assertRaises(d.r.Stop):d.validate(p)
+        for field,value in (('run_id','other'),('issuer','/nix/store/other/bin/kaiba-pilot-issuer'),('boot_id','other')):
+            p=plan();p['refresh_plan'][field]=value
+            with self.assertRaises(d.r.Stop):d.validate(p)
+        p=plan();del p['units'][d.SUPERVISOR]
+        with self.assertRaises(d.r.Stop):d.validate(p)
+        p=plan();p['files'].append(p['files'][0])
+        with self.assertRaises(d.r.Stop):d.validate(p)
+
+
+class Sequence(unittest.TestCase):
+    def scenario(self,fault=None):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)/'authority';root.mkdir(mode=0o700);units=Path(tmp)/'units';units.mkdir()
+            for role in ('issuer','observation','admission'):(root/role).mkdir(mode=0o700)
+            issuer_config=root/'issuer/config.json';issuer_config.write_bytes(b'old issuer')
+            for role in ('observation','admission'):
+                (root/role/'config.json').write_bytes(b'old reader');(root/role/'config.json').chmod(0o600)
+            p=plan();unit=('ExecStart='+p['issuer_before']+' --config fixed\nRestart=no\n').encode()
+            (units/'kaiba-pilot-issuer.service').write_bytes(unit)
+            p['issuer_unit_sha256']=p['units']['kaiba-pilot-issuer.service']=d.r.sha(unit)
+            p['refresh_plan']['unit_sha256']=d.r.sha(unit.replace(p['issuer_before'].encode(),p['issuer_after'].encode()))
+            peer={'id':'peer-a','state':'active','binding':{'full_qualification':False,'key':'unchanged'}}
+            account=types.SimpleNamespace(pw_uid=os.getuid(),pw_gid=os.getgid())
+            read=d.r.read_file
+            def fixture_read(path,*args,**kwargs):
+                if str(path) in ('/nix/store/observation.json','/nix/store/admission.json'):return b'new reader'
+                kwargs.pop('owner',None);return read(path,*args,**kwargs)
+            class Refresh:
+                def __init__(self,q):self.q=q;self.calls=0
+                def configuration(self,expected):
+                    d.r.require(d.r.sha(issuer_config.read_bytes())==expected,'fixture-issuer-changed')
+                def execute(self):
+                    self.calls+=1
+                    case.assertTrue(host.initialized)
+                    case.assertEqual(host.active, set(d.SERVICES[:3]))
+                    case.assertTrue(all((root/item['target']).read_bytes()==b'new reader' for item in p['files']))
+                    issuer_config.write_bytes(b'new issuer')
+                    if fault=='refresh-lost':raise d.r.Stop('fixture-lost-after-commit')
+                def probe(self):return issuer_config.read_bytes()==b'new issuer'
+            class Host(d.Deployment):
+                def guard(self,cleanup=False):pass
+                def protected_root(self):pass
+                def state_of(self,u):return {'ActiveState':'active' if u in self.active else 'inactive'}
+                def issuer_ready(self,binary):
+                    case.assertIn(d.SERVICES[3],self.active)
+                    case.assertEqual(binary,p['issuer_after'])
+                    case.assertIn(binary.encode(),self.upgrade.read_bytes())
+                    if issuer_config.read_bytes()==b'old issuer':self.initialized=True
+                def readers_ready(self):case.assertTrue(set(d.READERS)<=self.active)
+                def call(self,argv,timeout=120):
+                    self.commands.append(list(argv))
+                    if argv==[p['controller'],'stop']:self.active.clear()
+                    elif argv[:2]==['/usr/bin/systemctl','start']:self.active.update(argv[2:])
+                    elif argv[:2]==['/usr/bin/systemctl','stop']:self.active.difference_update(argv[2:])
+                    if fault=='start' and argv[:2]==['/usr/bin/systemctl','start']:
+                        raise d.r.Stop('fixture-start-failed')
+                    return b''
+            case=self
+            def authority(path):
+                self.assertEqual(path,'/api/v1/pilot/enrollments/peer-a')
+                value=copy.deepcopy(peer)
+                if fault=='peer' and host.refresher.calls:value['binding']['key']='changed'
+                return value
+            with patch.object(d,'ROOT',root),patch.object(d,'UNITS',units),patch.object(d.refresh,'Refresh',Refresh),patch.object(d.pwd,'getpwnam',return_value=account),patch.object(d.os,'fchown'),patch.object(d.r,'read_file',side_effect=fixture_read):
+                host=Host(p,authority);host.active={d.SUPERVISOR,*d.SERVICES};host.commands=[];host.initialized=False
+                if fault:
+                    with self.assertRaises(d.r.Stop):host.execute()
+                    self.assertFalse((host.state/'result.json').exists())
+                    before=issuer_config.read_bytes();host.safe_stop()
+                    self.assertEqual(host.active,set());self.assertEqual(issuer_config.read_bytes(),before)
+                    with self.assertRaises(d.r.Stop):host.execute()
+                    self.assertLessEqual(host.refresher.calls,1)
+                else:
+                    host.execute();self.assertTrue(host.probe())
+                    self.assertEqual(host.active,set(d.SERVICES));self.assertEqual(host.refresher.calls,1)
+                    self.assertEqual((host.state/'issuer-unit.before').read_bytes(),unit)
+                    self.assertEqual((host.state/'file-0.before').read_bytes(),b'old reader')
+                    self.assertFalse(d.r.decode((host.state/'result.json').read_bytes())['device_contacted'])
+                    (root/'observation/config.json').write_bytes(b'changed')
+                    with self.assertRaises(d.r.Stop):host.probe()
+    def test_full_order_and_fresh_probe(self):self.scenario()
+    def test_partial_start_stops_without_replay(self):self.scenario('start')
+    def test_committed_refresh_is_never_rolled_back(self):self.scenario('refresh-lost')
+    def test_peer_change_blocks_completion(self):self.scenario('peer')
+
+
+if __name__=='__main__':unittest.main()
