@@ -31,6 +31,22 @@
         "type": "github"
       }
     },
+    "kaiba-infra": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790468731,
+        "narHash": "sha256-/NtLmbpAXooGW0rB9nkpoAv+Mltcu4AHl9DTALW9X34=",
+        "owner": "PseudoDesign",
+        "repo": "kaiba-infra",
+        "rev": "24138c9f88914c2fd4bdec9c8649d493b0542863",
+        "type": "github"
+      },
+      "original": {
+        "owner": "PseudoDesign",
+        "repo": "kaiba-infra",
+        "type": "github"
+      }
+    },
     "nixos-images": {
       "inputs": {
         "nixos-stable": [
@@ -113,6 +129,7 @@
     },
     "root": {
       "inputs": {
+        "kaiba-infra": "kaiba-infra",
         "nixos-raspberrypi": "nixos-raspberrypi",
         "nixpkgs": "nixpkgs_2"
       }
