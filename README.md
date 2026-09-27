@@ -197,15 +197,17 @@ architectures. The x86 job runs the independent Go unit check first, and its
 later Nix checks reuse that result. Static-mode contract tests share a separate
 check and compiler cache. The formatting job does not repeat either suite.
 
-The two older online-verifier Pi boot-image checks run in separate native ARM
-jobs. On PRs, CI compares each check's complete Nix derivation against the PR
-base and builds only changed variants. This includes transitive source, kernel,
-configuration and toolchain changes; it does not rely on a file-path allowlist.
-Every other ARM check still runs, as do the lightweight x86 verifier checks.
-The required aggregate accepts a skipped image job only after a successful
-comparison reports unchanged inputs. Missing or failed comparison blocks it.
-`main` pushes and manual runs build both variants, and `scripts/check.sh full`
-continues to run the complete native suite.
+Expensive ARM64 VM and image checks run in individually named native ARM jobs,
+with at most two of the VM/artifact jobs running concurrently. On PRs, CI compares
+each check's complete Nix derivation against the PR base and builds only changed
+checks. This includes transitive source, kernel, configuration and toolchain
+changes; it does not rely on a file-path allowlist. The selection job publishes
+both derivation identities and its decision for every check. All other ARM checks
+still run, as do the lightweight x86 verifier checks.
+The required aggregate accepts a skipped matrix only after a successful
+comparison reports unchanged inputs. Missing or failed comparison and any failed
+selected check block it. `main` pushes and manual runs build every check, and
+`scripts/check.sh full` continues to run the complete native suite.
 
 Pull requests consume binary caches but do not push to
 them. Successful `main` pushes upload to the
