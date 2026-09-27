@@ -110,9 +110,21 @@ class Deployment:
             s=self.state_of(unit);pid=s.get('MainPID','0')
             r.require(s['ActiveState'] in ('active','activating'),'deployment-listener-start-failed')
             if pid.isdigit() and pid!='0':
-                if binary is not None:r.require(Path('/proc/'+pid+'/exe').resolve(strict=True)==Path(binary).resolve(strict=True),'deployment-issuer-executable')
                 sockets=self.call(['/usr/bin/ss','-H','-lntp','sport = :'+str(port)]).decode().splitlines()
-                if len(sockets)==1 and len(sockets[0].split())>=5 and sockets[0].split()[3]==address+':'+str(port) and ('pid='+pid+',') in sockets[0]:return
+                if len(sockets)==1 and len(sockets[0].split())>=5 and sockets[0].split()[3]==address+':'+str(port) and ('pid='+pid+',') in sockets[0]:
+                    # Type=simple publishes MainPID before exec finishes. Only
+                    # inspect its executable once that PID owns the listener,
+                    # and require the same service invocation through the read.
+                    executable=None
+                    try:
+                        if binary is not None:executable=Path('/proc/'+pid+'/exe').resolve(strict=True)
+                    except FileNotFoundError:
+                        pass # Process exited during observation; never accept it.
+                    current=self.state_of(unit)
+                    stable=(current.get('MainPID')==pid and current.get('InvocationID')==s.get('InvocationID') and current['ActiveState']=='active')
+                    if stable and (binary is None or executable is not None):
+                        if binary is not None:r.require(executable==Path(binary).resolve(strict=True),'deployment-issuer-executable')
+                        return
             r.require(time.monotonic()<deadline,'deployment-listener-not-ready');time.sleep(.1)
 
     def issuer_ready(self,binary):self.listener_ready('kaiba-pilot-issuer.service',18443,binary)
