@@ -65,6 +65,59 @@ class Scope(unittest.TestCase):
         with self.assertRaises(d.r.Stop):d.validate(p)
 
 
+class Listener(unittest.TestCase):
+    def check(self,sockets,executables,states=None):
+        host=object.__new__(d.Deployment);host.plan=plan();host.cleaning=False
+        initial={'ActiveState':'active','MainPID':'42','InvocationID':'first'}
+        host.state_of=lambda unit: next(states) if states is not None else initial.copy()
+        def socket_read(argv):
+            self.assertEqual(argv,['/usr/bin/ss','-H','-lntp','sport = :18443'])
+            return next(sockets)
+        host.call=socket_read
+        reads=[];clock=[0]
+        def resolve(path,strict=False):
+            self.assertTrue(strict)
+            if str(path).startswith('/proc/'):
+                reads.append(str(path));value=next(executables)
+                if isinstance(value,Exception):raise value
+                return Path(value)
+            return path
+        def sleep(seconds):clock[0]+=10
+        with patch.object(d.Path,'resolve',resolve),patch.object(d.time,'monotonic',side_effect=lambda:clock[0]),patch.object(d.time,'sleep',side_effect=sleep):
+            host.issuer_ready('/nix/store/expected/bin/kaiba-pilot-issuer')
+        return reads
+
+    @staticmethod
+    def socket(pid=42,address='127.0.0.1'):
+        return ('LISTEN 0 128 '+address+':18443 0.0.0.0:* users:(("issuer",pid='+str(pid)+',fd=3))\n').encode()
+
+    def test_pre_exec_without_listener_waits_before_reading_executable(self):
+        reads=self.check(iter([b'',self.socket()]),iter(['/nix/store/expected/bin/kaiba-pilot-issuer']))
+        self.assertEqual(reads,['/proc/42/exe'])
+
+    def test_wrong_executable_owning_listener_is_rejected(self):
+        with self.assertRaisesRegex(d.r.Stop,'deployment-issuer-executable'):
+            self.check(iter([self.socket()]),iter(['/nix/store/wrong/bin/issuer']))
+
+    def test_process_exit_during_observation_waits_for_fresh_read(self):
+        self.check(iter([self.socket(),self.socket()]),iter([FileNotFoundError(),'/nix/store/expected/bin/kaiba-pilot-issuer']))
+
+    def test_changed_pid_or_invocation_cannot_satisfy_readiness(self):
+        first={'ActiveState':'active','MainPID':'42','InvocationID':'first'}
+        for changed in (first|{'MainPID':'43'},first|{'InvocationID':'second'}):
+            with self.subTest(changed=changed):
+                self.check(iter([self.socket(),self.socket()]),iter(['/nix/store/wrong/bin/issuer','/nix/store/expected/bin/kaiba-pilot-issuer']),iter([first,changed,first,first]))
+
+    def test_wrong_listener_owner_or_address_times_out_without_executable_read(self):
+        for socket in (self.socket(pid=43),self.socket(address='0.0.0.0'),b''):
+            with self.subTest(socket=socket),self.assertRaisesRegex(d.r.Stop,'deployment-listener-not-ready'):
+                self.check(iter([socket]*4),iter([]))
+
+    def test_failed_service_is_not_ready(self):
+        with self.assertRaisesRegex(d.r.Stop,'deployment-listener-start-failed'):
+            self.check(iter([]),iter([]),iter([{'ActiveState':'failed','MainPID':'0'}]))
+
+
 class Sequence(unittest.TestCase):
     def scenario(self,fault=None):
         with tempfile.TemporaryDirectory() as tmp:
