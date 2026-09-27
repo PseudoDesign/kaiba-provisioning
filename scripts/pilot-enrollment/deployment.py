@@ -72,7 +72,9 @@ class Deployment:
 
     def call(self,argv,timeout=120):
         process=subprocess.Popen(list(map(str,argv)),stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
-                                 close_fds=True,env={'PATH':'/usr/bin:/bin','LC_ALL':'C'})
+                                 # UFW invokes helpers such as sysctl by name.
+                                 # Keep host system directories, never caller PATH.
+                                 close_fds=True,env={'PATH':'/usr/sbin:/usr/bin:/sbin:/bin','LC_ALL':'C'})
         return refresh.collect(process,min(timeout,max(.001,r.timestamp(self.plan['expires_at'])+(60 if self.cleaning else 0)-time.time())))
 
     def guard(self,cleanup=False):
