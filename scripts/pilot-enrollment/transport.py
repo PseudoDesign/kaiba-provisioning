@@ -27,15 +27,18 @@ raw=sys.stdin.buffer.read(25165825)
 if len(raw)>25165824: raise RuntimeError('oversize bundle')
 q=json.loads(raw)
 if set(q)!={'schema','nonce','plan','modules','action','input'} or q['schema']!='kaiba.pilot-ssh/v1alpha1': raise RuntimeError('bundle schema')
-if set(q['modules'])!={'runner','device'}: raise RuntimeError('module scope')
-for name in ('runner','device'):
+names=('runner','device','peer') if 'peer' in q['modules'] else ('runner','device')
+if set(q['modules'])!=set(names): raise RuntimeError('module scope')
+for name in names:
     source=base64.b64decode(q['modules'][name],validate=True)
     module=types.ModuleType(name);module.__file__='/nonexistent/kaiba-reviewed/'+name+'.py'
     sys.modules[name]=module;exec(compile(source,module.__file__,'exec'),module.__dict__)
 r=sys.modules['runner'];d=sys.modules['device']
 import os,resource
 os.umask(0o077);resource.setrlimit(resource.RLIMIT_CORE,(0,0))
-if q['action']=='observe':
+if 'peer' in q['modules']:
+    value=sys.modules['peer'].dispatch(q['plan'],{'action':q['action'],'input':q['input']})
+elif q['action']=='observe':
     r.require(q['input'] is None,'unexpected observation input')
     d.host_guard(q['plan']);value={'status':'observed','device_mutated':False}
 else:
@@ -112,6 +115,7 @@ class Device:
         self.plan = r.decode(r.canonical(plan))
         import device
         device.validate(self.plan)
+        self.window=self.plan
         source = Path(__file__).resolve().parent
         self.modules = {name: base64.b64encode((source/(name+'.py')).read_bytes()).decode()
                         for name in ('runner', 'device')}
@@ -150,13 +154,33 @@ class Device:
             r.require(value is None, 'ssh-input-scope')
         if action == 'check-isolation':
             r.require(isinstance(value,str) and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:-]{0,127}',value),'ssh-other-instance')
+        return self.exchange(action,value)
+
+    def exchange(self,action,value):
         payload = r.canonical({'schema':'kaiba.pilot-ssh/v1alpha1', 'nonce':os.urandom(16).hex(),
                                'plan':self.plan, 'modules':self.modules, 'action':action, 'input':value})
-        timeout = min(self.config['timeout_seconds'], r.timestamp(self.plan['expires_at'])-time.time())
-        r.require(time.time() >= r.timestamp(self.plan['issued_at']) and timeout > 0, 'ssh-plan-window')
+        timeout = min(self.config['timeout_seconds'], r.timestamp(self.window['expires_at'])-time.time())
+        r.require(time.time() >= r.timestamp(self.window['issued_at']) and timeout > 0, 'ssh-plan-window')
         raw = exchange(self.argv(), payload, timeout)
         result = r.decode(raw)
         r.fields(result, ('schema', 'request_sha256', 'value'))
         r.require(result['schema'] == 'kaiba.pilot-ssh/v1alpha1' and
                   result['request_sha256'] == r.sha(payload) and isinstance(result['value'], dict), 'ssh-response-binding')
         return result['value']
+
+
+class ExistingDevice(Device):
+    """The same pinned SSH transport with an exclusively read-only dispatcher."""
+    def __init__(self,config,plan):
+        import peer
+        peer.validate(plan)
+        super().__init__(config,plan['host'])
+        self.plan=r.decode(r.canonical(plan))
+        self.modules['peer']=base64.b64encode((Path(__file__).resolve().parent/'peer.py').read_bytes()).decode()
+
+    def __call__(self,action,value=None):
+        r.require(action in ('status','self','check-isolation'),'ssh-peer-read-only')
+        if action=='check-isolation':
+            r.require(isinstance(value,str) and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:-]{0,127}',value),'ssh-other-instance')
+        else:r.require(value is None,'ssh-input-scope')
+        return self.exchange(action,value)
