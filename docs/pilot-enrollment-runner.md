@@ -391,7 +391,65 @@ this probe succeeds.
 
 TLS client tests exercise actual authenticated requests and unchanged state;
 host tests substitute privileged service/mount operations and cover interrupted
-runs, current-state drift and refusal to replay. The final owner packet still
-needs the existing-peer dispatcher and complete two-device serving baseline and
-firewall handoff, followed by combined rehearsal and exact execution approval.
+runs, current-state drift and refusal to replay. The final owner packet must wire these checks to the existing-peer dispatcher
+and two-device serving handoff below, then pass combined rehearsal and exact
+execution review.
 These software checks do not establish live enrollment or hardware qualification.
+
+## Existing peer and supervised serving handoff
+
+`transport.ExistingDevice` sends the same nonce-bound, pinned SSH bundle as the
+initial-device transport, but selects `peer.dispatch`. Its only operations are
+status, self and isolation checks. It cannot run setup, enrollment, installation,
+proof submission or renewal. The plan pins the boot/system/storage observations,
+account, exact public status and a separately available immutable client binary.
+The owner packet must arrange that public Nix closure first; this hook neither
+replaces the installed client nor transfers credentials to the station.
+
+Before and after an authenticated check, the peer dispatcher compares public
+status with the reviewed predecessor. It hashes the credential state locally
+before and after every operation, including failures, and refuses changed state.
+Neither the contents nor that local hash leave the device. The protected mount,
+account, file layout, executable hash and host checks remain mandatory.
+
+`serving.Handoff` coordinates the final host transition. Its reviewed policy pins
+post-deployment files and units, public trust copies, private-key metadata, host
+boot, unchanged cohort deadline, prior serving configuration, backup template and
+one exact target-only UFW rule. The existing firewall baseline, including the
+peer rule, stays intact. The target rule is intentionally retained for serving;
+it is not temporary access that should be removed on success. Other temporary
+resources created by the owner packet remain that packet's cleanup responsibility.
+
+The adapter may construct the handoff without access results solely to open the
+target rule before enrollment. Before preparing backup it must supply the actual
+`access.Checks` instance bound to both completed memberships. Preparation requires
+successful restart probes, stops the supervisor and children, and preserves the
+policy, membership baseline, old/new serving configs and exact backup plan on the
+encrypted filesystem. The serving deadline must equal the predecessor deadline.
+Each credential must
+be valid at the recorded handoff check; individual credential expiry remains
+enforced by Fleet and does not stop the authority serving other devices. The
+completion report records both credential deadlines for explicit renewal. The
+generated guard wrapper and policy must
+both be pinned in the owner packet; the module does not authorize its own policy.
+
+The adapter then runs the returned backup with the runner's retained recovery
+pipe. `resume` requires the backup's fresh read-only completion probe, retains its
+result, and checks the new guard before requesting supervisor startup. It verifies
+both memberships and device access, observes two supervisor check intervals, then
+checks access again. Completion probes recheck current state. The immutable guard
+continues checking the saved backup relationship, exact controls, mount guard,
+trust roots, key metadata, firewall and deadline throughout serving.
+
+Any failed mutation returns to the outer runner's safe-stop path. Handoff cleanup
+stops the authority and removes only the exact rule with this run's recorded
+intent; it never restores an old issuer config, erases enrollment or changes other
+firewall rules. Its public intent journal is outside the encrypted mount so
+cleanup remains possible after mount loss. Partial operations are not replayed.
+
+Tests exercise the existing-peer action boundary, unchanged-state checks,
+firewall preservation, backup-before-start ordering, interrupted startup,
+membership/config drift and refusal to replay. Systemd, privileged mounts and SSH
+are substituted in these tests. The reviewed owner packet still needs fresh host
+observations, exact inputs, combined rehearsal and explicit execution approval;
+these hooks alone are not a live enrollment or availability result.
