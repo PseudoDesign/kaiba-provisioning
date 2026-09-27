@@ -198,3 +198,35 @@ both correct and incorrect synthetic credentials against a disposable LUKS image
 and confirms its header is unchanged. Image identity, USB handling, quiescence,
 mount verification and restored filesystem/database checks remain the reviewed
 host backup hook's responsibility.
+
+## Device-side host hook
+
+`kaiba-pilot-enrollment-device` provides bounded setup and initial client dispatch
+on the reviewed NixOS target. A root-controlled, hash-bound plan pins the board
+and NVMe digests, boot ID, current and booted systems, LUKS UUID/partition,
+client binary and full public client configuration. Every call checks the plan's
+execution window, disabled swap and the block ancestry from `/var/lib` through
+that exact LUKS mapping to the selected partition.
+
+Setup requires the pilot account/group and all four installation directories to
+be absent. It records intent before creating them, installs the exact client and
+public configuration, and verifies an ext4 bind mount with `nosuid,nodev,noexec`.
+Only the dedicated client user owns its mode-0700 credential directory. Tools,
+inputs and operation metadata are separate root-controlled directories. Inputs
+are group-readable through a traversable parent; no logs or backups are placed
+inside the client's strict state directory.
+
+The only mutation commands are `init`, `bootstrap`, `install` and
+`prove-installed`. Each has a durable one-use intent. A lost reply does not permit
+another invocation. `status`, `self` and `probe-prepare` are observations. Setup
+and client operations do not reboot, change the OS, configure services, format
+storage or access OTP/firmware mechanisms. Account and bind-mount persistence
+across a NixOS switch/reboot is not established by this hook.
+
+This executable must be delivered through the packet's authenticated SSH path;
+shipping it does not grant general root access. The host still must bind the SSH
+principal/host key, stage the exact root-owned plan and call only approved steps.
+Unit tests use synthetic sysfs trees and temporary directories, substituting
+privileged account/mount/process actions. They do not claim live root deployment
+qualification. The complete owner packet remains pending host backup, authority
+transition and serving integration.
