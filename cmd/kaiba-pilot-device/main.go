@@ -17,7 +17,11 @@ func main() {
 	input := flag.String("input", "", "public challenge, certificate or station reconciliation response")
 	idempotency := flag.String("idempotency-key", "", "stable key for diagnostic submission; retain with exact input")
 	recoveryDigest := flag.String("recovery-digest", "", "independently reviewed canonical SHA-256 of recovery packet")
+	other := flag.String("other-instance", "", "existing other enrollment for read-only isolation check")
 	flag.Parse()
+	if *other != "" && flag.Arg(0) != "check-isolation" {
+		log.Fatal("other-instance is only allowed with check-isolation")
+	}
 	if *state == "" || flag.NArg() != 1 {
 		log.Fatal("state and one command required")
 	}
@@ -96,6 +100,8 @@ func main() {
 			value, e = c.Reconcile(raw)
 		case "submit-diagnostic":
 			value, e = c.SubmitDiagnostic(context.Background(), raw, *idempotency)
+		case "check-isolation":
+			value, e = c.CheckIsolation(context.Background(), *other)
 		case "self":
 			value, e = c.CheckAccess(context.Background())
 		default:

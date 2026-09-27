@@ -164,3 +164,292 @@ Before the Mako run: refresh its observations and access, prepare all exact hook
 and their real-service rehearsal, review the bounded effects on the already-live
 Ace authority, then ask once for the completed execution packet. No Mako device,
 authority record, signing token or current service was changed by this software PR.
+
+## Initial enrollment protocol hook
+
+`protocol.py` implements the seven protocol steps from device initialization
+through verified own-state access. A reviewed host adapter supplies its fixed
+Mako client dispatcher; the module performs bounded HTTPS/mTLS requests with
+explicit trust roots, separate station/operator credentials, no redirects and
+no automatic retries. It checks the approved record references, target, public
+key and assigned identity before continuing. It cannot fetch a device private key.
+
+The hook keeps a separate owner-only public journal bound to the exact plan.
+Its own one-use intents prevent an accidental direct invocation from repeating
+a mutation, even outside the outer runner. Read-only probes use client status,
+client self-read and authority GET requests. A lost initial response without a
+saved enrollment identifier remains unresolved; the hook never repeats creation
+to rediscover it. A retained identifier permits observation of completed proof or
+activation without repeating key use or issuance.
+
+This is a library for the reviewed host adapter, not an independently runnable
+Mako packet. Device setup, SSH transport and encrypted backup have library implementations
+below. Authority deployment and serving controls still need packet-specific
+integration and approval. The actual protocol library and HTTPS
+transport are exercised against disposable fleet services in the companion fleet
+rehearsal; its device dispatch substitutes only the storage observation.
+
+`recovery.py` supplies the backup hooks' noninteractive recovery-slot operations:
+one passphrase check against slot 0, or one read-only opening of the encrypted
+copy. It forwards only the inherited pipe descriptor to cryptsetup, disables
+external-token fallback and never formats storage or changes slots. It closes
+the descriptor on success or failure and does not retry. The native check verifies
+both correct and incorrect synthetic credentials against a disposable LUKS image
+and confirms its header is unchanged. Image identity, USB handling, quiescence,
+mount verification and restored filesystem/database checks remain the reviewed
+host backup hook's responsibility.
+
+## Device-side host hook
+
+`kaiba-pilot-enrollment-device` provides bounded setup and initial client dispatch
+on the reviewed NixOS target. A root-controlled, hash-bound plan pins the board
+and NVMe digests, boot ID, current and booted systems, LUKS UUID/partition,
+client binary and full public client configuration. Every call checks the plan's
+execution window, disabled swap and the block ancestry from `/var/lib` through
+that exact LUKS mapping to the selected partition.
+
+Setup requires the pilot account/group and all four installation directories to
+be absent. It records intent before creating them, installs the exact client and
+public configuration, and verifies an ext4 bind mount with `nosuid,nodev,noexec`.
+Only the dedicated client user owns its mode-0700 credential directory. Tools,
+inputs and operation metadata are separate root-controlled directories. Inputs
+are group-readable through a traversable parent; no logs or backups are placed
+inside the client's strict state directory.
+
+The only mutation commands are `init`, `bootstrap`, `install` and
+`prove-installed`. Each has a durable one-use intent. A lost reply does not permit
+another invocation. `status`, `self` and `probe-prepare` are observations. Setup
+and client operations do not reboot, change the OS, configure services, format
+storage or access OTP/firmware mechanisms. Account and bind-mount persistence
+across a NixOS switch/reboot is not established by this hook.
+
+This executable must be delivered through the packet's authenticated SSH path;
+shipping it does not grant general root access. The host still must bind the SSH
+principal/host key and exact plan, then call only approved steps. The SSH library
+can deliver the reviewed modules and plan in memory without a remote helper file.
+Unit tests use synthetic sysfs trees and temporary directories, substituting
+privileged account/mount/process actions. They do not claim live root deployment
+qualification. The complete owner packet remains pending host backup, authority
+transition and serving integration.
+
+## Authenticated SSH dispatcher
+
+`transport.Device` supplies the device callback for the protocol library. The
+reviewed host adapter pins an immutable OpenSSH executable, target, principal,
+private-key path/owner, public known-hosts file and digest, and the target's
+immutable Python interpreter. Public host keys must be in the Nix store or a
+root-controlled directory. It checks identity-file permissions without reading
+private-key bytes; OpenSSH loads the key.
+
+Each invocation disables SSH configuration files, agents, interactive prompts,
+forwarding, proxy commands and connection reuse. It sends the bundled device
+hook and exact plan over authenticated SSH stdin to noninteractive sudo/Python.
+The response binds a fresh nonce and the entire request. Input/output sizes and
+elapsed time are bounded. Failed or lost responses never trigger a retry;
+remote mutation may have happened and must be reconciled using the device
+journal. The `observe` action runs only the device's read-only host guard.
+
+This transport assumes the separately approved SSH principal can execute the
+reviewed root helper. It neither installs that access nor turns a general sudo
+account into a restricted account. Packet approval must cover the delivered
+code and every allowed device action.
+
+## Encrypted backup host hook
+
+`backup.Backup` implements the stopped-writer backup on the existing Ubuntu pilot
+host. Its plan pins the host boot, deadline, LUKS UUID, USB serial/UUID/sizes,
+immutable cryptsetup/PostgreSQL tools and hashes of preserved deployment inputs.
+The host adapter must first stop all pilot writers and save the updated serving
+and deployment configuration inside the encrypted authority filesystem.
+
+The hook checks the original mapping and mount, clean database shutdown, absent
+swap and unmounted destination. It records one-use intent, snapshots filesystem
+content/ownership/modes/xattrs in memory, unmounts the source, creates a new
+exclusive encrypted copy and verifies its readback. It consumes the inherited
+recovery pipe once to open that copy read-only, compares the restored filesystem,
+and runs offline PostgreSQL checksum checks. It then closes the copy, unmounts
+the USB and remounts the original protected filesystem, leaving services stopped.
+A prior attempt or existing destination prevents execution; failures preserve
+state for reconciliation. Serving may resume only through the separate reviewed
+host step after this hook's result and current postconditions are verified.
+
+Tests exercise transport bounds and response binding, and the backup's real
+file-copy/comparison logic with substituted privileged operations. They cover
+wrong credentials, mismatched restored content and repeated attempts. These
+checks do not qualify actual USB/mount handling or demonstrate restored service
+startup. The complete Mako packet still needs authority/grant transition,
+isolation/restart checks, safe-stop, backup result probing and serving handoff
+integrated and reviewed together before live execution.
+
+## Host issuer-grant transition
+
+`issuer_refresh.Refresh` runs the bounded administrative transition on the
+existing Ubuntu pilot host. Before invoking it, the reviewed host adapter must
+install the fresh observation/admission records, initialize the upgraded issuer
+using its unchanged config, then stop the serving supervisor, Fleet and issuer.
+PostgreSQL and both record authorities remain available. This hook does not
+perform that deployment or initialize tables by itself.
+
+The plan pins the current host boot/window, exact upgraded issuer/unit, old
+configuration bytes/scope, replacement bytes, target and Fleet certificate digest.
+It rejects changes to the peer grant, credential lifetime or lifecycle settings.
+It verifies the encrypted mount through the existing host storage guard, disabled
+swap, stopped writers and systemd's loaded executable. A read-only result probe
+can also run after serving resumes; any running issuer must use the pinned binary.
+
+The transition archives its public plan and old/new configurations inside the
+encrypted authority filesystem. It obtains semantic digests from the real
+issuer's `plan` command instead of reimplementing its typed canonicalization,
+then binds those values into a retained request. The approval digest covers the
+reviewed host plan and exact input bytes. Fleet's reader uses the same pinned
+public trust roots as the issuer, with its own certificate and key.
+
+For `apply` only, a short-lived privileged feeder reads the designated Fleet
+identity into an inherited pipe and exits. The administrative issuer child runs
+with the issuer UID/GID and no supplementary groups, preserving PostgreSQL peer
+authentication. No private bytes enter the parent, arguments, environment or
+journal, and no credential file permissions change. This requires Fleet's
+inherited-identity support; it is not a fallback to widening key access.
+
+A durable intent precedes the single apply. The exact returned commit must match
+read-only inspection before the new config is installed atomically. Lost replies,
+partial attempts or mismatches stop without replay or rollback. Probes check the
+current config and retained database transition, not merely a completion marker.
+A confirmed transition does not mean services are ready, a device is enrolled or
+a final backup exists; those remain separate owner-packet steps.
+
+Tests exercise ordering, retained-state reconciliation, peer/lifecycle rejection,
+real ephemeral pipe transfer and bounded child I/O. Privileged service/ownership
+operations are substituted. Complete host deployment, actual UID/database access,
+Ace/Mako isolation and serving/backup integration still require the reviewed
+single-launch packet and its rehearsal.
+
+## Host authority deployment
+
+`deployment.Deployment` prepares the existing Ubuntu authority before device
+setup. Its plan binds the host boot and bounded window, all six service-unit
+preimages, immutable controller/storage guard, exact issuer binary replacement,
+observation/admission file preimages and replacements, peer enrollment ID and
+nested issuer-refresh plan. File targets are limited to the two readers' config,
+records and evidence; the issuer grant change uses the separate refresh hook.
+
+Execution preserves public preimages in encrypted storage, stops guarded serving,
+and replaces only the issuer unit's executable. It starts the upgraded issuer
+against the unchanged config to initialize additive tables, verifies the actual
+process and loopback listener, then stops it before installing reviewed records.
+The record readers start before the grant transition. Fleet and the issuer start
+only after that transition is confirmed. The existing peer's authenticated
+membership response must remain exactly unchanged throughout preparation.
+
+Each mutation has a durable one-use intent. Reconciliation checks current unit
+bytes, service state, exact installed records, issuer transition and peer response.
+It does not trust a saved success marker. The outer runner must call `safe_stop`
+after an attempted mutation fails; cleanup stops children without rolling back
+configuration after a potentially committed grant change. Cleanup remains possible
+when encrypted storage is unavailable, within the runner's bounded cleanup window.
+
+The module is a host hook, not a standalone enrollment command. Tests exercise
+ordering, file preservation, failure after grant commit, refusal to replay and
+peer drift with substituted privileged service operations. Live deployment is
+still pending. The complete owner packet must integrate this hook with device
+setup, isolation/restart checks, verified backup and two-device serving before it
+is approved or run. This change does not enroll Mako or alter Ace's deadline.
+
+## Access, restart and backup result checks
+
+The device client now supports `--other-instance ID check-isolation`. It first
+performs its existing authenticated self read, then sends one GET for the other
+enrollment. Only an explicit HTTP 403 passes. Successful access, a missing record,
+TLS failure, outage or redirect fails. The identifier is one bounded path segment;
+there is no arbitrary URL or mutation option. It uses the currently selected
+credential after renewal/recovery and does not change the saved device state.
+The device hook and pinned SSH dispatcher expose the same bounded operation.
+
+`access.Checks` binds two distinct active membership snapshots to the run. The
+peer snapshot must come from the reviewed predecessor and the target snapshot
+from the completed enrollment protocol. The adapter supplies an authenticated
+operator reader and device-local callbacks; it must not copy device private keys
+to the station. Both records must still exist and match exactly, both self reads
+must match their complete authority bindings, and both cross-record reads must
+return 403. A stored success is insufficient if current membership or access has
+changed.
+
+The restart step requires completed isolation, records one-use intent, stops the
+five authority children, and starts them again with the supervisor still stopped.
+It checks new systemd invocation IDs, reader/issuer/Fleet readiness, unchanged
+authority records and fresh device-client self reads. It tests authority-process
+and client-process recovery, not OS reboot or cold boot. The outer runner owns
+safe-stop on failure; an interrupted restart is never automatically repeated.
+
+`backup.Backup.probe` is the read-only gate before serving resumes. It binds the
+saved result to the exact plan, image identity, copy digest and completed restore
+stages. It rechecks stopped writers, clean PostgreSQL state, encrypted mapping,
+source mount, preserved serving inputs, absent restore mappings/scratch paths and
+unmounted USB. It does not reopen media or request another credential, and it does
+not claim a new readback of the unmounted copy. Serving must remain stopped until
+this probe succeeds.
+
+TLS client tests exercise actual authenticated requests and unchanged state;
+host tests substitute privileged service/mount operations and cover interrupted
+runs, current-state drift and refusal to replay. The final owner packet must wire these checks to the existing-peer dispatcher
+and two-device serving handoff below, then pass combined rehearsal and exact
+execution review.
+These software checks do not establish live enrollment or hardware qualification.
+
+## Existing peer and supervised serving handoff
+
+`transport.ExistingDevice` sends the same nonce-bound, pinned SSH bundle as the
+initial-device transport, but selects `peer.dispatch`. Its only operations are
+status, self and isolation checks. It cannot run setup, enrollment, installation,
+proof submission or renewal. The plan pins the boot/system/storage observations,
+account, exact public status and a separately available immutable client binary.
+The owner packet must arrange that public Nix closure first; this hook neither
+replaces the installed client nor transfers credentials to the station.
+
+Before and after an authenticated check, the peer dispatcher compares public
+status with the reviewed predecessor. It hashes the credential state locally
+before and after every operation, including failures, and refuses changed state.
+Neither the contents nor that local hash leave the device. The protected mount,
+account, file layout, executable hash and host checks remain mandatory.
+
+`serving.Handoff` coordinates the final host transition. Its reviewed policy pins
+post-deployment files and units, public trust copies, private-key metadata, host
+boot, unchanged cohort deadline, prior serving configuration, backup template and
+one exact target-only UFW rule. The existing firewall baseline, including the
+peer rule, stays intact. The target rule is intentionally retained for serving;
+it is not temporary access that should be removed on success. Other temporary
+resources created by the owner packet remain that packet's cleanup responsibility.
+
+The adapter may construct the handoff without access results solely to open the
+target rule before enrollment. Before preparing backup it must supply the actual
+`access.Checks` instance bound to both completed memberships. Preparation requires
+successful restart probes, stops the supervisor and children, and preserves the
+policy, membership baseline, old/new serving configs and exact backup plan on the
+encrypted filesystem. The serving deadline must equal the predecessor deadline.
+Each credential must
+be valid at the recorded handoff check; individual credential expiry remains
+enforced by Fleet and does not stop the authority serving other devices. The
+completion report records both credential deadlines for explicit renewal. The
+generated guard wrapper and policy must
+both be pinned in the owner packet; the module does not authorize its own policy.
+
+The adapter then runs the returned backup with the runner's retained recovery
+pipe. `resume` requires the backup's fresh read-only completion probe, retains its
+result, and checks the new guard before requesting supervisor startup. It verifies
+both memberships and device access, observes two supervisor check intervals, then
+checks access again. Completion probes recheck current state. The immutable guard
+continues checking the saved backup relationship, exact controls, mount guard,
+trust roots, key metadata, firewall and deadline throughout serving.
+
+Any failed mutation returns to the outer runner's safe-stop path. Handoff cleanup
+stops the authority and removes only the exact rule with this run's recorded
+intent; it never restores an old issuer config, erases enrollment or changes other
+firewall rules. Its public intent journal is outside the encrypted mount so
+cleanup remains possible after mount loss. Partial operations are not replayed.
+
+Tests exercise the existing-peer action boundary, unchanged-state checks,
+firewall preservation, backup-before-start ordering, interrupted startup,
+membership/config drift and refusal to replay. Systemd, privileged mounts and SSH
+are substituted in these tests. The reviewed owner packet still needs fresh host
+observations, exact inputs, combined rehearsal and explicit execution approval;
+these hooks alone are not a live enrollment or availability result.
