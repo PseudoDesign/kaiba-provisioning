@@ -280,3 +280,46 @@ checks do not qualify actual USB/mount handling or demonstrate restored service
 startup. The complete Mako packet still needs authority/grant transition,
 isolation/restart checks, safe-stop, backup result probing and serving handoff
 integrated and reviewed together before live execution.
+
+## Host issuer-grant transition
+
+`issuer_refresh.Refresh` runs the bounded administrative transition on the
+existing Ubuntu pilot host. Before invoking it, the reviewed host adapter must
+install the fresh observation/admission records, initialize the upgraded issuer
+using its unchanged config, then stop the serving supervisor, Fleet and issuer.
+PostgreSQL and both record authorities remain available. This hook does not
+perform that deployment or initialize tables by itself.
+
+The plan pins the current host boot/window, exact upgraded issuer/unit, old
+configuration bytes/scope, replacement bytes, target and Fleet certificate digest.
+It rejects changes to the peer grant, credential lifetime or lifecycle settings.
+It verifies the encrypted mount through the existing host storage guard, disabled
+swap, stopped writers and systemd's loaded executable. A read-only result probe
+can also run after serving resumes; any running issuer must use the pinned binary.
+
+The transition archives its public plan and old/new configurations inside the
+encrypted authority filesystem. It obtains semantic digests from the real
+issuer's `plan` command instead of reimplementing its typed canonicalization,
+then binds those values into a retained request. The approval digest covers the
+reviewed host plan and exact input bytes. Fleet's reader uses the same pinned
+public trust roots as the issuer, with its own certificate and key.
+
+For `apply` only, a short-lived privileged feeder reads the designated Fleet
+identity into an inherited pipe and exits. The administrative issuer child runs
+with the issuer UID/GID and no supplementary groups, preserving PostgreSQL peer
+authentication. No private bytes enter the parent, arguments, environment or
+journal, and no credential file permissions change. This requires Fleet's
+inherited-identity support; it is not a fallback to widening key access.
+
+A durable intent precedes the single apply. The exact returned commit must match
+read-only inspection before the new config is installed atomically. Lost replies,
+partial attempts or mismatches stop without replay or rollback. Probes check the
+current config and retained database transition, not merely a completion marker.
+A confirmed transition does not mean services are ready, a device is enrolled or
+a final backup exists; those remain separate owner-packet steps.
+
+Tests exercise ordering, retained-state reconciliation, peer/lifecycle rejection,
+real ephemeral pipe transfer and bounded child I/O. Privileged service/ownership
+operations are substituted. Complete host deployment, actual UID/database access,
+Ace/Mako isolation and serving/backup integration still require the reviewed
+single-launch packet and its rehearsal.
