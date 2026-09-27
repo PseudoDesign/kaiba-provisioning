@@ -184,9 +184,18 @@ let
       machine.wait_until_succeeds("! kill -0 $(cat /run/holder.pid) 2>/dev/null")
       # Explicit cleanup of a failed synthetic case, not a helper retry feature.
       machine.succeed("umount " + base + "/volume && cryptsetup close kaiba-secret-experiment-open && dmsetup remove kaiba-secret-experiment-container")
+      # The assertions above use real boot IDs. The exported synthetic report
+      # records their relationship without making the Nix output depend on
+      # random UUIDs generated at each VM boot. Zero means no ID was observed.
+      boot_sequence = {"": 0, created["boot_id"]: 1, reopened["boot_id"]: 2}
+      for case in results:
+          result = dict(case["result"])
+          case["boot_sequence"] = boot_sequence[result.pop("boot_id")]
+          case["result"] = result
       with open(driver.out_dir / "report.json", "w") as output:
           json.dump(dict(mode="synthetic-development", hardware_qualified=False,
-                         production_enrollment=False, cases=results), output, indent=2)
+                         production_enrollment=False, boot_ids_normalized=True,
+                         cases=results), output, indent=2, sort_keys=True)
     '';
   };
 in

@@ -120,7 +120,7 @@ def require_results(environment):
     for name in ("CORE_RESULT", "ARM_RESULT", "DEVELOPMENT_RESULT", "PLAN_RESULT"):
         if environment.get(name) != "success":
             raise ValueError(f"{name} must succeed, got {environment.get(name)!r}")
-    for lane in ("VERIFIER", "HEAVY"):
+    for lane in ("VERIFIER",):
         required = environment.get(lane + "_REQUIRED")
         result = environment.get(lane + "_RESULT")
         if required not in {"true", "false"} or result != (
@@ -128,17 +128,42 @@ def require_results(environment):
         ):
             raise ValueError(f"unexpected {lane} result: required={required!r}, result={result!r}")
 
+    backend = environment.get("HEAVY_BACKEND")
+    if backend == "hydra":
+        if (environment.get("GITHUB_EVENT_NAME"), environment.get("GITHUB_REF")) != ("push", "refs/heads/main"):
+            raise ValueError("Hydra delegation is only permitted for main pushes")
+        expected = {"HEAVY_REQUIRED": "true", "HEAVY_RESULT": "skipped", "HYDRA_RESULT": "success"}
+    elif backend == "github":
+        required = environment.get("HEAVY_REQUIRED")
+        if required not in {"true", "false"}:
+            raise ValueError("missing heavy check selection")
+        expected = {"HEAVY_RESULT": "success" if required == "true" else "skipped", "HYDRA_RESULT": "skipped"}
+    else:
+        raise ValueError("missing or unknown heavy check backend")
+    if any(environment.get(key) != value for key, value in expected.items()):
+        raise ValueError(f"unexpected results for {backend} heavy checks")
 
-def write_plan(result, output, summary):
+
+def heavy_backend(event, ref, enabled):
+    if enabled not in {"true", "false"}:
+        raise ValueError("HYDRA_MAIN_ENABLED must be true or false")
+    return "hydra" if enabled == "true" and event == "push" and ref == "refs/heads/main" else "github"
+
+
+def write_plan(result, output, summary, backend="github"):
     selected = result["checks"]
     if len(selected) != len(set(selected)) or not set(selected).issubset(SELECTIVE_CHECKS):
         raise ValueError("unexpected selected checks")
+    if backend not in {"github", "hydra"} or (backend == "hydra" and not set(HEAVY_CHECKS).issubset(selected)):
+        raise ValueError("Hydra delegation requires the complete heavy inventory")
+    output.write(f"heavy_backend={backend}\n")
+    output.write("heavy_derivations=" + json.dumps({name: result["after"][name] for name in HEAVY_CHECKS}) + "\n")
     for prefix, checks in (("", VERIFIER_CHECKS), ("heavy_", HEAVY_CHECKS)):
         group = [name for name in checks if name in selected]
         output.write(f"{prefix}required={str(bool(group)).lower()}\n")
         output.write(prefix + "checks=" + json.dumps(group) + "\n")
     summary.write("### Expensive ARM64 check selection\n\n")
-    summary.write("Selected checks run in individually named native ARM jobs. "
+    summary.write(f"Heavy checks use `{backend}`; other selected checks use GitHub runners. "
                   "Main and manual runs retain full coverage.\n\n")
     summary.write("| Check | Decision | Base derivation | Current derivation |\n")
     summary.write("| --- | --- | --- | --- |\n")
@@ -166,7 +191,9 @@ def main():
         with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output, Path(
             os.environ["GITHUB_STEP_SUMMARY"]
         ).open("a") as summary:
-            write_plan(result, output, summary)
+            backend = heavy_backend(event_name, os.environ.get("GITHUB_REF"),
+                                    os.environ.get("HYDRA_MAIN_ENABLED", "false"))
+            write_plan(result, output, summary, backend)
 
 
 if __name__ == "__main__":
