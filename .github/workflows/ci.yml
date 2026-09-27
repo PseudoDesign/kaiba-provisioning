@@ -195,6 +195,8 @@ jobs:
       checks: ${{ steps.plan.outputs.checks }}
       heavy_required: ${{ steps.plan.outputs.heavy_required }}
       heavy_checks: ${{ steps.plan.outputs.heavy_checks }}
+      heavy_backend: ${{ steps.plan.outputs.heavy_backend }}
+      heavy_derivations: ${{ steps.plan.outputs.heavy_derivations }}
     steps:
       - name: Check out the repository and PR base
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -208,6 +210,8 @@ jobs:
           github_access_token: ${{ github.token }}
       - name: Compare complete ARM64 build inputs
         id: plan
+        env:
+          HYDRA_MAIN_ENABLED: ${{ vars.HYDRA_MAIN_ENABLED || 'false' }}
         run: python3 -B .github/scripts/verifier_ci.py plan
 
   verifier-images:
@@ -252,7 +256,7 @@ jobs:
   arm64-heavy:
     name: ARM64 hardware check (${{ matrix.check }})
     needs: verifier-plan
-    if: needs.verifier-plan.outputs.heavy_required == 'true'
+    if: needs.verifier-plan.outputs.heavy_required == 'true' && needs.verifier-plan.outputs.heavy_backend == 'github'
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 240
     strategy:
@@ -289,6 +293,29 @@ jobs:
           HARDWARE_CHECK: ${{ matrix.check }}
         run: nix --accept-flake-config build -L --no-link ".#checks.aarch64-linux.$HARDWARE_CHECK"
 
+  hydra-arm64:
+    name: ARM64 checks on Hydra
+    needs: verifier-plan
+    if: needs.verifier-plan.outputs.heavy_backend == 'hydra'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    permissions:
+      contents: read
+      statuses: read
+    concurrency:
+      group: hydra-arm64-main
+      cancel-in-progress: true
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require successful Hydra results for this commit and its derivations
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          HYDRA_EXPECTED_DERIVATIONS: ${{ needs.verifier-plan.outputs.heavy_derivations }}
+        run: python3 -B .github/scripts/hydra_ci.py
+
   # Preserve the required-check context. A matrix skip is valid only after
   # successful input comparison explicitly established that its inputs match.
   x86_64:
@@ -301,6 +328,7 @@ jobs:
       - verifier-plan
       - verifier-images
       - arm64-heavy
+      - hydra-arm64
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -320,6 +348,8 @@ jobs:
           VERIFIER_RESULT: ${{ needs.verifier-images.result }}
           HEAVY_REQUIRED: ${{ needs.verifier-plan.outputs.heavy_required }}
           HEAVY_RESULT: ${{ needs.arm64-heavy.result }}
+          HEAVY_BACKEND: ${{ needs.verifier-plan.outputs.heavy_backend }}
+          HYDRA_RESULT: ${{ needs.hydra-arm64.result }}
         run: python3 -B .github/scripts/verifier_ci.py require-results
 
   aarch64:

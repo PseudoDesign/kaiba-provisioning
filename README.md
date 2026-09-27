@@ -209,6 +209,12 @@ comparison reports unchanged inputs. Missing or failed comparison and any failed
 selected check block it. `main` pushes and manual runs build every check, and
 `scripts/check.sh full` continues to run the complete native suite.
 
+After qualification, `HYDRA_MAIN_ENABLED=true` routes the ten heavy ARM64 checks
+on main pushes to [Hydra on Ace](docs/hydra.md). The aggregate then requires
+Hydra statuses for that commit and verifies every planned derivation. PR and
+manual builders stay on GitHub; setting the variable to `false` restores main
+builds there as well.
+
 Pull requests consume binary caches but do not push to
 them. Successful `main` pushes upload to the
 [`kaiba-provisioning` cache](https://app.cachix.org/cache/kaiba-provisioning)

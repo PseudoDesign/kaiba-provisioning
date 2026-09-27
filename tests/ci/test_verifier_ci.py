@@ -128,7 +128,30 @@ class RequiredResultTests(unittest.TestCase):
         self.results = dict.fromkeys(
             ("CORE_RESULT", "ARM_RESULT", "DEVELOPMENT_RESULT", "PLAN_RESULT"), "success"
         ) | {"VERIFIER_REQUIRED": "false", "VERIFIER_RESULT": "skipped",
-             "HEAVY_REQUIRED": "false", "HEAVY_RESULT": "skipped"}
+             "HEAVY_REQUIRED": "false", "HEAVY_RESULT": "skipped",
+             "HEAVY_BACKEND": "github", "HYDRA_RESULT": "skipped"}
+
+    def test_hydra_requires_main_push_and_successful_waiter(self):
+        delegated = self.results | {
+            "GITHUB_EVENT_NAME": "push", "GITHUB_REF": "refs/heads/main",
+            "HEAVY_REQUIRED": "true", "HEAVY_BACKEND": "hydra", "HYDRA_RESULT": "success",
+        }
+        ci.require_results(delegated)
+        for change in ({"GITHUB_EVENT_NAME": "pull_request"}, {"GITHUB_EVENT_NAME": "workflow_dispatch"},
+                       {"GITHUB_REF": "refs/heads/feature"}, {"HYDRA_RESULT": "failure"},
+                       {"HYDRA_RESULT": "cancelled"}, {"HYDRA_RESULT": "skipped"},
+                       {"HEAVY_REQUIRED": "false"}, {"HEAVY_RESULT": "success"}):
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                ci.require_results(delegated | change)
+
+    def test_only_explicit_opt_in_routes_main_pushes_to_hydra(self):
+        for event in ("push", "pull_request", "workflow_dispatch"):
+            for ref in ("refs/heads/main", "refs/heads/feature", "refs/pull/1/merge"):
+                self.assertEqual(ci.heavy_backend(event, ref, "false"), "github")
+                self.assertEqual(ci.heavy_backend(event, ref, "true"),
+                                 "hydra" if event == "push" and ref == "refs/heads/main" else "github")
+        with self.assertRaises(ValueError):
+            ci.heavy_backend("push", "refs/heads/main", "unknown")
 
     def test_only_unchanged_skip_or_required_success_passes(self):
         ci.require_results(self.results)
