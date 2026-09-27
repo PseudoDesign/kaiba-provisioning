@@ -182,7 +182,7 @@ def prepare(plan, binary):
 def dispatch(plan, request):
     host_guard(plan)
     action = request.get('action')
-    r.require(action in ('prepare', 'probe-prepare', 'status', 'self', *MUTATIONS), 'device-action')
+    r.require(action in ('prepare', 'probe-prepare', 'status', 'self', 'check-isolation', *MUTATIONS), 'device-action')
     r.fields(request, ('action', 'input'))
     if action == 'prepare':
         r.require(isinstance(request['input'], str), 'device-binary-input')
@@ -192,7 +192,7 @@ def dispatch(plan, request):
         r.require(request['input'] is None, 'device-unexpected-input')
         return {'status': 'prepared', 'key_created': (ROOT/'state.json').exists()}
     supplied = request['input']
-    r.require((action in ('bootstrap', 'install')) == (supplied is not None), 'device-input-scope')
+    r.require((action in ('bootstrap', 'install', 'check-isolation')) == (supplied is not None), 'device-input-scope')
     if action in MUTATIONS:
         # Never replay an uncertain client operation, including after lost SSH output.
         write(SESSION/(action+'.intent.json'), r.canonical({'action': action, 'run_id': plan['run_id']}))
@@ -201,6 +201,9 @@ def dispatch(plan, request):
     if action == 'init':
         r.require(not (ROOT/'state.json').exists(), 'device-already-initialized')
         argv += ['--config', INPUTS/'config.json']
+    elif action == 'check-isolation':
+        r.require(isinstance(supplied, str) and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:-]{0,127}', supplied), 'device-other-instance')
+        argv += ['--other-instance', supplied]
     elif action in ('bootstrap', 'install'):
         if action == 'install':
             r.require(isinstance(supplied, str) and 0 < len(supplied) <= 65536, 'device-certificate-input')

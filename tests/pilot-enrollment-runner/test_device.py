@@ -94,6 +94,13 @@ class DeviceDispatch(unittest.TestCase):
         self.assertTrue((d.SESSION/'install.complete.json').exists())
         self.assertEqual(self.calls[0][-1], 'install')
         self.assertEqual(self.calls[0][1:4], ['-u', d.USER, '--'])
+    def test_isolation_uses_only_bounded_identifier_without_mutation_intent(self):
+        d.dispatch(self.plan, {'action':'check-isolation','input':'other-instance'})
+        self.assertEqual(list(d.SESSION.iterdir()), [])
+        self.assertEqual(self.calls[0][-3:], ['--other-instance','other-instance','check-isolation'])
+        for value in (None, '../self', 'other?x=1', {'id':'other'}):
+            with self.assertRaises(d.r.Stop):d.dispatch(self.plan, {'action':'check-isolation','input':value})
+        self.assertEqual(len(self.calls),1)
     def test_status_does_not_create_mutation_intent(self):
         d.dispatch(self.plan, {'action':'status','input':None})
         self.assertEqual(list(d.SESSION.iterdir()), [])

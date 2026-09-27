@@ -15,6 +15,7 @@ func main() {
 	config := flag.String("config", "", "reviewed pilot config for init")
 	input := flag.String("input", "", "public challenge, certificate or station reconciliation response")
 	recoveryDigest := flag.String("recovery-digest", "", "reviewed recovery packet digest")
+	other := flag.String("other-instance", "", "other enrollment for isolation check")
 	flag.Parse()
 	if *state == "" || flag.NArg() != 1 {
 		log.Fatal("state and one command required")
@@ -79,6 +80,8 @@ func main() {
 			value, e = c.RetryInstalled(context.Background(), raw)
 		case "reconcile":
 			value, e = c.Reconcile(raw)
+		case "check-isolation":
+			value, e = c.CheckIsolation(context.Background(), *other)
 		case "self":
 			value, e = c.CheckAccess(context.Background())
 		default:
