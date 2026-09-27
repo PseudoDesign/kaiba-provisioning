@@ -164,3 +164,37 @@ Before the Mako run: refresh its observations and access, prepare all exact hook
 and their real-service rehearsal, review the bounded effects on the already-live
 Ace authority, then ask once for the completed execution packet. No Mako device,
 authority record, signing token or current service was changed by this software PR.
+
+## Initial enrollment protocol hook
+
+`protocol.py` implements the seven protocol steps from device initialization
+through verified own-state access. A reviewed host adapter supplies its fixed
+Mako client dispatcher; the module performs bounded HTTPS/mTLS requests with
+explicit trust roots, separate station/operator credentials, no redirects and
+no automatic retries. It checks the approved record references, target, public
+key and assigned identity before continuing. It cannot fetch a device private key.
+
+The hook keeps a separate owner-only public journal bound to the exact plan.
+Its own one-use intents prevent an accidental direct invocation from repeating
+a mutation, even outside the outer runner. Read-only probes use client status,
+client self-read and authority GET requests. A lost initial response without a
+saved enrollment identifier remains unresolved; the hook never repeats creation
+to rediscover it. A retained identifier permits observation of completed proof or
+activation without repeating key use or issuance.
+
+This is a library for the reviewed host adapter, not an independently runnable
+Mako packet. Root/account setup, authenticated SSH dispatch, authority deployment,
+passphrase verification, encrypted USB backup and serving controls still need
+packet-specific hooks and approval. The actual protocol library and HTTPS
+transport are exercised against disposable fleet services in the companion fleet
+rehearsal; its device dispatch substitutes only the storage observation.
+
+`recovery.py` supplies the backup hooks' noninteractive recovery-slot operations:
+one passphrase check against slot 0, or one read-only opening of the encrypted
+copy. It forwards only the inherited pipe descriptor to cryptsetup, disables
+external-token fallback and never formats storage or changes slots. It closes
+the descriptor on success or failure and does not retry. The native check verifies
+both correct and incorrect synthetic credentials against a disposable LUKS image
+and confirms its header is unchanged. Image identity, USB handling, quiescence,
+mount verification and restored filesystem/database checks remain the reviewed
+host backup hook's responsibility.

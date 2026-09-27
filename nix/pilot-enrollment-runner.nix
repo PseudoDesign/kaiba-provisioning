@@ -20,6 +20,7 @@ let
       }
       ''
         export KAIBA_PILOT_RUNNER_SOURCE=${source}
+        export KAIBA_TEST_CRYPTSETUP=${pkgs.cryptsetup}/bin/cryptsetup
         python3 -B -m unittest discover -s ${../tests/pilot-enrollment-runner} -p 'test_*.py' -v
         ${package}/bin/kaiba-pilot-enrollment-runner --help > help.txt
         ${package}/bin/kaiba-pilot-enrollment-adapter --help > adapter-help.txt
