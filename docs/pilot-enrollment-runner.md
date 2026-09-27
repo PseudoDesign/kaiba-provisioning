@@ -323,3 +323,34 @@ real ephemeral pipe transfer and bounded child I/O. Privileged service/ownership
 operations are substituted. Complete host deployment, actual UID/database access,
 Ace/Mako isolation and serving/backup integration still require the reviewed
 single-launch packet and its rehearsal.
+
+## Host authority deployment
+
+`deployment.Deployment` prepares the existing Ubuntu authority before device
+setup. Its plan binds the host boot and bounded window, all six service-unit
+preimages, immutable controller/storage guard, exact issuer binary replacement,
+observation/admission file preimages and replacements, peer enrollment ID and
+nested issuer-refresh plan. File targets are limited to the two readers' config,
+records and evidence; the issuer grant change uses the separate refresh hook.
+
+Execution preserves public preimages in encrypted storage, stops guarded serving,
+and replaces only the issuer unit's executable. It starts the upgraded issuer
+against the unchanged config to initialize additive tables, verifies the actual
+process and loopback listener, then stops it before installing reviewed records.
+The record readers start before the grant transition. Fleet and the issuer start
+only after that transition is confirmed. The existing peer's authenticated
+membership response must remain exactly unchanged throughout preparation.
+
+Each mutation has a durable one-use intent. Reconciliation checks current unit
+bytes, service state, exact installed records, issuer transition and peer response.
+It does not trust a saved success marker. The outer runner must call `safe_stop`
+after an attempted mutation fails; cleanup stops children without rolling back
+configuration after a potentially committed grant change. Cleanup remains possible
+when encrypted storage is unavailable, within the runner's bounded cleanup window.
+
+The module is a host hook, not a standalone enrollment command. Tests exercise
+ordering, file preservation, failure after grant commit, refusal to replay and
+peer drift with substituted privileged service operations. Live deployment is
+still pending. The complete owner packet must integrate this hook with device
+setup, isolation/restart checks, verified backup and two-device serving before it
+is approved or run. This change does not enroll Mako or alter Ace's deadline.
