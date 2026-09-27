@@ -181,6 +181,55 @@ class Backup:
                   stat.S_IMODE(info.st_mode)==0o600 and info.st_size==SIZE,'backup-image-metadata')
         return info.st_dev,info.st_ino,info.st_size
 
+    def preserved(self):
+        for path,digest in self.plan['preserved_files'].items():
+            current=SOURCE
+            for component in Path(path).parts[:-1]:
+                current=current/component;info=current.lstat()
+                r.require(stat.S_ISDIR(info.st_mode) and info.st_dev==SOURCE.stat().st_dev and
+                          not info.st_mode&0o022,'backup-preserved-parent')
+            r.require(file_hash(SOURCE/path)==digest,'backup-preserved-input-changed')
+
+    def probe(self):
+        """Read-only pre-serving check; never remount or consume another secret.
+
+        The completed copy was verified before unmount. Its saved result is bound
+        to this run, while current mount, writer and preserved-input conditions
+        are checked again. This does not claim a new readback of detached media.
+        """
+        self.guard();r.trusted_parent(self.state.parent,0)
+        info=self.state.lstat()
+        r.require(stat.S_ISDIR(info.st_mode) and info.st_uid==os.geteuid() and
+                  stat.S_IMODE(info.st_mode)==0o700,'backup-journal-metadata')
+        def read(name):return r.decode(r.read_file(self.state/(name+'.json'),owner=os.geteuid(),mode=0o600))
+        r.require(read('plan')==self.plan,'backup-plan-changed')
+        intent=read('backup.intent');r.fields(intent,('source_identity','plan_sha256'))
+        r.require(intent['plan_sha256']==r.sha(r.canonical(self.plan)) and
+                  intent['source_identity']==list(self.image_identity()),'backup-source-replaced')
+        copied=read('copy.complete');r.fields(copied,('sha256',))
+        digest=copied['sha256']
+        r.require(isinstance(digest,str) and r.HEX.fullmatch(digest),'backup-result-digest')
+        result=read('result')
+        r.require(result=={'status':'passed','plan_sha256':r.sha(r.canonical(self.plan)),
+                  'bytes':SIZE,'sha256':digest,'recovery_passphrase_test':'passed',
+                  'restoration':'file content/metadata/xattrs and database checksums',
+                  'services_started':False,'full_qualification':False},'backup-result-mismatch')
+        for name in ('usb-mount','source-unmount','usb-remount','restore-mount',
+                     'database-checksums','restore-unmount','restore-close','usb-unmount','source-remount'):
+            r.require(read(name+'.intent')=={'stage':name} and
+                      read(name+'.complete')=={'status':'completed'},'backup-stage-unconfirmed')
+        r.require(read('recovery-open.intent')=={'mode':'readonly','slot':0} and
+                  read('copy.intent')=={'bytes':SIZE},'backup-operation-unconfirmed')
+        self.stopped();self.database(SOURCE)
+        source_dev=self.mapping(MAPPER,IMAGE,False)
+        self.mounted(SOURCE,source_dev,{'rw','nosuid','nodev','noexec'})
+        self.preserved()
+        usbdev=self.usb_identity()
+        r.require(not any(x['maj:min']==usbdev for x in self.mounts()),'backup-usb-still-mounted')
+        for path in (self.usb,self.restore,self.restore_mapper):
+            r.require(not os.path.lexists(path),'backup-scratch-remains')
+        return result
+
     def run(self, keyfd):
         r.require(type(keyfd) is int and keyfd>2 and stat.S_ISFIFO(os.fstat(keyfd).st_mode), 'backup-key-not-pipe')
         self.keyfd=keyfd
@@ -197,13 +246,7 @@ class Backup:
         self.stopped();source_dev=self.mapping(MAPPER,IMAGE,False)
         flags={'rw','nosuid','nodev','noexec'};self.mounted(SOURCE,source_dev,flags)
         self.database(SOURCE)
-        for path,digest in self.plan['preserved_files'].items():
-            current=SOURCE
-            for component in Path(path).parts[:-1]:
-                current=current/component;info=current.lstat()
-                r.require(stat.S_ISDIR(info.st_mode) and info.st_dev==SOURCE.stat().st_dev and
-                          not info.st_mode&0o022,'backup-preserved-parent')
-            r.require(file_hash(SOURCE/path)==digest,'backup-preserved-input-changed')
+        self.preserved()
         usbdev=self.usb_identity()
         r.require(not any(x['maj:min']==usbdev for x in self.mounts()),'backup-usb-already-mounted')
         self.state.mkdir(mode=0o700);self.record('plan',self.plan)

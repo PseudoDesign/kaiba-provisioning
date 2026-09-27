@@ -91,7 +91,7 @@ class Deployment:
             allowed={self.plan['units'][unit]}
             if unit=='kaiba-pilot-issuer.service':allowed.add(self.plan['refresh_plan']['unit_sha256'])
             r.require(digest in allowed,'deployment-unit-bytes')
-        raw=self.call(['/usr/bin/systemctl','show',unit,'--property=Id,LoadState,ActiveState,FragmentPath,DropInPaths,NeedDaemonReload,UnitFileState,MainPID'])
+        raw=self.call(['/usr/bin/systemctl','show',unit,'--property=Id,LoadState,ActiveState,FragmentPath,DropInPaths,NeedDaemonReload,UnitFileState,MainPID,InvocationID'])
         fields=dict(line.split('=',1) for line in raw.decode().splitlines() if '=' in line)
         r.require(fields.get('Id')==unit and fields.get('LoadState')=='loaded' and
                   fields.get('FragmentPath')==str(UNITS/unit) and not fields.get('DropInPaths') and
@@ -101,7 +101,7 @@ class Deployment:
     def states(self,units,wanted):
         for unit in units:r.require(self.state_of(unit)['ActiveState']==wanted,'deployment-service-state')
 
-    def listener_ready(self,unit,port,binary=None):
+    def listener_ready(self,unit,port,binary=None,address="127.0.0.1"):
         # Type=simple active can precede migrations or a startup error.
         deadline=min(time.monotonic()+30,time.monotonic()+r.timestamp(self.plan['expires_at'])-time.time())
         while True:
@@ -110,7 +110,7 @@ class Deployment:
             if pid.isdigit() and pid!='0':
                 if binary is not None:r.require(Path('/proc/'+pid+'/exe').resolve(strict=True)==Path(binary).resolve(strict=True),'deployment-issuer-executable')
                 sockets=self.call(['/usr/bin/ss','-H','-lntp','sport = :'+str(port)]).decode().splitlines()
-                if len(sockets)==1 and len(sockets[0].split())>=5 and sockets[0].split()[3]=='127.0.0.1:'+str(port) and ('pid='+pid+',') in sockets[0]:return
+                if len(sockets)==1 and len(sockets[0].split())>=5 and sockets[0].split()[3]==address+':'+str(port) and ('pid='+pid+',') in sockets[0]:return
             r.require(time.monotonic()<deadline,'deployment-listener-not-ready');time.sleep(.1)
 
     def issuer_ready(self,binary):self.listener_ready('kaiba-pilot-issuer.service',18443,binary)

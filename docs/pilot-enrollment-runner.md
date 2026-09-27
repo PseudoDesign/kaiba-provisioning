@@ -354,3 +354,44 @@ peer drift with substituted privileged service operations. Live deployment is
 still pending. The complete owner packet must integrate this hook with device
 setup, isolation/restart checks, verified backup and two-device serving before it
 is approved or run. This change does not enroll Mako or alter Ace's deadline.
+
+## Access, restart and backup result checks
+
+The device client now supports `--other-instance ID check-isolation`. It first
+performs its existing authenticated self read, then sends one GET for the other
+enrollment. Only an explicit HTTP 403 passes. Successful access, a missing record,
+TLS failure, outage or redirect fails. The identifier is one bounded path segment;
+there is no arbitrary URL or mutation option. It uses the currently selected
+credential after renewal/recovery and does not change the saved device state.
+The device hook and pinned SSH dispatcher expose the same bounded operation.
+
+`access.Checks` binds two distinct active membership snapshots to the run. The
+peer snapshot must come from the reviewed predecessor and the target snapshot
+from the completed enrollment protocol. The adapter supplies an authenticated
+operator reader and device-local callbacks; it must not copy device private keys
+to the station. Both records must still exist and match exactly, both self reads
+must match their complete authority bindings, and both cross-record reads must
+return 403. A stored success is insufficient if current membership or access has
+changed.
+
+The restart step requires completed isolation, records one-use intent, stops the
+five authority children, and starts them again with the supervisor still stopped.
+It checks new systemd invocation IDs, reader/issuer/Fleet readiness, unchanged
+authority records and fresh device-client self reads. It tests authority-process
+and client-process recovery, not OS reboot or cold boot. The outer runner owns
+safe-stop on failure; an interrupted restart is never automatically repeated.
+
+`backup.Backup.probe` is the read-only gate before serving resumes. It binds the
+saved result to the exact plan, image identity, copy digest and completed restore
+stages. It rechecks stopped writers, clean PostgreSQL state, encrypted mapping,
+source mount, preserved serving inputs, absent restore mappings/scratch paths and
+unmounted USB. It does not reopen media or request another credential, and it does
+not claim a new readback of the unmounted copy. Serving must remain stopped until
+this probe succeeds.
+
+TLS client tests exercise actual authenticated requests and unchanged state;
+host tests substitute privileged service/mount operations and cover interrupted
+runs, current-state drift and refusal to replay. The final owner packet still
+needs the existing-peer dispatcher and complete two-device serving baseline and
+firewall handoff, followed by combined rehearsal and exact execution approval.
+These software checks do not establish live enrollment or hardware qualification.

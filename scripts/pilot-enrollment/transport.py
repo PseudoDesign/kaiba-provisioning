@@ -145,9 +145,11 @@ class Device:
 
     def __call__(self, action, value=None):
         r.require(action in ('observe', 'prepare', 'probe-prepare', 'init', 'status',
-                             'bootstrap', 'install', 'prove-installed', 'self'), 'ssh-action')
+                             'bootstrap', 'install', 'prove-installed', 'self', 'check-isolation'), 'ssh-action')
         if action in ('observe', 'probe-prepare', 'init', 'status', 'prove-installed', 'self'):
             r.require(value is None, 'ssh-input-scope')
+        if action == 'check-isolation':
+            r.require(isinstance(value,str) and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:-]{0,127}',value),'ssh-other-instance')
         payload = r.canonical({'schema':'kaiba.pilot-ssh/v1alpha1', 'nonce':os.urandom(16).hex(),
                                'plan':self.plan, 'modules':self.modules, 'action':action, 'input':value})
         timeout = min(self.config['timeout_seconds'], r.timestamp(self.plan['expires_at'])-time.time())
