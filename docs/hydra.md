@@ -59,6 +59,11 @@ that evaluation. Missing results, mismatched identities, evaluation failures,
 cancelled builds and nonzero build statuses cannot pass the required aggregate.
 Its GitHub summary links to all ten Hydra builds.
 
+The waiter allows nearly six hours for queued work and uncached builds on Ace,
+within GitHub's [hosted job limit](https://docs.github.com/en/actions/reference/limits).
+A timeout fails the required gate while Hydra may continue building. Rerun the
+workflow after those builds finish to verify and reuse their results.
+
 Historical run results remain visible. Run jobsets do not poll automatically,
 and their outputs are disposable under normal retention. A build
 already scheduled when its GitHub workflow is cancelled may finish. PR/manual

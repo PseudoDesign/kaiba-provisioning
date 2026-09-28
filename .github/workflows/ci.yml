@@ -301,7 +301,8 @@ jobs:
     needs: verifier-plan
     if: needs.verifier-plan.outputs.heavy_backend == 'hydra'
     runs-on: ubuntu-24.04
-    timeout-minutes: 240
+    # Ace builds serially; allow time for uncached kernels and queued work.
+    timeout-minutes: 360
     permissions:
       contents: read
       statuses: read

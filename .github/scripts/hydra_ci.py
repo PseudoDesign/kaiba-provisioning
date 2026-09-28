@@ -175,7 +175,8 @@ def main():
     name = None if event == "push" else run_jobset(os.environ)
     if event == "push" and os.environ.get("GITHUB_REF") != "refs/heads/main":
         raise ValueError("only main pushes use the main jobset")
-    deadline = time.monotonic() + 235 * 60
+    # Leave five minutes for checkout/cleanup within the six-hour job limit.
+    deadline = time.monotonic() + 355 * 60
     while time.monotonic() < deadline:
         if name:
             path = f"{HYDRA}/jobset/kaiba-provisioning/{name}"
