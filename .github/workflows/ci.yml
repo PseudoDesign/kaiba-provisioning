@@ -212,6 +212,7 @@ jobs:
         id: plan
         env:
           HYDRA_MAIN_ENABLED: ${{ vars.HYDRA_MAIN_ENABLED || 'false' }}
+          HYDRA_CI_ENABLED: ${{ vars.HYDRA_CI_ENABLED || 'false' }}
         run: python3 -B .github/scripts/verifier_ci.py plan
 
   verifier-images:
@@ -294,16 +295,19 @@ jobs:
         run: nix --accept-flake-config build -L --no-link ".#checks.aarch64-linux.$HARDWARE_CHECK"
 
   hydra-arm64:
-    name: ARM64 checks on Hydra
+    # Ace discovers this running job through GitHub's API. Its immutable SHA
+    # identifies the PR merge commit (or exact manually dispatched commit).
+    name: ARM64 checks on Hydra (${{ github.sha }})
     needs: verifier-plan
     if: needs.verifier-plan.outputs.heavy_backend == 'hydra'
     runs-on: ubuntu-24.04
-    timeout-minutes: 240
+    # Ace builds serially; allow time for uncached kernels and queued work.
+    timeout-minutes: 360
     permissions:
       contents: read
       statuses: read
     concurrency:
-      group: hydra-arm64-main
+      group: hydra-arm64-${{ github.event_name }}-${{ github.ref }}
       cancel-in-progress: true
     steps:
       - name: Check out the repository

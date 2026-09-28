@@ -211,9 +211,12 @@ selected check block it. `main` pushes and manual runs build every check, and
 
 After qualification, `HYDRA_MAIN_ENABLED=true` routes the ten heavy ARM64 checks
 on main pushes to [Hydra on Ace](docs/hydra.md). The aggregate then requires
-Hydra statuses for that commit and verifies every planned derivation. PR and
-manual builders stay on GitHub; setting the variable to `false` restores main
-builds there as well.
+Hydra statuses for that commit and verifies every planned derivation.
+`HYDRA_CI_ENABLED=true` also delegates the ten checks on PR and manual CI runs
+through immutable jobsets for each run attempt. PRs test the merge commit;
+manual runs test the dispatched commit. The aggregate verifies the exact
+evaluation and planned derivations, and unchanged builds can be reused.
+Each flag can be set to `false` to restore the corresponding GitHub builders.
 
 Pull requests consume binary caches but do not push to
 them. Successful `main` pushes upload to the

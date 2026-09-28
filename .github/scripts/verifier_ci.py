@@ -130,8 +130,8 @@ def require_results(environment):
 
     backend = environment.get("HEAVY_BACKEND")
     if backend == "hydra":
-        if (environment.get("GITHUB_EVENT_NAME"), environment.get("GITHUB_REF")) != ("push", "refs/heads/main"):
-            raise ValueError("Hydra delegation is only permitted for main pushes")
+        if not hydra_event(environment.get("GITHUB_EVENT_NAME"), environment.get("GITHUB_REF", "")):
+            raise ValueError("unsupported Hydra workflow event/ref")
         expected = {"HEAVY_REQUIRED": "true", "HEAVY_RESULT": "skipped", "HYDRA_RESULT": "success"}
     elif backend == "github":
         required = environment.get("HEAVY_REQUIRED")
@@ -144,18 +144,29 @@ def require_results(environment):
         raise ValueError(f"unexpected results for {backend} heavy checks")
 
 
-def heavy_backend(event, ref, enabled):
-    if enabled not in {"true", "false"}:
-        raise ValueError("HYDRA_MAIN_ENABLED must be true or false")
-    return "hydra" if enabled == "true" and event == "push" and ref == "refs/heads/main" else "github"
+def hydra_event(event, ref):
+    return (event == "push" and ref == "refs/heads/main"
+            or event == "pull_request" and re.fullmatch(r"refs/pull/[1-9][0-9]*/merge", ref) is not None
+            or event == "workflow_dispatch" and re.fullmatch(r"refs/(heads|tags)/.+", ref) is not None)
+
+
+def heavy_backend(event, ref, enabled, ci_enabled="false"):
+    if enabled not in {"true", "false"} or ci_enabled not in {"true", "false"}:
+        raise ValueError("HYDRA_MAIN_ENABLED and HYDRA_CI_ENABLED must be true or false")
+    opted_in = enabled if event == "push" else ci_enabled
+    return "hydra" if opted_in == "true" and hydra_event(event, ref) else "github"
 
 
 def write_plan(result, output, summary, backend="github"):
     selected = result["checks"]
     if len(selected) != len(set(selected)) or not set(selected).issubset(SELECTIVE_CHECKS):
         raise ValueError("unexpected selected checks")
-    if backend not in {"github", "hydra"} or (backend == "hydra" and not set(HEAVY_CHECKS).issubset(selected)):
-        raise ValueError("Hydra delegation requires the complete heavy inventory")
+    if backend not in {"github", "hydra"}:
+        raise ValueError("unknown heavy backend")
+    if backend == "hydra":
+        # Evaluate the full qualified bundle; Hydra reuses unchanged derivations.
+        # The other selective image checks retain their ordinary PR selection.
+        selected = [name for name in SELECTIVE_CHECKS if name in selected or name in HEAVY_CHECKS]
     output.write(f"heavy_backend={backend}\n")
     output.write("heavy_derivations=" + json.dumps({name: result["after"][name] for name in HEAVY_CHECKS}) + "\n")
     for prefix, checks in (("", VERIFIER_CHECKS), ("heavy_", HEAVY_CHECKS)):
@@ -192,7 +203,8 @@ def main():
             os.environ["GITHUB_STEP_SUMMARY"]
         ).open("a") as summary:
             backend = heavy_backend(event_name, os.environ.get("GITHUB_REF"),
-                                    os.environ.get("HYDRA_MAIN_ENABLED", "false"))
+                                    os.environ.get("HYDRA_MAIN_ENABLED", "false"),
+                                    os.environ.get("HYDRA_CI_ENABLED", "false"))
             write_plan(result, output, summary, backend)
 
 

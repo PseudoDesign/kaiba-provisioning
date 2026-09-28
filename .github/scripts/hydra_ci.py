@@ -8,6 +8,7 @@ import re
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 from verifier_ci import HEAVY_CHECKS
@@ -36,6 +37,8 @@ def get(url):
         with opener.open(urllib.request.Request(url, headers=headers), timeout=30) as response:
             return json.load(response)
     except urllib.error.HTTPError as error:
+        if error.code == 404 and url.startswith(HYDRA + "/jobset/kaiba-provisioning/ci-"):
+            return None
         # Never echo server response bodies, requests or authorization headers.
         raise RuntimeError(f"CI API request returned HTTP {error.code}") from None
 
@@ -95,26 +98,102 @@ def completed_builds(statuses, expected, request=get):
     return builds
 
 
+def run_jobset(environment):
+    if environment.get("GITHUB_EVENT_NAME") not in {"pull_request", "workflow_dispatch"}:
+        raise ValueError("only PR and manual runs use immutable run jobsets")
+    values = [environment.get(key, "") for key in ("GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT")]
+    if any(re.fullmatch(r"[1-9][0-9]*", value) is None for value in values):
+        raise ValueError("a canonical workflow run ID and attempt are required")
+    return "ci-" + "-".join(values)
+
+
+def completed_evaluation(jobset, evaluations, expected, sha, name, request=get):
+    validate_expected(expected)
+    if not re.fullmatch(r"[0-9a-f]{40}", sha) or not re.fullmatch(r"ci-[1-9][0-9]*-[1-9][0-9]*", name):
+        raise ValueError("invalid run revision or jobset")
+    if jobset is None:
+        return None
+    flake = f"github:{REPOSITORY}/{sha}"
+    identity = {"name": name, "project": "kaiba-provisioning", "type": 1, "flake": flake}
+    if any(jobset.get(key) != value for key, value in identity.items()):
+        raise ValueError("Hydra jobset does not match this exact run revision")
+    if jobset.get("errormsg") or jobset.get("fetcherrormsg"):
+        raise RuntimeError("Hydra run evaluation failed; inspect its jobset")
+    if evaluations is None or not evaluations.get("evals"):
+        return None
+    rows = evaluations["evals"]
+    if not isinstance(rows, list) or len(rows) != 1:
+        raise ValueError("expected a single immutable run evaluation")
+    evaluation = rows[0]
+    reference = evaluation.get("flake", "")
+    base, _, query = reference.partition("?")
+    parameters = urllib.parse.parse_qs(query, strict_parsing=True)
+    if base != flake or set(parameters) - {"narHash"}:
+        raise ValueError("Hydra evaluation used a different source revision")
+    ids = evaluation.get("builds")
+    if (not isinstance(ids, list) or len(ids) != len(expected)
+            or any(type(value) is not int or value <= 0 for value in ids)
+            or len(set(ids)) != len(ids)):
+        raise ValueError("Hydra evaluation must contain exactly ten distinct builds")
+    completed = {}
+    pending = False
+    for build_id in ids:
+        url = f"{HYDRA}/build/{build_id}"
+        build = request(url)
+        job = build.get("job", "").removeprefix("aarch64-linux.")
+        if job not in expected or job in completed:
+            raise ValueError("unexpected or duplicate job in Hydra evaluation")
+        identity = {"id": build_id, "project": "kaiba-provisioning", "job": "aarch64-linux." + job,
+                    "system": "aarch64-linux", "drvpath": expected[job]}
+        if any(build.get(key) != value for key, value in identity.items()):
+            raise ValueError(f"Hydra run result does not match the planned derivation: {job}")
+        # A reused build may originate in another jobset. Membership in this
+        # exact-commit evaluation, plus the planned drvPath, binds its result.
+        if build.get("finished") != 1:
+            pending = True
+        elif build.get("buildstatus") != 0:
+            raise RuntimeError(f"Hydra build failed: {job}")
+        completed[job] = url
+    return None if pending else [(job, completed[job]) for job in HEAVY_CHECKS]
+
+
+def report(sha, builds):
+    summary = f"### Hydra ARM64 checks\n\nCommit: `{sha}`\n\n"
+    summary += "\n".join(f"- [{name}]({url}): passed" for name, url in builds) + "\n"
+    with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a") as output:
+        output.write(summary)
+    print(f"All {len(builds)} Hydra checks match commit {sha}'s derivations")
+
+
 def main():
     sha = os.environ["GITHUB_SHA"]
     expected = json.loads(os.environ["HYDRA_EXPECTED_DERIVATIONS"])
     validate_expected(expected)
-    deadline = time.monotonic() + 235 * 60
+    if not re.fullmatch(r"[0-9a-f]{40}", sha):
+        raise ValueError("a full commit SHA is required")
+    event = os.environ["GITHUB_EVENT_NAME"]
+    name = None if event == "push" else run_jobset(os.environ)
+    if event == "push" and os.environ.get("GITHUB_REF") != "refs/heads/main":
+        raise ValueError("only main pushes use the main jobset")
+    # Leave five minutes for checkout/cleanup within the six-hour job limit.
+    deadline = time.monotonic() + 355 * 60
     while time.monotonic() < deadline:
-        statuses = statuses_for_commit(sha)
-        builds = completed_builds(statuses, expected)
+        if name:
+            path = f"{HYDRA}/jobset/kaiba-provisioning/{name}"
+            jobset = get(path)
+            evaluations = get(path + "/evals") if jobset is not None else None
+            builds = completed_evaluation(jobset, evaluations, expected, sha, name)
+        else:
+            statuses = statuses_for_commit(sha)
+            builds = completed_builds(statuses, expected)
         if builds is not None:
-            summary = f"### Hydra ARM64 checks\n\nCommit: `{sha}`\n\n"
-            summary += "\n".join(f"- [{name}]({url}): passed" for name, url in builds) + "\n"
-            with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a") as output:
-                output.write(summary)
-            print(f"All {len(builds)} Hydra checks match commit {sha}'s derivations")
+            report(sha, builds)
             return 0
-        if not statuses:
+        if not name and not statuses:
             head = get(API + "/git/ref/heads/main")
             if head.get("object", {}).get("sha") != sha:
                 raise RuntimeError("main advanced before Hydra evaluated this commit; no success is assumed")
-        print(f"Waiting for Hydra results for {sha}: {len(statuses)}/{len(expected)} contexts", flush=True)
+        print(f"Waiting for Hydra results for {sha} in {name or 'main'}", flush=True)
         time.sleep(30)
     raise RuntimeError("timed out waiting for Hydra; missing results cannot pass CI")
 
