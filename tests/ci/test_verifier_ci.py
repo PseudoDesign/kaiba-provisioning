@@ -131,13 +131,17 @@ class RequiredResultTests(unittest.TestCase):
              "HEAVY_REQUIRED": "false", "HEAVY_RESULT": "skipped",
              "HEAVY_BACKEND": "github", "HYDRA_RESULT": "skipped"}
 
-    def test_hydra_requires_main_push_and_successful_waiter(self):
+    def test_hydra_requires_supported_event_and_successful_waiter(self):
         delegated = self.results | {
             "GITHUB_EVENT_NAME": "push", "GITHUB_REF": "refs/heads/main",
             "HEAVY_REQUIRED": "true", "HEAVY_BACKEND": "hydra", "HYDRA_RESULT": "success",
         }
         ci.require_results(delegated)
-        for change in ({"GITHUB_EVENT_NAME": "pull_request"}, {"GITHUB_EVENT_NAME": "workflow_dispatch"},
+        for event, ref in (("pull_request", "refs/pull/42/merge"),
+                           ("workflow_dispatch", "refs/heads/feature"),
+                           ("workflow_dispatch", "refs/tags/test")):
+            ci.require_results(delegated | {"GITHUB_EVENT_NAME": event, "GITHUB_REF": ref})
+        for change in ({"GITHUB_EVENT_NAME": "pull_request"}, {"GITHUB_EVENT_NAME": "pull_request_target"},
                        {"GITHUB_REF": "refs/heads/feature"}, {"HYDRA_RESULT": "failure"},
                        {"HYDRA_RESULT": "cancelled"}, {"HYDRA_RESULT": "skipped"},
                        {"HEAVY_REQUIRED": "false"}, {"HEAVY_RESULT": "success"}):
@@ -152,6 +156,20 @@ class RequiredResultTests(unittest.TestCase):
                                  "hydra" if event == "push" and ref == "refs/heads/main" else "github")
         with self.assertRaises(ValueError):
             ci.heavy_backend("push", "refs/heads/main", "unknown")
+
+    def test_pr_and_manual_opt_in_is_independent_of_main(self):
+        for event, ref in (("pull_request", "refs/pull/42/merge"),
+                           ("workflow_dispatch", "refs/heads/main"),
+                           ("workflow_dispatch", "refs/heads/feature"),
+                           ("workflow_dispatch", "refs/tags/test")):
+            self.assertEqual(ci.heavy_backend(event, ref, "false", "true"), "hydra")
+            self.assertEqual(ci.heavy_backend(event, ref, "true", "false"), "github")
+        for event, ref in (("pull_request_target", "refs/heads/main"),
+                           ("pull_request", "refs/pull/42/head"),
+                           ("push", "refs/heads/feature")):
+            self.assertEqual(ci.heavy_backend(event, ref, "true", "true"), "github")
+        with self.assertRaises(ValueError):
+            ci.heavy_backend("pull_request", "refs/pull/42/merge", "true", "invalid")
 
     def test_only_unchanged_skip_or_required_success_passes(self):
         ci.require_results(self.results)
@@ -179,6 +197,17 @@ class RequiredResultTests(unittest.TestCase):
 
 
 class OutputTests(unittest.TestCase):
+    def test_hydra_checks_all_ten_and_retains_ordinary_image_selection(self):
+        for selected in ([], [ci.HEAVY_CHECKS[0]], [ci.VERIFIER_CHECKS[0]]):
+            output, summary = io.StringIO(), io.StringIO()
+            ci.write_plan({"checks": selected, "before": identities(), "after": identities("b")},
+                          output, summary, "hydra")
+            values = dict(line.split("=", 1) for line in output.getvalue().splitlines())
+            self.assertEqual(values["heavy_backend"], "hydra")
+            self.assertEqual(values["heavy_required"], "true")
+            self.assertEqual(json.loads(values["heavy_checks"]), list(ci.HEAVY_CHECKS))
+            self.assertEqual(json.loads(values["checks"]), [n for n in selected if n in ci.VERIFIER_CHECKS])
+
     def test_matrices_partition_selection_and_report_every_identity(self):
         for selected in ([], list(ci.VERIFIER_CHECKS), list(ci.HEAVY_CHECKS),
                          [ci.VERIFIER_CHECKS[0], ci.HEAVY_CHECKS[0]], list(ci.SELECTIVE_CHECKS)):

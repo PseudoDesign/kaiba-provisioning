@@ -127,5 +127,63 @@ class HydraResultTests(unittest.TestCase):
         self.assertNotIn("secret", str(error.exception))
 
 
+class RunEvaluationTests(unittest.TestCase):
+    def setUp(self):
+        self.name = "ci-42-2"
+        self.jobset = {"project": "kaiba-provisioning", "name": self.name, "type": 1,
+                       "flake": f"github:{ci.REPOSITORY}/{SHA}", "errormsg": "", "fetcherrormsg": ""}
+        self.evaluation = {"id": 123, "flake": self.jobset["flake"] + "?narHash=sha256-test",
+                           "builds": list(range(1, 11))}
+
+    def result(self, jobset=None, evaluation=None, responses=None):
+        return ci.completed_evaluation(
+            self.jobset if jobset is None else jobset,
+            {"evals": [self.evaluation if evaluation is None else evaluation]}, expected(), SHA,
+            self.name, (builds() if responses is None else responses).__getitem__)
+
+    def test_exact_run_evaluation_can_reuse_builds_from_main(self):
+        self.assertEqual(len(self.result()), 10)
+        self.assertIsNone(ci.completed_evaluation(None, None, expected(), SHA, self.name))
+        self.assertIsNone(ci.completed_evaluation(self.jobset, {"evals": []}, expected(), SHA, self.name))
+
+    def test_wrong_commit_run_attempt_or_evaluation_cannot_pass(self):
+        for change in ({"flake": f"github:{ci.REPOSITORY}/main"}, {"name": "ci-42-1"},
+                       {"project": "other"}, {"type": 0}):
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                self.result(jobset=self.jobset | change)
+        for change in ({"flake": f"github:{ci.REPOSITORY}/{'c' * 40}"},
+                       {"flake": self.jobset["flake"] + "?dir=other"},
+                       {"builds": list(range(1, 10))}, {"builds": [1] * 10},
+                       {"builds": list(range(1, 10)) + [True]}):
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                self.result(evaluation=self.evaluation | change)
+        with self.assertRaises(ValueError):
+            ci.completed_evaluation(self.jobset, {"evals": [self.evaluation] * 2}, expected(), SHA, self.name)
+
+    def test_evaluation_build_failures_and_pending_are_not_success(self):
+        for key in ("errormsg", "fetcherrormsg"):
+            with self.assertRaises(RuntimeError):
+                self.result(jobset=self.jobset | {key: "failed"})
+        url = f"{ci.HYDRA}/build/1"
+        original = builds()
+        self.assertIsNone(self.result(responses=original | {url: original[url] | {"finished": 0}}))
+        for code in (1, 2, 3, 4, 8, 10, 11):
+            with self.assertRaises(RuntimeError):
+                self.result(responses=original | {url: original[url] | {"buildstatus": code}})
+        for change in ({"drvpath": "/nix/store/" + "d" * 32 + "-wrong.drv"}, {"system": "x86_64-linux"},
+                       {"job": "aarch64-linux.other"}, {"id": 999}, {"project": "other"}):
+            with self.assertRaises(ValueError):
+                self.result(responses=original | {url: original[url] | change})
+
+    def test_run_identity_is_attempt_specific_and_canonical(self):
+        env = {"GITHUB_EVENT_NAME": "pull_request", "GITHUB_RUN_ID": "42", "GITHUB_RUN_ATTEMPT": "2"}
+        self.assertEqual(ci.run_jobset(env), self.name)
+        self.assertEqual(ci.run_jobset(env | {"GITHUB_EVENT_NAME": "workflow_dispatch"}), self.name)
+        for change in ({"GITHUB_RUN_ID": "../42"}, {"GITHUB_RUN_ATTEMPT": "0"},
+                       {"GITHUB_RUN_ID": "042"}, {"GITHUB_EVENT_NAME": "pull_request_target"}):
+            with self.assertRaises(ValueError):
+                ci.run_jobset(env | change)
+
+
 if __name__ == "__main__":
     unittest.main()

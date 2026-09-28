@@ -14,8 +14,7 @@ The Hydra bundle does not replace that complete workflow.
 
 The repository variable `HYDRA_MAIN_ENABLED` defaults to `false`. After native
 qualification and live GitHub status delivery are verified, setting it to
-`true` routes the ten heavy ARM64 checks on `main` pushes to Hydra. PRs and
-manual runs retain the existing GitHub builders. The required `x86_64` aggregate
+`true` routes the ten heavy ARM64 checks on `main` pushes to Hydra. The required `x86_64` aggregate
 keeps its name and requires whichever backend the planner selected.
 
 The Hydra waiter reads the newest status for each
@@ -31,7 +30,42 @@ cancel older waiters. It never substitutes the latest evaluation's success for
 the requested commit. Set `HYDRA_MAIN_ENABLED=false` to restore GitHub main
 builds on subsequent workflow runs.
 
-Ace asynchronously publishes successful checks' output and build dependency
+## PR and manual CI routing
+
+After the `kaiba-hydra-ci-runs` service is deployed on Ace, set the repository
+variable `HYDRA_CI_ENABLED=true`. It independently routes the same ten heavy
+checks on `pull_request` and CI `workflow_dispatch` runs to Hydra. Setting it
+back to `false` restores their GitHub ARM matrix on subsequent runs.
+
+Ace polls the GitHub API every minute for running Hydra waiter jobs in this
+repository's CI workflow. A queued or unapproved run cannot schedule work.
+The waiter job name carries `github.sha`; keep that name's format unchanged.
+For PRs, this is the synthetic merge commit, verified against the run's head
+SHA. For manual runs, it must match the dispatched commit. Fork PRs require no
+repository secret. Credentials for Hydra administration remain on Ace.
+
+Each run attempt gets an immutable one-shot jobset named
+`kaiba-provisioning/ci-<run-id>-<attempt>`. Retrying a workflow creates a new
+attempt jobset; another PR or manual run cannot cancel its waiter through a
+shared main-only concurrency group. All ten jobs are checked, with Hydra reusing
+unchanged successful derivations. Other selective image checks retain their
+input comparison and GitHub builders.
+
+The waiter checks the jobset's pinned commit, the evaluation's immutable flake
+reference, exactly ten distinct jobs, their ARM64 architecture, and the exact
+planned derivation paths. It accepts a reused build only through membership in
+that evaluation. Missing results, mismatched identities, evaluation failures,
+cancelled builds and nonzero build statuses cannot pass the required aggregate.
+Its GitHub summary links to all ten Hydra builds.
+
+Historical run results remain visible. One-shot jobsets stop polling after
+evaluation, and their outputs are disposable under normal retention. A build
+already scheduled when its GitHub workflow is cancelled may finish. PR/manual
+jobsets do not publish to Cachix or use main's commit-status contexts. Other
+manually dispatched release and component workflows keep their existing
+artifact/publication contracts.
+
+Ace asynchronously publishes successful main checks' output and build dependency
 closures to the existing `kaiba-provisioning` Cachix cache. Upload failures retry
 independently of test results. See the infrastructure runbook for credentials,
 service diagnostics and notification replay.
