@@ -44,8 +44,9 @@ For PRs, this is the synthetic merge commit, verified against the run's head
 SHA. For manual runs, it must match the dispatched commit. Fork PRs require no
 repository secret. Credentials for Hydra administration remain on Ace.
 
-Each run attempt gets an immutable one-shot jobset named
-`kaiba-provisioning/ci-<run-id>-<attempt>`. Retrying a workflow creates a new
+Each run attempt gets an immutable jobset named
+`kaiba-provisioning/ci-<run-id>-<attempt>`, triggered once with automatic polling
+disabled. Rerunning the Hydra waiter creates a new
 attempt jobset; another PR or manual run cannot cancel its waiter through a
 shared main-only concurrency group. All ten jobs are checked, with Hydra reusing
 unchanged successful derivations. Other selective image checks retain their
@@ -58,8 +59,8 @@ that evaluation. Missing results, mismatched identities, evaluation failures,
 cancelled builds and nonzero build statuses cannot pass the required aggregate.
 Its GitHub summary links to all ten Hydra builds.
 
-Historical run results remain visible. One-shot jobsets stop polling after
-evaluation, and their outputs are disposable under normal retention. A build
+Historical run results remain visible. Run jobsets do not poll automatically,
+and their outputs are disposable under normal retention. A build
 already scheduled when its GitHub workflow is cancelled may finish. PR/manual
 jobsets do not publish to Cachix or use main's commit-status contexts. Other
 manually dispatched release and component workflows keep their existing
