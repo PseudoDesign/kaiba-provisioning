@@ -4,6 +4,17 @@
 >
 > Current direction: [delivery scope](../delivery-scope.md) and [fleet admission policy](../fleet-admission-policy.md). The text below is historical; archiving does not grant authority, erase evidence, or mark any gate passed.
 
+**Approved follow-on, 2026-09-28:** the new
+[SPIFFE/SPIRE roadmap](https://github.com/PseudoDesign/kaiba-infra/blob/codex/spiffe-spire-next-steps/docs/spiffe-spire-plan.md)
+and [offline qualification matrix](https://github.com/PseudoDesign/kaiba-infra/blob/codex/spiffe-spire-next-steps/docs/offline-qualification.md)
+plan a separate autonomous production profile, evaluating native Pi monotonic
+state before a TPM add-on if required. Reuse the existing `kaiba-fleet` service
+and shared `kaiba-contracts` for identity integration. This additive work is
+tracked in the [delivery scope](../delivery-scope.md#approved-follow-on-owner-fleet-identity-and-autonomous-boot);
+it neither rewrites this archived online profile nor changes current pilot
+admission or physical qualification. The linked cross-project documents are
+being prepared on their source branch, and contain no hardware pass claim.
+
 ## Status and scope
 
 **First-fleet decision update, 2026-09-16:** the user requires normal offline
