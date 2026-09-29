@@ -13,8 +13,11 @@ That pilot uses `pilot.kaiba.pseudo.design`, an exact-unit identity probe,
 and a local SPIRE authority. Its initial
 [acceptance receipt](https://github.com/PseudoDesign/nix-pseudo-design/blob/codex/spiffe-persistent-pilot/docs/observations/2026-09-29-ace-identity-pilot.json)
 records persistent generation 10 and does not claim a physical reboot.
-The reboot observer is implemented with synthetic tests; no native reboot
-result is established merely by adding this tool.
+The reboot observer is implemented with synthetic tests. A separate
+[native warm-reboot observation on 2026-09-29](observations/2026-09-29-ace-identity-warm-reboot.md)
+now records all eleven checks passing after an operator-supervised reboot.
+That result is evidence from one short online reboot, not a claim established
+merely by adding the tool or running its tests.
 
 ## Collection boundary
 

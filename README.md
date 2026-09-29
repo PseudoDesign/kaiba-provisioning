@@ -135,7 +135,10 @@ The [read-only reboot observer](docs/identity-reboot-observation.md) now support
 before/after checks for the separately installed persistent identity pilot. It
 compares the intended generation, fresh unit-scoped identity, trust bundle,
 public enrollment status and existing services without rebooting or changing
-the host. Software tests do not establish a native reboot or hardware result.
+the host. The separate
+[native warm-reboot receipt](docs/observations/2026-09-29-ace-identity-warm-reboot.md)
+records generation 10 booting with unchanged identity/enrollment and automatic
+service startup. Cold/offline boot and hardware qualification remain open.
 
 Start with the [documentation index](docs/README.md). It defines the status
 language used throughout the guides so that implemented code, software tests,
