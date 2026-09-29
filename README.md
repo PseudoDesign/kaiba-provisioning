@@ -124,6 +124,13 @@ and [hardware evidence matrix](https://github.com/PseudoDesign/kaiba-infra/blob/
 are tracked on the linked review branch. This follow-on preserves the current
 pilot procedure and does not mark any physical or production gate complete.
 
+The [Ace/Mako metadata collector](docs/offline-qualification-inventory.md) now
+has scoped live observations. A separate
+[temporary native SPIRE smoke on Ace](docs/observations/2026-09-29-ace-spire-smoke.md)
+observed issuance/rotation, restart without the consumed grant, and expiry
+denial with reported cleanup. It installed no persistent SPIRE service and
+closed no boot, rollback, time or admission gate.
+
 Start with the [documentation index](docs/README.md). It defines the status
 language used throughout the guides so that implemented code, software tests,
 checked evidence, and proposed production controls are not conflated.

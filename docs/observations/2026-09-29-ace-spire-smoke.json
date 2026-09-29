@@ -1,0 +1,34 @@
+{
+  "architecture": "aarch64",
+  "boot_chain_authenticated": false,
+  "checks": [
+    "same-probe-process-observed-distinct-SVID-serials",
+    "agent-restarted-from-private-state-with-consumed-grant-removed",
+    "expired-workload-credential-denied-while-agent-remained-alive"
+  ],
+  "cleanup_complete_reported": true,
+  "clock_continuity_qualified": false,
+  "evidence": {
+    "result_sha256": "sha256:82d5429d3c6dd672b9888643e548b7f6c55ddde07da50f99ead22023596a356c",
+    "runner_sha256": "sha256:d723ad8668154d00a57633f02bc723bb6a35d203e32c9c0f522aab6b6dc76604",
+    "source_archive_sha256": "sha256:9782caef81902afc779cd2a86b0305f32851ae70d4e4d5ed7c302b48b8b140a5",
+    "wrapper_sha256": "sha256:ec90521a395dcfd79444f3062077e3185c3e56e0f7dad71b464db13c4817f9aa"
+  },
+  "evidence_kind": "temporary-native-software-execution",
+  "fleet_admission": "unevaluated",
+  "full_dns_stack_deployed": false,
+  "hardware_qualified": false,
+  "nixpkgs_revision": "70ce234312134a463ba7728e94da2486a1d237ac",
+  "observation_date": "2026-09-29",
+  "offline_rollback_qualified": false,
+  "outcome": "passed",
+  "persistent_spire_deployment": false,
+  "probe_sha256": "sha256:aa904426645638e2a3c455230d047df971614e8cdf74842c6300e983328c91d0",
+  "probe_source_revision": "4e1cc6717b0b987fe036fac1f94f76c0f554cb7d",
+  "running_system": "/nix/store/f4q82s6kzy6y4q943y9v9nsm64c9s0xp-nixos-system-ace-26.05.20260807.ee48b14",
+  "schema_version": "kaiba.provisioning.ace-spire-smoke-observation/v1alpha1",
+  "spire_version": "1.15.2",
+  "synthetic_identity": true,
+  "target_reference": "ace",
+  "workload_identity": "spiffe://ace-smoke.test/device/ace-smoke/instance/temporary/workload/rotation-probe"
+}

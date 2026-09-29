@@ -106,3 +106,9 @@ scripts/check.sh contracts offline-qualification-inventory
 The [Mako](observations/2026-09-29-mako-offline-inventory.md) and
 [Ace](observations/2026-09-29-ace-offline-inventory.md) observations record live
 collections and their limits.
+
+The subsequent [temporary native SPIRE smoke](ace-spire-smoke.md) uses Ace's
+exact inventoried system and pinned software. Its
+[passing runtime observation](observations/2026-09-29-ace-spire-smoke.md)
+records software behavior only; the inventory's boot, rollback and time gates
+remain open.
