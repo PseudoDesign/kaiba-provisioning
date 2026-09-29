@@ -121,7 +121,7 @@ that track is a separately qualified offline profile: evaluate native Pi
 monotonic state first, then a TPM add-on if required. The
 [cross-project roadmap](https://github.com/PseudoDesign/kaiba-infra/blob/codex/spiffe-spire-next-steps/docs/spiffe-spire-plan.md)
 and [hardware evidence matrix](https://github.com/PseudoDesign/kaiba-infra/blob/codex/spiffe-spire-next-steps/docs/offline-qualification.md)
-are being prepared on the linked branch. This follow-on preserves the current
+are tracked on the linked review branch. This follow-on preserves the current
 pilot procedure and does not mark any physical or production gate complete.
 
 Start with the [documentation index](docs/README.md). It defines the status

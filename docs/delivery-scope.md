@@ -109,7 +109,7 @@ The 2026-09-28 direction adds standalone, server, and agent installation roles,
 with optional `kaiba.network` enrollment separate from the owner's fleet. See
 the accepted [SPIFFE/SPIRE roadmap](https://github.com/PseudoDesign/kaiba-infra/blob/codex/spiffe-spire-next-steps/docs/spiffe-spire-plan.md)
 and [offline qualification matrix](https://github.com/PseudoDesign/kaiba-infra/blob/codex/spiffe-spire-next-steps/docs/offline-qualification.md).
-These cross-repository documents are being prepared on the linked branch;
+These cross-repository documents are tracked on the linked review branch;
 they are next-step specifications, not physical evidence.
 
 Reuse [kaiba-fleet](https://github.com/PseudoDesign/kaiba-fleet) for inventory,

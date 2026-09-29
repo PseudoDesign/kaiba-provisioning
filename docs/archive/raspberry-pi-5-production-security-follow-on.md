@@ -13,7 +13,7 @@ and shared `kaiba-contracts` for identity integration. This additive work is
 tracked in the [delivery scope](../delivery-scope.md#approved-follow-on-owner-fleet-identity-and-autonomous-boot);
 it neither rewrites this archived online profile nor changes current pilot
 admission or physical qualification. The linked cross-project documents are
-being prepared on their source branch, and contain no hardware pass claim.
+tracked on their review branch, and contain no hardware pass claim.
 
 ## Status and scope
 
