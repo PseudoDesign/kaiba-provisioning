@@ -904,6 +904,9 @@
             client = built.deviceEnrollment;
           };
           unit-static = provisioning.staticGoTests;
+          offline-qualification-inventory = import ./tests/offline-qualification-inventory.nix {
+            inherit pkgs;
+          };
           development-yubikey-signing = provisioning.developmentYubiKeySigningContract;
           device-secret-execution-vm = import ./tests/device-secret-execution-vm.nix {
             inherit pkgs;
