@@ -112,3 +112,10 @@ exact inventoried system and pinned software. Its
 [passing runtime observation](observations/2026-09-29-ace-spire-smoke.md)
 records software behavior only; the inventory's boot, rollback and time gates
 remain open.
+
+For the later persistent identity pilot, the separate
+[read-only warm-reboot observer](identity-reboot-observation.md) compares the
+intended generation, public identity, trust-bundle/enrollment digests and
+existing services across two captures. It rejects stale preboot probe output
+and performs no reboot or host mutation. A passing comparison remains software
+acceptance evidence; the physical and offline qualification gates stay open.

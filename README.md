@@ -131,6 +131,12 @@ observed issuance/rotation, restart without the consumed grant, and expiry
 denial with reported cleanup. It installed no persistent SPIRE service and
 closed no boot, rollback, time or admission gate.
 
+The [read-only reboot observer](docs/identity-reboot-observation.md) now supports
+before/after checks for the separately installed persistent identity pilot. It
+compares the intended generation, fresh unit-scoped identity, trust bundle,
+public enrollment status and existing services without rebooting or changing
+the host. Software tests do not establish a native reboot or hardware result.
+
 Start with the [documentation index](docs/README.md). It defines the status
 language used throughout the guides so that implemented code, software tests,
 checked evidence, and proposed production controls are not conflated.
