@@ -73,6 +73,8 @@ let
           boot.initrd.availableKernelModules = [
             "nvme"
             "overlay"
+            # Allows the exact disk/initrd to be boot-rehearsed on QEMU virt.
+            "pci-host-generic"
           ];
           boot.initrd.postMountCommands = lib.mkAfter ''
             # The lower filesystem is never writable in the test installation.
@@ -253,6 +255,7 @@ let
           pkgs.e2fsprogs
           pkgs.coreutils
           pkgs.python3
+          pkgs.fakeroot
         ];
       }
       ''
@@ -260,7 +263,10 @@ let
         chmod 0700 data/ssh data/backups data/evidence
         echo 'kaiba.nvme-qualification/v1' > data/image-marker
         truncate -s 4G data.ext4
-        mkfs.ext4 -q -F -L KAIBA_Q_DATA -U fa0aabf4-5a16-4e9d-a7db-903064ca1a03 -d data data.ext4
+        fakeroot mkfs.ext4 -q -F -L KAIBA_Q_DATA -U fa0aabf4-5a16-4e9d-a7db-903064ca1a03 -d data data.ext4
+        # Source directory ownership must not leak the builder UID into media.
+        debugfs -R 'stat /ssh' data.ext4 2>/dev/null | grep -E 'User: +0 +Group: +0'
+        e2fsck -fn data.ext4
         cp --sparse=always ${target.config.system.build.sdImage}/sd-image/*.img "$out/qualification.img"
         chmod u+w "$out/qualification.img"
         python3 ${./assemble.py} "$out/qualification.img" data.ext4

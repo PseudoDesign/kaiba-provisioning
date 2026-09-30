@@ -109,6 +109,9 @@ def main():
     a = p.parse_args()
     if a.action == 'capture':
         fd = os.open(a.out, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        parent = os.open(a.out.parent, os.O_DIRECTORY)
+        try: os.fsync(parent)
+        finally: os.close(parent)
         with os.fdopen(fd, 'w') as f:
             for line in sys.stdin:
                 event = json.loads(line)

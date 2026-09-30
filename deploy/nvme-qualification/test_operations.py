@@ -7,9 +7,20 @@ import unittest
 
 spec = importlib.util.spec_from_file_location('writer', Path(__file__).with_name('host.py'))
 writer = importlib.util.module_from_spec(spec); spec.loader.exec_module(writer)
+spec = importlib.util.spec_from_file_location('target', Path(__file__).with_name('target.py'))
+target = importlib.util.module_from_spec(spec); spec.loader.exec_module(target)
 
 
 class Guards(unittest.TestCase):
+    def test_offline_retry_is_distinct_from_a_daemon_that_started(self):
+        log = 'online synchronized clock required for this pilot'
+        states = {'server': 'activating', 'agent': 'inactive'}
+        self.assertTrue(target.offline_refusal_proven(states, {'server': '0', 'agent': '0'}, log))
+        self.assertFalse(target.offline_refusal_proven(states, {'server': '123', 'agent': '0'}, log))
+        self.assertFalse(target.offline_refusal_proven(states, {'server': '0'}, log))
+        self.assertFalse(target.offline_refusal_proven(states, {'server': '0', 'agent': '0'}, 'unrelated failure'))
+        self.assertFalse(target.offline_refusal_proven({'server': 'active'}, {'server': '0'}, log))
+
     def disk(self):
         return {'type': 'disk', 'size': 240_000_000_000, 'serial': 'TEST-ONLY', 'ro': False,
                 'mountpoints': [None], 'partlabel': None, 'fstype': None,

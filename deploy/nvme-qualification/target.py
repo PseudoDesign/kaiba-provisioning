@@ -53,6 +53,16 @@ def require_clock():
         raise ValueError('synchronized-time-required')
 
 
+def offline_refusal_proven(states, main_starts, logs):
+    # Restart=on-failure may already be retrying an ExecStartPre guard. Require
+    # evidence of its refusal AND that neither main daemon ever started this
+    # boot, rather than mistaking an active retry for successful issuance.
+    return (all(v != 'active' for v in states.values())
+            and set(main_starts) == set(states)
+            and all(v == '0' for v in main_starts.values())
+            and 'online synchronized clock required for this pilot' in logs)
+
+
 def emit(value):
     print(json.dumps({'synthetic': True, 'hardware_qualified': False,
                       'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
@@ -158,8 +168,11 @@ def main():
             states = {u: subprocess.run(['systemctl', 'is-active', u], capture_output=True, text=True).stdout.strip() for u in ('spire-server.service', 'spire-agent.service')}
             if any(v == 'active' for v in states.values()):
                 raise ValueError('protected-service-active-without-time')
+            starts = {u: command('systemctl', 'show', u, '-p', 'ExecMainStartTimestampMonotonic', '--value') for u in states}
+            if any(v != '0' for v in starts.values()):
+                raise ValueError('protected-daemon-started-during-offline-boot')
             logs = command('journalctl', '-b', '-u', 'spire-server.service', '-u', 'spire-agent.service', '--no-pager', '-n', '120')
-            if all(v in ('failed', 'inactive') for v in states.values()) and 'online synchronized clock required for this pilot' in logs:
+            if offline_refusal_proven(states, starts, logs):
                 break
             if time.monotonic() >= deadline:
                 raise ValueError('offline-time-refusal-not-proven-within-90-seconds')
