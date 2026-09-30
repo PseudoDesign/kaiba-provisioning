@@ -1,0 +1,119 @@
+{
+  "schema_version": "kaiba.nvme-qualification-preparation/v1",
+  "date": "2026-09-30",
+  "status": "prepared-for-attended-spare-nvme-installation",
+  "source_revision": "cb8b6046fd8fa1b88a58cdad39067fc77a9f67f5",
+  "source_directory": "deploy/nvme-qualification",
+  "source_sha256": {
+    "runtime.nix": "4a446f490519bf09a7bac947d5afd14076eba991cbb552d7c278f229bbb90d7a",
+    "flake.lock": "1d739f7eb2e9c528149eb75a9a2ddc0c0b0adace7e3f42527ffee1d37ce959f4",
+    "campaign.py": "7525967718d394517386b79ffd6a1756f0bc69621a9b5a01c7f95cf5c69f91a8",
+    "README.md": "20a86c07ec332bd530bc4cdf23595b6bb15ff105f2b8dd15519e59c0d047118f",
+    "target.py": "f246299a849f5c3c4ecbdb130657cce3c6a5f97f1d26aca4bdde2b3ffa9ac56d",
+    "test_campaign.py": "45df6ff2b584304262b0090933c706d98e8434cfc43ea8dba4558e376cb77eea",
+    "assemble.py": "3ca63c809229a058fdcbd6a89e1480e417e26c1c1db8afb6cef457847cb155ca",
+    "host.py": "99540e6603d24127ee24449edb260b0ec84c666d8d080ce7838d9f095472ff2c",
+    "image.nix": "6b3a303f517974a046be4a1bbddb15f2890c5737a60e08a69122677f93202390",
+    "test_operations.py": "f4eb8e135cb532ac44b8072a74d42e0c81cd4805631c2c8176527ada0271a5cf",
+    "flake.nix": "ae99245fa31efe84b90bec2382b9c28c6b4a0a4d554eb4aa96b85cba3af11ccb"
+  },
+  "image": {
+    "schema": "kaiba.nvme-qualification-image/v1",
+    "image": "qualification.img",
+    "bytes": 8549040128,
+    "sha256": "12104a8ce7fbf1892b3f074fc03890dec0c28f8c0a389d9f59f71aea3b47fa45",
+    "system": "/nix/store/j79kp7qbg7f1s3mdnsp2s6fqqzx03gr7-nixos-system-kaiba-nvme-test-sd-card-26.05.20260807.ee48b14",
+    "synthetic": true,
+    "hardware_qualified": false,
+    "root_label": "KAIBA_Q_ROOT",
+    "data_label": "KAIBA_Q_DATA",
+    "fleet_revision": "0bd55c576536c29825aada2f7ce6fa052a877402"
+  },
+  "inspection": {
+    "schema": "kaiba.nvme-artifact-inspection/v1",
+    "status": "passed",
+    "image_sha256": "12104a8ce7fbf1892b3f074fc03890dec0c28f8c0a389d9f59f71aea3b47fa45",
+    "bytes": 8549040128,
+    "partitions": [
+      {
+        "number": 1,
+        "type": 11,
+        "offset": 8388608,
+        "bytes": 268435456
+      },
+      {
+        "number": 2,
+        "type": 131,
+        "offset": 276824064,
+        "bytes": 3976671232
+      },
+      {
+        "number": 3,
+        "type": 131,
+        "offset": 4254072832,
+        "bytes": 4294967296
+      }
+    ],
+    "filesystems": [
+      {
+        "label": "KAIBA_Q_ROOT",
+        "uuid": "fa0aabf4-5a16-4e9d-a7db-903064ca1a00"
+      },
+      {
+        "label": "KAIBA_Q_DATA",
+        "uuid": "fa0aabf4-5a16-4e9d-a7db-903064ca1a03"
+      }
+    ],
+    "data_filesystem_check": "clean",
+    "data_ownership": {
+      "/": "0:0",
+      "/identity": "0:0",
+      "/ssh": "0:0",
+      "/cases": "0:0",
+      "/backups": "0:0",
+      "/evidence": "0:0",
+      "/image-marker": "0:0"
+    },
+    "firmware_kernel_initrd_match_system": true,
+    "physical_boot": false,
+    "hardware_qualified": false
+  },
+  "virtual_boot": {
+    "schema": "kaiba.nvme-image-vm-smoke/v1",
+    "image_sha256": "12104a8ce7fbf1892b3f074fc03890dec0c28f8c0a389d9f59f71aea3b47fa45",
+    "passed": true,
+    "command_sent": true,
+    "qemu_exit": 0,
+    "physical_boot": false,
+    "hardware_qualified": false,
+    "scope": "same ARM64 kernel/initrd and full image, QEMU virt with disposable NVMe overlay; no NIC",
+    "firmware_path": "Pi EEPROM is not emulated; firmware files checked separately"
+  },
+  "software_validation": {
+    "operation_guard_tests": 7,
+    "ci_tests": 28,
+    "fleet_lifecycle_scenarios": 11,
+    "same_key_recovery_cutover_scenarios": 17,
+    "crash_boundaries": [
+      "uncommitted revocation retains active member",
+      "acknowledged revocation remains revoked"
+    ],
+    "retained_device_key_checked": true,
+    "obsolete_backup_detected_by_independent_expectation": true,
+    "physical_power_cut": false
+  },
+  "physical_drive_written": false,
+  "physical_boot": false,
+  "physical_power_cut": false,
+  "full_qualification": false,
+  "planned_drive_swaps": 2,
+  "additional_round_trip_if_test_disk_unbootable": true,
+  "pilot_deadline_unchanged": "2026-10-03T02:06:35Z",
+  "limits": [
+    "synthetic identities and fixture device storage observation",
+    "virtual boot bypasses Pi firmware",
+    "spare NVMe durability does not qualify the pilot NVMe",
+    "no hardware monotonic anchor or protected key qualification",
+    "no trusted offline clock qualification"
+  ]
+}
