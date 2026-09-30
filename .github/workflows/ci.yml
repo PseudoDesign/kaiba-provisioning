@@ -51,6 +51,8 @@ jobs:
         run: python3 -B -m unittest discover -s tests/pilot-enrollment-runner -p 'test_*.py' -v
       - name: Test read-only offline qualification inventory
         run: python3 -B -m unittest discover -s tests/offline-qualification -p 'test_*.py' -v
+      - name: Test disposable NVMe disk guards
+        run: python3 -B deploy/nvme-qualification/test_operations.py
       - name: Test public pilot report rendering
         run: python3 -B -m unittest discover -s tests/pilot-reports -p 'test_*.py' -v
 
@@ -138,6 +140,12 @@ jobs:
 
       - name: Build x86_64 checks
         run: nix --accept-flake-config flake check -L
+
+      - name: Rehearse disposable NVMe crash and restore operations
+        run: |
+          nix build -L --no-link \
+            path:./deploy/nvme-qualification#checks.x86_64-linux.operations \
+            path:./deploy/nvme-qualification#checks.x86_64-linux.campaign
 
       # Realize configured outputs as integration coverage, including on the
       # prospective PR merge revision. Operators obtain artifacts for signing
