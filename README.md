@@ -124,6 +124,29 @@ and [hardware evidence matrix](https://github.com/PseudoDesign/kaiba-infra/blob/
 are tracked on the linked review branch. This follow-on preserves the current
 pilot procedure and does not mark any physical or production gate complete.
 
+The [Ace/Mako metadata collector](docs/offline-qualification-inventory.md) now
+has scoped live observations. A separate
+[temporary native SPIRE smoke on Ace](docs/observations/2026-09-29-ace-spire-smoke.md)
+observed issuance/rotation, restart without the consumed grant, and expiry
+denial with reported cleanup. It installed no persistent SPIRE service and
+closed no boot, rollback, time or admission gate.
+
+The [read-only reboot observer](docs/identity-reboot-observation.md) now supports
+before/after checks for the separately installed persistent identity pilot. It
+compares the intended generation, fresh unit-scoped identity, trust bundle,
+public enrollment status and existing services without rebooting or changing
+the host. The separate
+[native warm-reboot receipt](docs/observations/2026-09-29-ace-identity-warm-reboot.md)
+records generation 10 booting with unchanged identity/enrollment and automatic
+service startup. That historical observation alone did not qualify cold or offline boot.
+
+The subsequent [bounded spare-NVMe physical campaign](docs/observations/2026-09-30-nvme-physical-qualification.json)
+passed the selected interrupted-write, backup and offline-refusal checks, then
+returned Ace to its original encrypted pilot disk. No further swaps are planned
+for LAN acceptance. These results do not qualify original-disk crash durability,
+autonomous offline operation, secure boot or hardware rollback prevention;
+`full_qualification` remains false.
+
 Start with the [documentation index](docs/README.md). It defines the status
 language used throughout the guides so that implemented code, software tests,
 checked evidence, and proposed production controls are not conflated.

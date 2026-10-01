@@ -1,0 +1,214 @@
+{
+  "nodes": {
+    "argononed": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1729566243,
+        "narHash": "sha256-DPNI0Dpk5aym3Baf5UbEe5GENDrSmmXVdriRSWE+rgk=",
+        "owner": "nvmd",
+        "repo": "argononed",
+        "rev": "16dbee54d49b66d5654d228d1061246b440ef7cf",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nvmd",
+        "repo": "argononed",
+        "type": "github"
+      }
+    },
+    "contracts": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790373274,
+        "narHash": "sha256-4/+czCVhaaDbSz3Y7kCEpokCMetVCo6YjqB5tFX8K3Q=",
+        "owner": "pd-codex",
+        "repo": "kaiba-contracts",
+        "rev": "b383a3ad444517b7759ed5cabaa119db31ce4379",
+        "type": "github"
+      },
+      "original": {
+        "owner": "pd-codex",
+        "repo": "kaiba-contracts",
+        "rev": "b383a3ad444517b7759ed5cabaa119db31ce4379",
+        "type": "github"
+      }
+    },
+    "dnsIntegration": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790657457,
+        "narHash": "sha256-TXdN/P9nY9p0VXOvc5nPGVXoZ4UJkewdGukDoKw3Pqc=",
+        "owner": "pd-codex",
+        "repo": "nixos-kaiba-network",
+        "rev": "06313653fde9fc0ca8da7a6f0fe0efe23853ca33",
+        "type": "github"
+      },
+      "original": {
+        "owner": "pd-codex",
+        "repo": "nixos-kaiba-network",
+        "rev": "06313653fde9fc0ca8da7a6f0fe0efe23853ca33",
+        "type": "github"
+      }
+    },
+    "enrollmentRunner": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790483447,
+        "narHash": "sha256-7q3wZxWk46ZcQB/RbKl5XYYWCFpqANjY59caTViSuUI=",
+        "owner": "PseudoDesign",
+        "repo": "kaiba-provisioning",
+        "rev": "a8379251734fb84fce15ea569326e1a6bcdfe5d3",
+        "type": "github"
+      },
+      "original": {
+        "owner": "PseudoDesign",
+        "repo": "kaiba-provisioning",
+        "rev": "a8379251734fb84fce15ea569326e1a6bcdfe5d3",
+        "type": "github"
+      }
+    },
+    "flake-compat": {
+      "locked": {
+        "lastModified": 1767039857,
+        "narHash": "sha256-vNpUSpF5Nuw8xvDLj2KCwwksIbjua2LZCqhV1LNRDns=",
+        "owner": "edolstra",
+        "repo": "flake-compat",
+        "rev": "5edf11c44bc78a0d334f6334cdaf7d60d732daab",
+        "type": "github"
+      },
+      "original": {
+        "owner": "edolstra",
+        "repo": "flake-compat",
+        "type": "github"
+      }
+    },
+    "fleet": {
+      "inputs": {
+        "contracts": "contracts",
+        "dnsIntegration": "dnsIntegration",
+        "enrollmentRunner": "enrollmentRunner",
+        "nixpkgs": "nixpkgs",
+        "provisioning": "provisioning"
+      },
+      "locked": {
+        "lastModified": 1790707797,
+        "narHash": "sha256-FycLZ0EDlTrUWa4cpxPi981QqGm79s3+HPi3238BJtg=",
+        "owner": "PseudoDesign",
+        "repo": "kaiba-fleet",
+        "rev": "0bd55c576536c29825aada2f7ce6fa052a877402",
+        "type": "github"
+      },
+      "original": {
+        "owner": "PseudoDesign",
+        "repo": "kaiba-fleet",
+        "rev": "0bd55c576536c29825aada2f7ce6fa052a877402",
+        "type": "github"
+      }
+    },
+    "nixos-images": {
+      "inputs": {
+        "nixos-stable": [
+          "raspberrypi",
+          "nixpkgs"
+        ],
+        "nixos-unstable": [
+          "raspberrypi",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1747747741,
+        "narHash": "sha256-LUOH27unNWbGTvZFitHonraNx0JF/55h30r9WxqrznM=",
+        "owner": "nvmd",
+        "repo": "nixos-images",
+        "rev": "cbbd6db325775096680b65e2a32fb6187c09bbb4",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nvmd",
+        "ref": "sdimage-installer",
+        "repo": "nixos-images",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1785975029,
+        "narHash": "sha256-X44cn5rzytELc3NNoQsh0aLkjWA/QzPfc6HPQmsG3sU=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "70ce234312134a463ba7728e94da2486a1d237ac",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "70ce234312134a463ba7728e94da2486a1d237ac",
+        "type": "github"
+      }
+    },
+    "nixpkgs_2": {
+      "locked": {
+        "lastModified": 1786089803,
+        "narHash": "sha256-ZuvZfVW2tB5tXYEcpcfhVXB3N4OhdZLOqOviy4OD4b4=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "ee48b147c18c7de1e6ec97dc74792be42724bed1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-26.05",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "provisioning": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790386300,
+        "narHash": "sha256-TFuIwsjpBTlYKdaHyz8N1UgigF3H7B8X/gG+GMEe5qo=",
+        "owner": "PseudoDesign",
+        "repo": "kaiba-provisioning",
+        "rev": "aae1a0fec103011fea00b224017ff450e0555f25",
+        "type": "github"
+      },
+      "original": {
+        "owner": "PseudoDesign",
+        "repo": "kaiba-provisioning",
+        "rev": "aae1a0fec103011fea00b224017ff450e0555f25",
+        "type": "github"
+      }
+    },
+    "raspberrypi": {
+      "inputs": {
+        "argononed": "argononed",
+        "flake-compat": "flake-compat",
+        "nixos-images": "nixos-images",
+        "nixpkgs": "nixpkgs_2"
+      },
+      "locked": {
+        "lastModified": 1786737479,
+        "narHash": "sha256-rR94nd2Ls9HfLd3i6nrtux6+J6lgGHr13o/QplHex00=",
+        "owner": "ams-tech",
+        "repo": "nixos-raspberrypi",
+        "rev": "d3360e0b4b9ed0f7ccba5120cecb36dc886864e2",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ams-tech",
+        "repo": "nixos-raspberrypi",
+        "rev": "d3360e0b4b9ed0f7ccba5120cecb36dc886864e2",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "fleet": "fleet",
+        "raspberrypi": "raspberrypi"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

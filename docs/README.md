@@ -36,6 +36,11 @@ first-fleet applicability is determined by the admission policy.
 | Document | Boundary |
 | --- | --- |
 | [Native offline handoff](native-offline-handoff.md) | One-image signing scope, verified FAT/GPT package and bounded physical procedure; full physical qualification pending |
+| [Offline qualification inventory](offline-qualification-inventory.md) | Fixed read-only Ace/Mako metadata collector, private evidence retention and explicit unknowns; no rollback or hardware qualification |
+| [Ace native SPIRE smoke profile](ace-spire-smoke.md) | Dated manual nonroot experiment and exact ARM64 runtime pins; temporary identity behavior only, no automatic CI hardware execution |
+| [Ace native SPIRE observation, 2026-09-29](observations/2026-09-29-ace-spire-smoke.md) | Real ARM64 issuance/rotation, restart without a consumed grant, and expiry denial observed with reported cleanup; no persistent deployment or hardware qualification |
+| [Mako metadata inventory, 2026-09-29](observations/2026-09-29-mako-offline-inventory.md) | Pi 5 and running software observed over existing trusted SSH; secure-boot, rollback, TPM and offline clock gates remain open |
+| [Ace metadata inventory, 2026-09-29](observations/2026-09-29-ace-offline-inventory.md) | Matching Pi 5 revision, newer firmware and fewer observed services; candidate for native-mechanism research, with no physical gate closed |
 | [Native offline candidate](native-offline-candidate.md) | Pi 5 NVMe boot/root candidate, explicit local action and integrity tests; pristine boot and scoped physical negatives observed; device-secret feasibility pending |
 | [Native verity observations, 2026-09-17](observations/2026-09-17-native-verity.md) | Startup and late-read rejection, pristine restoration, positive control and SD return; includes the explicit console-interleaving review |
 | [Remaining lock-rejection observations, 2026-09-20](observations/2026-09-20-remaining-lock-rejection.md) | Completed development sequence with pre-cleanup lock-retention readback; strict qualification and copied-media testing remain pending |
