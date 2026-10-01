@@ -33,3 +33,18 @@ private state. After application, use a new client process to verify authenticat
 access and unchanged identity/key/history. Preserve the receipt and old CA bytes.
 This command does not change membership validity, admit a thirty-day term, update
 host guards or establish full hardware qualification.
+
+`kaiba-pilot-device --state <protected-directory> inspect-trust` reports metadata
+from the effective issuer and server CAs selected by this same protected client.
+The versioned response contains their DER and SPKI hashes, validity intervals,
+retained device identifiers, continuation count and latest reviewed receipt
+digest. It uses the existing state lock, validates retained trust history and
+checks protected storage and certain time. Expired trust, a lost mount, clock
+rollback or a check lasting over fifteen seconds fails without a result.
+
+This local operation does not contact Fleet or change credential state. It opens
+the protected state locally but exports no private keys or certificate bodies;
+the existing `status` response remains unchanged. Its output measures installed
+trust, not membership authorization. The observer must still authenticate the
+host, verify freshness and exact delegation scope, and check current membership,
+host guards and SPIRE registrations before using these bounds for renewal.
