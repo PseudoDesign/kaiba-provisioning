@@ -138,7 +138,14 @@ public enrollment status and existing services without rebooting or changing
 the host. The separate
 [native warm-reboot receipt](docs/observations/2026-09-29-ace-identity-warm-reboot.md)
 records generation 10 booting with unchanged identity/enrollment and automatic
-service startup. Cold/offline boot and hardware qualification remain open.
+service startup. That historical observation alone did not qualify cold or offline boot.
+
+The subsequent [bounded spare-NVMe physical campaign](docs/observations/2026-09-30-nvme-physical-qualification.json)
+passed the selected interrupted-write, backup and offline-refusal checks, then
+returned Ace to its original encrypted pilot disk. No further swaps are planned
+for LAN acceptance. These results do not qualify original-disk crash durability,
+autonomous offline operation, secure boot or hardware rollback prevention;
+`full_qualification` remains false.
 
 Start with the [documentation index](docs/README.md). It defines the status
 language used throughout the guides so that implemented code, software tests,
