@@ -1,0 +1,86 @@
+{
+  "schema_version": "kaiba.nvme-physical-qualification/v1",
+  "date": "2026-09-30",
+  "date_timezone": "America/Indiana/Indianapolis",
+  "status": "bounded-test-campaign-passed-pilot-drive-return-pending",
+  "profile": {
+    "board": "Raspberry Pi 5 Model B Rev 1.1",
+    "storage": "Samsung SSD 970 EVO 500GB spare NVMe",
+    "image_sha256": "12104a8ce7fbf1892b3f074fc03890dec0c28f8c0a389d9f59f71aea3b47fa45",
+    "source_revision": "cb8b6046fd8fa1b88a58cdad39067fc77a9f67f5",
+    "fleet_revision": "0bd55c576536c29825aada2f7ce6fa052a877402",
+    "kernel": "6.18.42",
+    "synthetic_identities": true,
+    "read_only_system_lower_root": true,
+    "volatile_root_overlay": true,
+    "separate_writable_test_partition": true,
+    "pilot_drive_disconnected": true
+  },
+  "observations": {
+    "physical_boot": "passed",
+    "identity_issuance": "passed",
+    "synthetic_identity_backup_restore": "passed-retained-manifest-fresh-certificate",
+    "synthetic_fleet_backup_restore": "passed-retained-key-and-certificate",
+    "before_commit_power_cut": "passed-member-remains-active",
+    "after_ack_power_cut": "passed-member-remains-revoked",
+    "both_cut_cases": {
+      "independent_durable_receipts": true,
+      "distinct_boot_ids": true,
+      "unchanged_keys_and_certificates": true,
+      "issued_certificate_count_per_case": 2,
+      "healthy_control_member_access": true,
+      "operator_reported_physical_cuts": true,
+      "exact_cut_times_and_durations_instrumented": false
+    },
+    "obsolete_backup_restore": {
+      "external_acknowledgement_detected_stale_active_member": true,
+      "services_healthy_in_stale_control": true,
+      "preserved_current_revoked_state_restored": true,
+      "hardware_rollback_prevention": false
+    },
+    "offline_cold_start": {
+      "status": "offline-start-denied-as-required",
+      "isolation": "software firewall before normal networking; not physical air gap",
+      "clock_guard_refusal_observed": true,
+      "protected_daemons_never_started_in_offline_boot": true,
+      "offline_wall_clock_untrusted": true
+    },
+    "online_recovery": {
+      "clock_synchronized": true,
+      "identity_manifest_retained": true,
+      "spire_services_active_before_explicit_check": true,
+      "explicit_fresh_credential_probe_passed": true,
+      "both_fleet_case_states_and_control_access_passed": true,
+      "failed_units": 0
+    }
+  },
+  "evidence_sha256": {
+    "initial-status.txt": "37b9b8a1a53bb677424bb9c8adec82540b91ab21481ceaf0b55aaf1f82b18dbd",
+    "physical-boot-layout.stdout": "1d0c8422cf38b1eeeb59c588443f4687e3e76d53daeb5de025d4a84299f3e397",
+    "identity-check-initial.stdout": "229b4f301f490778cf7b99d45d63070b1d3a583fcb7ba6c76725e122d5f1aa64",
+    "identity-check-restored.stdout": "4eae5cdcbbe9d7bcc2a7fd0fa0d1a6f48f26d5d374c15c4dcbdddf4de476d670",
+    "fleet-before-check.stdout": "ec4db7fd39264ca00e65969f68b0c9beba683173bd5f89d19eec7a3fbdf9f7f5",
+    "before-cut.jsonl": "e4dc483905eda343351c23d1f1ba85af873a3309913745e776202bdeecdbbddf",
+    "before-cut-retained-check.stdout": "ff32bb20e2cb6b5838fdd927f2c205e721fc74eef7ff36e00e7638c7fa3e37ad",
+    "acknowledged-cut.jsonl": "58700da50d2d1f10ce86b2a7297a2d6b2a0792505b9e88814cff9fe2cb1d46c6",
+    "acknowledged-cut-retained-check.stdout": "6522e8f9b99f67d8a8ea18248f58c366ded08862b79b2e131ca8a45975917603",
+    "obsolete-check.stdout": "7e61f73291df23da161129518ca04a16068b87e57c19f2963e396ee54b343ab5",
+    "obsolete-check-active-control.stdout": "f9a4d221aaec0992a897acb0d8a1cbd93149620c7c67ee1ab63ccedf39313e81",
+    "restore-preserved-revoked-case.stdout": "33525cad2770236757682035f01067e6561bc4e722d5286ce10cbc8f0204a087",
+    "offline-result-and-return.stdout": "1623644034e8791542c77f1a3ed2494f7507f1fa3e541ad704708e814946d67b",
+    "final-test-state-checks.stdout": "c52852664cedf83a8437bbe4ada3035f5065e3ec594cb84adb9d27d7d03fa2b7"
+  },
+  "pilot_return": {
+    "second_drive_swap_pending": true,
+    "original_pilot_startup_acceptance_pending": true
+  },
+  "full_qualification": false,
+  "limits": [
+    "One physical cut per selected transaction boundary on this spare NVMe; not an endurance campaign.",
+    "Results do not qualify the original pilot NVMe durability or encrypted-storage path.",
+    "Synthetic fixture substitutes device storage observation; production client does not accept plaintext storage.",
+    "External stale-backup detection is not hardware anti-rollback enforcement.",
+    "Secure boot, protected keys, hardware monotonic state and trusted offline time remain unqualified.",
+    "Offline refusal is not autonomous offline operation."
+  ]
+}
