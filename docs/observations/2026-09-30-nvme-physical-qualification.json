@@ -2,7 +2,7 @@
   "schema_version": "kaiba.nvme-physical-qualification/v1",
   "date": "2026-09-30",
   "date_timezone": "America/Indiana/Indianapolis",
-  "status": "bounded-test-campaign-passed-pilot-drive-return-pending",
+  "status": "bounded-test-campaign-passed-original-pilot-return-accepted",
   "profile": {
     "board": "Raspberry Pi 5 Model B Rev 1.1",
     "storage": "Samsung SSD 970 EVO 500GB spare NVMe",
@@ -68,11 +68,53 @@
     "obsolete-check-active-control.stdout": "f9a4d221aaec0992a897acb0d8a1cbd93149620c7c67ee1ab63ccedf39313e81",
     "restore-preserved-revoked-case.stdout": "33525cad2770236757682035f01067e6561bc4e722d5286ce10cbc8f0204a087",
     "offline-result-and-return.stdout": "1623644034e8791542c77f1a3ed2494f7507f1fa3e541ad704708e814946d67b",
-    "final-test-state-checks.stdout": "c52852664cedf83a8437bbe4ada3035f5065e3ec594cb84adb9d27d7d03fa2b7"
+    "final-test-state-checks.stdout": "c52852664cedf83a8437bbe4ada3035f5065e3ec594cb84adb9d27d7d03fa2b7",
+    "original-pilot-return-baseline.json": "58dce20cbbe6304273bea0e51b6b7a0701b75bbc5343e6cbe9199ee54f1ed340",
+    "original-pilot-acceptance.json": "794e8c6552f1f68dbe53f4e06eb65ece429497a6af033b1d8ac07931e96419d0",
+    "mako-final-acceptance.json": "7282c2d930232fb42f331df33b06a752e0d2ab8a3c70e84b3b20edd29cf0a5d8",
+    "mako-probe-safe-diagnosis.json": "ae4f7bb33efaf08290550159e19e830a3764d63d51ea77ef6639c90e12e3b268",
+    "mako-renewal-safe-diagnosis.stdout": "cc2485308379696ea8233c4a87789d6ddf08f488174ebd264309277f2f3ca151",
+    "mako-final-acceptance-settled.stdout": "f5451d57d8e33251c16b12dfa52378696892dd652138a2df8400caf81b71637f",
+    "malak-final-fences.json": "6a11f72bf6e3971c63be7ac5b5d0ec3b0ac2d26ff114a76c3157df133dc4426a"
   },
   "pilot_return": {
-    "second_drive_swap_pending": true,
-    "original_pilot_startup_acceptance_pending": true
+    "second_drive_swap_completed": true,
+    "total_drive_swaps": 2,
+    "additional_reflash_swaps": 0,
+    "original_pilot_startup_acceptance": "passed",
+    "generation": 14,
+    "original_encrypted_nvme_present": true,
+    "test_nvme_absent": true,
+    "booted_current_persistent_profiles_match": true,
+    "device_and_admission_state_unchanged": true,
+    "service_definitions_unchanged": true,
+    "protected_services_active": 17,
+    "failed_units": 0,
+    "clock_synchronized": true,
+    "retained_admitted_node": true,
+    "current_workload_credential": true,
+    "authenticated_device_access": true,
+    "dns_queries_passed": 12,
+    "updater_active": true,
+    "lease_healthy": true,
+    "boot_order_passed": true,
+    "tmpfiles_setup_and_resetup_passed": true,
+    "mako": {
+      "acceptance": "passed",
+      "boot_and_profiles_unchanged": true,
+      "protected_state_unchanged": true,
+      "active_services": 7,
+      "authenticated_device_access": true,
+      "initial_workload_probe_check": "last scheduled probe failed during authority absence",
+      "automatic_node_renewal_observed": true,
+      "subsequent_scheduled_probe": "passed",
+      "manual_restart_or_reenrollment": false
+    },
+    "malak": {
+      "former_authority_units_stopped": 6,
+      "migration_fence_dropins_present": true
+    },
+    "pilot_deadline_unchanged": "2026-10-03T02:06:35Z"
   },
   "full_qualification": false,
   "limits": [
