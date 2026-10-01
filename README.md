@@ -114,6 +114,16 @@ The [current delivery scope](docs/delivery-scope.md) fixes the next milestone:
 apply the agreed hardware security configuration, enroll the verified device
 in a fleet, and guide the operator through a simple live UI.
 
+The approved [SPIFFE/SPIRE follow-on](docs/delivery-scope.md#approved-follow-on-owner-fleet-identity-and-autonomous-boot)
+adds standalone, server, and agent identity roles through the existing
+`kaiba-fleet` service and shared `kaiba-contracts`. Provisioning's next work on
+that track is a separately qualified offline profile: evaluate native Pi
+monotonic state first, then a TPM add-on if required. The
+[cross-project roadmap](https://github.com/PseudoDesign/kaiba-infra/blob/codex/spiffe-spire-next-steps/docs/spiffe-spire-plan.md)
+and [hardware evidence matrix](https://github.com/PseudoDesign/kaiba-infra/blob/codex/spiffe-spire-next-steps/docs/offline-qualification.md)
+are tracked on the linked review branch. This follow-on preserves the current
+pilot procedure and does not mark any physical or production gate complete.
+
 Start with the [documentation index](docs/README.md). It defines the status
 language used throughout the guides so that implemented code, software tests,
 checked evidence, and proposed production controls are not conflated.

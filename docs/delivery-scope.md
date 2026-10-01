@@ -8,6 +8,10 @@ the starting point. Further implementation must directly complete or fix one
 of the following three outcomes. This baseline is not a claim that CI or
 physical qualification has passed.
 
+The approved follow-on recorded below on 2026-09-28 adds owner-fleet identity
+and autonomous-boot qualification to this boundary. It is an explicit additive
+track, not a reopening of every deferred design or a change to pilot admission.
+
 ## The product we are delivering
 
 | Outcome | Done means | Current baseline |
@@ -98,3 +102,42 @@ a demonstrated blocker prevents this delivery. Existing broader design
 documents remain reference material; they do not automatically add work to
 this milestone. Preserve the selected security requirements and use focused
 checks for each actual change.
+
+## Approved follow-on: owner-fleet identity and autonomous boot
+
+The 2026-09-28 direction adds standalone, server, and agent installation roles,
+with optional `kaiba.network` enrollment separate from the owner's fleet. See
+the accepted [SPIFFE/SPIRE roadmap](https://github.com/PseudoDesign/kaiba-infra/blob/codex/spiffe-spire-next-steps/docs/spiffe-spire-plan.md)
+and [offline qualification matrix](https://github.com/PseudoDesign/kaiba-infra/blob/codex/spiffe-spire-next-steps/docs/offline-qualification.md).
+These cross-repository documents are tracked on the linked review branch;
+they are next-step specifications, not physical evidence.
+
+Reuse [kaiba-fleet](https://github.com/PseudoDesign/kaiba-fleet) for inventory,
+admission, and the opt-in SPIRE identity prototype, and
+[kaiba-contracts](https://github.com/pd-codex/kaiba-contracts) for versioned
+interfaces. Fleet's software enrollment rehearsal already exists; production
+admission remains gated. SPIRE handles workload credential issuance and renewal,
+while Kaiba retains membership, permissions, provisioning evidence, and recovery.
+Existing pilot credential-tuple checks stay in place until an explicit
+versioned migration is adopted.
+
+Provisioning owns qualification of the new autonomous production profile:
+
+- Evaluate native Pi monotonic state first, then a TPM 2.0 add-on if the native
+  candidate cannot meet the required properties.
+- Protect verifier and OS security floors plus security-critical authority
+  state, so a restored database cannot revive obsolete membership or trust.
+- Qualify offline time, protected-state startup order, interrupted updates,
+  hardware continuity, and recovery before claiming autonomous production boot.
+
+This stronger profile is separate from the selected first-fleet pilot, whose
+offline rollback prevention was explicitly not required. The archived online
+proposal and its implemented verifier retain their existing assumptions and
+qualification status. A passing SPIRE VM test changes neither profile nor the
+physical evidence. Missing hardware evidence keeps the new profile unqualified.
+
+Retain the concrete delivery outcome: a real device completes its approved
+procedure, enrolls under the selected policy, and reports actual fleet status.
+Continue the reviewed pilot flow while the identity prototype and new hardware
+qualification proceed in parallel. This documentation authorizes no new
+signing, OTP, TPM, storage, or other physical mutation.
