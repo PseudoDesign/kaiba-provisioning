@@ -141,11 +141,12 @@ jobs:
       - name: Build x86_64 checks
         run: nix --accept-flake-config flake check -L
 
-      - name: Rehearse disposable NVMe crash and restore operations
+      # This fixture pins a private Fleet revision. A public repository token
+      # cannot fetch it; never expose a cross-repository secret to public PRs.
+      # The corresponding required check runs in Fleet's private CI instead.
+      - name: Record private campaign validation boundary
         run: |
-          nix build -L --no-link \
-            path:./deploy/nvme-qualification#checks.x86_64-linux.operations \
-            path:./deploy/nvme-qualification#checks.x86_64-linux.campaign
+          echo "::notice::NVMe campaign integration is not run by public CI. Require Fleet's historical-nvme-campaign result for the documented immutable qualification pin before LAN closure. Disk guard unit tests run in this repository."
 
       # Realize configured outputs as integration coverage, including on the
       # prospective PR merge revision. Operators obtain artifacts for signing

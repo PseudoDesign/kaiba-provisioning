@@ -187,3 +187,16 @@ damaged, reprogram the spare on Malak from the retained verified bundle.
 Results describe only this exact spare-NVMe profile. All full offline hardware
 qualification gates remain open: original-NVMe durability, secure boot,
 anti-rollback, hardware-bound keys and trusted offline time are not proven.
+
+## CI boundary
+
+The completed physical campaign retains provisioning revision
+`36c104d05949ad54163c6f9a575209331ca58512` and the Fleet revision already recorded
+in this directory's lock file. Do not update those historical pins for deployment.
+The full synthetic campaign needs the private Fleet source, so it runs in Fleet's
+`historical-nvme-campaign` CI job with that repository's read-only token. Public
+provisioning CI runs disk-guard unit tests and explicitly reports that it does not
+run this private integration. A green public workflow alone is insufficient:
+LAN closeout must link a successful Fleet campaign result for this exact pin.
+Changes to this campaign require a new reviewed pin and corresponding private
+validation; they do not retroactively change the completed physical observations.
