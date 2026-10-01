@@ -71,7 +71,17 @@ func (c *Client) ContinueTrust(ctx context.Context, raw []byte, reviewed string)
 	if e = checkStorage(c.store, c.value.Config, c.runtime); e != nil {
 		return TrustContinuationResult{}, e
 	}
-	r := trustContinuationReceipt{q, reviewed, c.runtime.Now().UTC().Format(time.RFC3339Nano)}
+	// The authenticated read can span a clock change or the end of the
+	// approval/credential interval. Recheck before recording a transition.
+	applied := c.runtime.Now()
+	if !clockCertain() || applied.Before(now) || validTrustContinuation(q, c.value.effectiveTrust(), status, applied) != nil {
+		return TrustContinuationResult{}, ErrBinding
+	}
+	leaf, e := certificate(cert)
+	if e != nil || applied.Before(leaf.NotBefore) || !applied.Before(leaf.NotAfter) {
+		return TrustContinuationResult{}, ErrBinding
+	}
+	r := trustContinuationReceipt{q, reviewed, applied.UTC().Format(time.RFC3339Nano)}
 	next := c.value
 	next.TrustHistory = append(append([]trustContinuationReceipt(nil), next.TrustHistory...), r)
 	if e = c.save(next); e != nil {

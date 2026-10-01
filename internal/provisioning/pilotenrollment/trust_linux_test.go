@@ -13,6 +13,7 @@ import (
 	"math/big"
 	"net/http"
 	"reflect"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -20,12 +21,14 @@ import (
 func TestTrustContinuationRetainsIdentityHistoryAndRequiresReview(t *testing.T) {
 	var binding renewalBinding
 	denied := false
+	var afterRead atomic.Bool
 	c, server, dir, ca, key := readTestClientIssuer(t, func(w http.ResponseWriter, r *http.Request) {
 		if denied {
 			w.WriteHeader(403)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
+		afterRead.Store(true)
 		w.Write(canon(renewalSelf{"pilot", "instance", canon(binding), false}))
 	})
 	binding, _ = renewalFixture(t, c)
@@ -69,6 +72,35 @@ func TestTrustContinuationRetainsIdentityHistoryAndRequiresReview(t *testing.T) 
 		t.Fatal("revoked membership accepted")
 	}
 	denied = false
+	for _, tc := range []struct {
+		name      string
+		uncertain bool
+		offset    time.Duration
+	}{
+		{"clock lost during read", true, 0},
+		{"clock moved backward during read", false, -time.Second},
+		{"packet expired during read", false, 2 * time.Hour},
+		{"credential expired during read", false, 31 * time.Minute},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			afterRead.Store(false)
+			c.runtime.ClockCertain = func() bool { return !(tc.uncertain && afterRead.Load()) }
+			c.runtime.Now = func() time.Time {
+				if afterRead.Load() {
+					return now.Add(tc.offset)
+				}
+				return now
+			}
+			if _, e := c.ContinueTrust(context.Background(), raw, digest); e == nil {
+				t.Fatal("transition accepted after its preconditions changed")
+			}
+			if !bytes.Equal(original, canon(c.value)) {
+				t.Fatal("failed transition changed state")
+			}
+		})
+	}
+	c.runtime.ClockCertain = func() bool { return true }
+	c.runtime.Now = time.Now
 	if !bytes.Equal(original, canon(c.value)) {
 		t.Fatal("failed attempt changed state")
 	}
