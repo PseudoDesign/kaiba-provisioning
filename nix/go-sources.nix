@@ -75,6 +75,7 @@ in
   pilotExport = runtimeSource [
     "cmd/kaiba-pilot-export"
     "internal/provisioning/pilotexport"
+    "internal/provisioning/recordpublication"
     "internal/provisioning/handoff"
     "internal/provisioning/mtls"
   ];

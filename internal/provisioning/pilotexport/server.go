@@ -9,8 +9,10 @@ import (
 	"path/filepath"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/handoff"
+	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/recordpublication"
 )
 
 type Selection struct {
@@ -19,11 +21,12 @@ type Selection struct {
 	Evidence map[string]string `json:"evidence"`
 }
 type Config struct {
-	Authority string               `json:"authority_id"`
-	Tenant    string               `json:"tenant_id"`
-	Domain    string               `json:"security_domain_id"`
-	Access    handoff.Policy       `json:"access"`
-	Records   map[string]Selection `json:"records"`
+	Authority    string                    `json:"authority_id"`
+	Tenant       string                    `json:"tenant_id"`
+	Domain       string                    `json:"security_domain_id"`
+	Access       handoff.Policy            `json:"access"`
+	Records      map[string]Selection      `json:"records"`
+	Publications *recordpublication.Config `json:"renewal_publications,omitempty"`
 }
 type retained struct {
 	Record   json.RawMessage `json:"record"`
@@ -55,6 +58,11 @@ func New(c Config, root string) (*Server, error) {
 	if root == "" || !idPattern.MatchString(c.Authority) || !idPattern.MatchString(c.Tenant) || !idPattern.MatchString(c.Domain) || len(c.Records) == 0 || len(c.Access.Grants) == 0 {
 		return nil, errors.New("incomplete pilot export configuration")
 	}
+	if c.Publications != nil {
+		if e := recordpublication.ValidateConfig(*c.Publications); e != nil {
+			return nil, e
+		}
+	}
 	if e := os.MkdirAll(root, 0700); e != nil {
 		return nil, e
 	}
@@ -75,7 +83,8 @@ func New(c Config, root string) (*Server, error) {
 	}()
 	ids := map[string]bool{}
 	for handle, selection := range c.Records {
-		if !handoff.ID.MatchString(handle) {
+		_, reserved := recordpublication.Handle(handle)
+		if !handoff.ID.MatchString(handle) || (c.Publications != nil && reserved) {
 			return nil, errors.New("invalid record handle")
 		}
 		b, e := read(selection.Path)
@@ -166,8 +175,16 @@ func (s *Server) Close() {
 }
 func (s *Server) Handler() http.Handler {
 	m := http.NewServeMux()
-	m.HandleFunc("GET /api/v1/pilot/records/{id}/current", func(w http.ResponseWriter, r *http.Request) { s.record(w, r, s.current[r.PathValue("id")]) })
+	m.HandleFunc("GET /api/v1/pilot/records/{id}/current", func(w http.ResponseWriter, r *http.Request) {
+		if s.published(w, r, "current", "") {
+			return
+		}
+		s.record(w, r, s.current[r.PathValue("id")])
+	})
 	m.HandleFunc("GET /api/v1/pilot/records/{id}/revisions/{revision}", func(w http.ResponseWriter, r *http.Request) {
+		if s.published(w, r, "revision", r.PathValue("revision")) {
+			return
+		}
 		v, e := strconv.ParseUint(r.PathValue("revision"), 10, 64)
 		if e != nil || strconv.FormatUint(v, 10) != r.PathValue("revision") {
 			handoff.Fail(w, 400, "invalid_revision")
@@ -176,6 +193,9 @@ func (s *Server) Handler() http.Handler {
 		s.record(w, r, v)
 	})
 	m.HandleFunc("GET /api/v1/pilot/records/{id}/evidence/{hash}", func(w http.ResponseWriter, r *http.Request) {
+		if s.published(w, r, "evidence", r.PathValue("hash")) {
+			return
+		}
 		id, h := r.PathValue("id"), r.PathValue("hash")
 		if !s.authorized(r, id) || !handoff.Hex.MatchString(h) {
 			handoff.Fail(w, 403, "scope_mismatch")
@@ -219,4 +239,60 @@ func observationInput(r Record) string {
 	b, _ := json.Marshal(r)
 	b, _ = handoff.Canonical(b)
 	return string(b)
+}
+
+// Publication reads do not mutate the reviewed static selections or grants.
+func (s *Server) published(w http.ResponseWriter, r *http.Request, route, selection string) bool {
+	id := r.PathValue("id")
+	if s.config.Publications == nil {
+		return false
+	}
+	if _, ok := recordpublication.Handle(id); !ok {
+		return false
+	}
+	now := time.Now()
+	principal, e := handoff.Principal(r)
+	if e != nil {
+		handoff.Fail(w, 403, "scope_mismatch")
+		return true
+	}
+	for _, cert := range r.TLS.VerifiedChains[0] {
+		if now.Before(cert.NotBefore) || !now.Before(cert.NotAfter) {
+			handoff.Fail(w, 403, "scope_mismatch")
+			return true
+		}
+	}
+	record, e := recordpublication.Read(*s.config.Publications, id, principal, now)
+	if e != nil {
+		handoff.Fail(w, 403, "publication_unavailable")
+		return true
+	}
+	parsed, canonical, e := Parse(record.Body)
+	if e != nil || parsed.Authority != s.config.Authority || parsed.Tenant != s.config.Tenant || parsed.Domain != s.config.Domain {
+		handoff.Fail(w, 403, "publication_scope_mismatch")
+		return true
+	}
+	refs := parsed.Evidence()
+	for _, ref := range refs {
+		if handoff.Digest(record.Evidence[ref.Digest]) != ref.Digest {
+			handoff.Fail(w, 503, "publication_evidence_unavailable")
+			return true
+		}
+	}
+	if route == "evidence" {
+		for _, ref := range refs {
+			if ref.Digest == "sha256:"+selection {
+				handoff.Write(w, 200, record.Evidence[ref.Digest])
+				return true
+			}
+		}
+		handoff.Fail(w, 404, "not_found")
+		return true
+	}
+	if route == "revision" && selection != "1" {
+		handoff.Fail(w, 404, "not_found")
+		return true
+	}
+	handoff.Write(w, 200, canonical)
+	return true
 }

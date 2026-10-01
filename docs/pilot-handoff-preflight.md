@@ -96,3 +96,33 @@ bindings, unauthorized/third-device reads, source and reference substitution,
 retained-evidence corruption, current decision withdrawal, outages and durable
 restart. It builds no Pi images or kernels. It is a software handoff test, not a
 real-device report or proof of PILOT-02–PILOT-06 runtime enrollment behavior.
+
+## Delegation-bound publication reader
+
+The observation exporter can opt into `renewal_publications` alongside its
+existing reviewed selections. The configuration pins one delegation digest and
+its exact thirty-day interval, a private publication directory, the publisher UID
+and reader group GID, and explicit principal-to-enrollment read grants. Existing
+selections and grants remain immutable and continue to resolve through their
+original revision store.
+
+Fleet's confined refresh command publishes a complete
+`kaiba.renewal-record-publication/v1alpha1` batch by atomic append. It retains one
+operation and observation across retries. The exporter reads new batches on each
+request, so publication requires no process restart. Only the observation role's
+validated adoption records and their declared evidence can be returned; policy
+and decision requests remain on the admission authority. A retained TLS connection
+is checked for certificate-chain expiry on each publication request.
+
+The directory must be mode 0750 and owned by the configured publisher UID/reader
+GID. Batch files must be regular, single-link, mode 0640 with the same ownership;
+symlinks, group-writable files, incomplete batches, changed scope and expired terms
+are rejected. The service needs read access only. Keep this directory on the
+protected pilot filesystem, outside historical import artifacts, and bind its
+configuration through the reviewed host-continuity transition before enabling it.
+
+This opt-in reader does not activate delegation, authorize enrollment, replace
+credentials, or implement offline operation. Revoked-term records may remain as
+historical evidence for configured readers within the original term; current
+Fleet/issuer authorization independently rejects renewal after revocation. The
+LAN deployment has not enabled this reader yet. `full_qualification` stays false.
