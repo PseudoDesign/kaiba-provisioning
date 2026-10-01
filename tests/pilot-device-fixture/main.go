@@ -14,6 +14,7 @@ func main() {
 	state := flag.String("state", "", "existing protected 0700 directory")
 	config := flag.String("config", "", "reviewed pilot config for init")
 	input := flag.String("input", "", "public challenge, certificate or station reconciliation response")
+	trustDigest := flag.String("trust-digest", "", "independently reviewed canonical trust continuation digest")
 	recoveryDigest := flag.String("recovery-digest", "", "reviewed recovery packet digest")
 	other := flag.String("other-instance", "", "other enrollment for isolation check")
 	flag.Parse()
@@ -46,6 +47,8 @@ func main() {
 			}
 		}
 		switch flag.Arg(0) {
+		case "continue-trust":
+			value, e = c.ContinueTrust(context.Background(), raw, *trustDigest)
 		case "install-recovery":
 			value, e = c.InstallRecovery(raw)
 		case "prove-recovery-installed":

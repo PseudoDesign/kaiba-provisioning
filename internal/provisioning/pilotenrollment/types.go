@@ -64,6 +64,7 @@ type Status struct {
 	Full       bool            `json:"full_qualification"`
 }
 type state struct {
+	TrustHistory []trustContinuationReceipt `json:"trust_continuations,omitempty"`
 	// Number of normal renewals completed before the retained recovery.
 	RecoveryRenewalStart *int           `json:"recovery_renewal_start,omitempty"`
 	Recovery             *recoveryState `json:"recovery,omitempty"`
@@ -187,14 +188,14 @@ func (s state) leaf(now time.Time) (*x509.Certificate, error) {
 	if e != nil {
 		return nil, e
 	}
-	ca, e := certificate(s.Config.IssuerCA)
+	ca, e := certificate(s.effectiveTrust().IssuerCA)
 	if e != nil {
 		return nil, e
 	}
 	return ValidateCertificate(s.Certificate, status.SPKI, status.Logical, status.Enrollment, ca, now)
 }
 func (s state) validate() error {
-	if s.Schema != Version || s.Config.validate() != nil {
+	if s.Schema != Version || s.Config.validate() != nil || s.validateTrustHistory() != nil {
 		return ErrState
 	}
 	if _, e := privateKey(s.Key); e != nil {
