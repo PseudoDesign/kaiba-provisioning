@@ -24,6 +24,7 @@ import (
 )
 
 type Runtime struct {
+	ClockCertain func() bool
 	Now          func() time.Time
 	Process      string
 	CheckStorage func(*os.File, string) error
@@ -192,7 +193,7 @@ func (c *Client) requestCertificate(ctx context.Context, method, path string, b 
 	if e != nil {
 		return nil, e
 	}
-	ca, e := certificate(c.value.Config.ServerCA)
+	ca, e := certificate(c.value.effectiveTrust().ServerCA)
 	if e != nil {
 		return nil, e
 	}

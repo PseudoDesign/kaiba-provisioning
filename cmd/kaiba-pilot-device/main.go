@@ -16,6 +16,7 @@ func main() {
 	config := flag.String("config", "", "reviewed pilot config for init")
 	input := flag.String("input", "", "public challenge, certificate or station reconciliation response")
 	idempotency := flag.String("idempotency-key", "", "stable key for diagnostic submission; retain with exact input")
+	trustDigest := flag.String("trust-digest", "", "independently reviewed canonical trust continuation digest")
 	recoveryDigest := flag.String("recovery-digest", "", "independently reviewed canonical SHA-256 of recovery packet")
 	other := flag.String("other-instance", "", "existing other enrollment for read-only isolation check")
 	flag.Parse()
@@ -45,13 +46,13 @@ func main() {
 		defer c.Close()
 		var raw []byte
 		if *input != "" {
-			if flag.Arg(0) == "submit-diagnostic" || (flag.Arg(0) == "prepare-renewal" || (flag.Arg(0) == "prepare-recovery" || flag.Arg(0) == "install-recovery")) {
+			if flag.Arg(0) == "continue-trust" || flag.Arg(0) == "submit-diagnostic" || (flag.Arg(0) == "prepare-renewal" || (flag.Arg(0) == "prepare-recovery" || flag.Arg(0) == "install-recovery")) {
 				f, openErr := os.Open(*input)
 				if openErr != nil {
 					log.Fatal(openErr)
 				}
 				limit := int64(4097)
-				if flag.Arg(0) == "prepare-renewal" || (flag.Arg(0) == "prepare-recovery" || flag.Arg(0) == "install-recovery") {
+				if flag.Arg(0) == "continue-trust" || flag.Arg(0) == "prepare-renewal" || (flag.Arg(0) == "prepare-recovery" || flag.Arg(0) == "install-recovery") {
 					limit = 1048577
 				}
 				raw, err = io.ReadAll(io.LimitReader(f, limit))
@@ -64,6 +65,8 @@ func main() {
 			}
 		}
 		switch flag.Arg(0) {
+		case "continue-trust":
+			value, e = c.ContinueTrust(context.Background(), raw, *trustDigest)
 		case "install-recovery":
 			value, e = c.InstallRecovery(raw)
 		case "prove-recovery-installed":

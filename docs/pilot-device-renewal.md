@@ -140,3 +140,7 @@ is not expired-key recovery or permission to renew a revoked identity.
 
 Expired access uses the separate [protected recovery proof relay](pilot-device-recovery.md).
 Normal renewal never accepts an expired credential or bypasses a pending recovery.
+
+CA certificates that cannot support a new approved term require an explicit
+[trust continuation](pilot-device-trust-continuation.md) before that term is activated.
+Renewal workers cannot perform this owner operation.
