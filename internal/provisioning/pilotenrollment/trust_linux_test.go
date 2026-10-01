@@ -64,6 +64,10 @@ func TestTrustContinuationRetainsIdentityHistoryAndRequiresReview(t *testing.T) 
 		t.Fatal("uncertain clock accepted")
 	}
 	c.runtime.ClockCertain = func() bool { return true }
+	observed, e := c.InspectTrust()
+	if e != nil || observed.Server.Digest != q.OldServer || observed.Issuer.Digest != q.OldIssuer || observed.ContinuationCount != 0 || observed.LatestContinuation != "" {
+		t.Fatal("original effective trust unavailable", e)
+	}
 	if _, e = c.ContinueTrust(context.Background(), raw, handoff.Digest([]byte("other"))); e == nil {
 		t.Fatal("unreviewed packet accepted")
 	}
@@ -111,6 +115,10 @@ func TestTrustContinuationRetainsIdentityHistoryAndRequiresReview(t *testing.T) 
 	if c.value.Config != config || !bytes.Equal(c.value.Key, oldKey) || len(c.value.TrustHistory) != 1 || c.value.effectiveTrust().IssuerCA != cert {
 		t.Fatal("original state changed or trust unavailable")
 	}
+	observed, e = c.InspectTrust()
+	if e != nil || observed.Server.Digest != handoff.Digest(der) || observed.Issuer.Digest != handoff.Digest(der) || observed.ContinuationCount != 1 || observed.LatestContinuation != digest || observed.Full || !observed.Protected || !observed.ClockCertain {
+		t.Fatal("observer did not select installed continuation", e)
+	}
 	after := c.value
 	after.TrustHistory = nil
 	if !bytes.Equal(canon(after), original) {
@@ -126,6 +134,10 @@ func TestTrustContinuationRetainsIdentityHistoryAndRequiresReview(t *testing.T) 
 		t.Fatal(e)
 	}
 	defer c.Close()
+	restartedObservation, e := c.InspectTrust()
+	if e != nil || restartedObservation.Server != observed.Server || restartedObservation.Issuer != observed.Issuer || restartedObservation.LatestContinuation != digest {
+		t.Fatal("observer lost selected trust after restart", e)
+	}
 	repeat, e := c.ContinueTrust(context.Background(), raw, digest)
 	if e != nil || !reflect.DeepEqual(repeat, result) {
 		t.Fatal("idempotent restart", e)

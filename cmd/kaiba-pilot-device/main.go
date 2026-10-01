@@ -65,6 +65,8 @@ func main() {
 			}
 		}
 		switch flag.Arg(0) {
+		case "inspect-trust":
+			value, e = c.InspectTrust()
 		case "continue-trust":
 			value, e = c.ContinueTrust(context.Background(), raw, *trustDigest)
 		case "install-recovery":
