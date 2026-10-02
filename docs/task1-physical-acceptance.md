@@ -75,7 +75,7 @@ the same tools validated run 1 and run 2 materializations against actual bytes.
 The staging-plan constructor also reproduced the exact embedded plan bytes
 and original `sha256:ff0c6a94c29e5529bf7112bc58709246aad91dacfabc94ae019343a8b9aa430e`.
 These recovered files do not register the six missing original store paths.
-Complete immutable package/path bindings and native exports remain open.
+Complete immutable package/path bindings remain open.
 
 The [native staging export attempt](https://github.com/PseudoDesign/kaiba-provisioning/actions/runs/37036428710)
 selected reviewed main ancestor `93183ee2b13e4633be9e2568007d3d3f87d6c787`.
@@ -84,9 +84,19 @@ hashed the executable before Nix stripped it. [PR #99](https://github.com/Pseudo
 moves manifest hashing after fixup and adds inspection of the final real ARM
 package. The focused ARM package check and 11 Python export tests passed. That
 local check uses emulation. The subsequent [PR CI run](https://github.com/PseudoDesign/kaiba-provisioning/actions/runs/37041522657)
-passed both x86 and native ARM checks. The PR is ready for review; merge
-authorization is pending. The separate native export requires a reviewed main
-commit, and both complete staging packages remain required.
+passed both x86 and native ARM checks. With explicit software merge/export
+authorization, PR #99 was merged as
+`36c910c89939bcffa2942d594d37472cb941409d`. The subsequent
+[native ARM export](https://github.com/PseudoDesign/kaiba-provisioning/actions/runs/37048987102)
+completed successfully from that exact main revision. The downloaded artifact
+matches GitHub's `sha256:827f40db5929c009722e3a25da42d8d580fe22350c455a7bd597d75ae1e1bc81`.
+Its checksums, committed descriptor, native runner/source binding, final ARM
+executable manifest and all three exported NAR hashes/sizes were independently
+verified. The component was imported only into the separate inspection store
+and was not executed. Its complete component closure remains an incomplete
+staging runtime: the six original input paths are still missing, and both
+complete staging packages remain required. The approval covers software
+merge/export; physical execution remains unapproved.
 
 The five protected files listed by the operator are historical v0.1.5/v0.1.6
 media receipts, not original ownership completion evidence. The narrow
@@ -157,6 +167,9 @@ image and six supporting public records, with manifest digest
 The `planning-reconciliation` subdirectory retains 16 validation and proposed
 plan records, with manifest digest
 `sha256:ed695aeb1ccc4d577c99e19e64e5061bbf7714680a2c64c1ecd451e9b612901f`.
+The `native-staging-export-36c910c` subdirectory retains 16 export, provenance
+and independent-validation files, with manifest digest
+`sha256:e95d19c1771ce6e39a4e424619368936166f638d2f58ca69fc09720dee56e25f`.
 All copies were reopened, compared and synchronized with their directories.
 This access observation
 does not establish complete cold-power removal, safe-off behavior, EEPROM/OTP

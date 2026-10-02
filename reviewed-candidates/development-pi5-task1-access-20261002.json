@@ -123,7 +123,7 @@
   "campaign_claims_closed": 0,
   "complete_power_removal_independently_verified": false,
   "safe_off_qualified": false,
-  "native_staging_component_provenance_verified": false,
+  "native_staging_component_provenance_verified": true,
   "security_applied": false,
   "production_ready": false,
   "enrollment_ready": false,
@@ -199,7 +199,10 @@
     "fix_ci_run": "https://github.com/PseudoDesign/kaiba-provisioning/actions/runs/37041522657",
     "fix_ci_x86_and_native_arm_checks_passed": true,
     "fix_ready_for_review": true,
-    "merge_authorized": false
+    "merge_authorized": true,
+    "fix_merged": true,
+    "fix_merge_revision": "36c910c89939bcffa2942d594d37472cb941409d",
+    "subsequent_verified_export_run": "https://github.com/PseudoDesign/kaiba-provisioning/actions/runs/37048987102"
   },
   "owned_state_correlation": {
     "assurance": "historical-public-metadata-and-current-running-os-correlation",
@@ -242,6 +245,12 @@
       "public_file_count": 16,
       "manifest_sha256": "sha256:ed695aeb1ccc4d577c99e19e64e5061bbf7714680a2c64c1ecd451e9b612901f",
       "copies_independently_reopened_and_synchronized": true
+    },
+    {
+      "directory": "native-staging-export-36c910c",
+      "public_file_count": 16,
+      "manifest_sha256": "sha256:e95d19c1771ce6e39a4e424619368936166f638d2f58ca69fc09720dee56e25f",
+      "copies_independently_reopened_and_synchronized": true
     }
   ],
   "fresh_nvme_gpt_capture": {
@@ -273,5 +282,31 @@
     "physical_execution_authorized": false,
     "destructive_staging_ready": false
   },
-  "sd_fixed_selector_present": false
+  "sd_fixed_selector_present": false,
+  "native_staging_component_export": {
+    "schema_version": "kaiba.provisioning.task1-native-staging-export-verification/v1alpha1",
+    "assurance": "authenticated-native-ci-and-independent-public-byte-validation",
+    "source_revision": "36c910c89939bcffa2942d594d37472cb941409d",
+    "run": "https://github.com/PseudoDesign/kaiba-provisioning/actions/runs/37048987102",
+    "artifact_id": 11246040718,
+    "artifact_sha256": "sha256:827f40db5929c009722e3a25da42d8d580fe22350c455a7bd597d75ae1e1bc81",
+    "component_path": "/nix/store/dd7vzf8ll7f6yl8vv3cd1xyp72mnfgf6-kaiba-pi-local-nvme-staging-native-component-0.1.0",
+    "component_nar_hash": "sha256-/G7LHh/xkbh7eyYkl9S86+vMNs6gKsh2HE6DoDq01+U=",
+    "binary_sha256": "sha256:3a124b442796099cba095254f9e64ff519d907e27c8500e21f83c61b074ccdd8",
+    "binary_size_bytes": 3508336,
+    "descriptor_sha256": "sha256:366b13b4d4550600de4df4b66b5c2cb8398d6e2539ed2119baacc0bfc55c61e8",
+    "exported_store_path_count": 3,
+    "archive_and_file_checksums_verified": true,
+    "native_runner_and_source_binding_verified": true,
+    "final_executable_manifest_verified": true,
+    "private_store_import_completed": true,
+    "all_exported_nar_hashes_and_sizes_recomputed": true,
+    "complete_staging_runtime_closure": false,
+    "original_payload_paths_restored": false,
+    "component_executed": false,
+    "physical_staging_performed": false,
+    "signing_performed": false,
+    "security_applied": false,
+    "production_ready": false
+  }
 }
