@@ -100,6 +100,7 @@ mean that the resulting image uses the native Pi boot path without kexec.
 | [Recovery preparation](stable-campaign-recovery.md) | Recovery-range descriptions; does not capture backup bytes |
 | [Staging sandbox](stable-campaign-sandbox.md) | Synthetic recovery, write, interruption, and readback rehearsal |
 | [Campaign device staging](stable-campaign-staging.md) | Fixed candidate device-leg contracts and native staging exports |
+| [Retained candidate task 1](task1-physical-acceptance.md) | Retained-candidate recovery and independently signed witness validation; original ownership and physical qualification remain open |
 | [Preparation packet](stable-campaign-packet.md) | Public checks for the old candidate's first two runs |
 | [Self-kexec diagnostic](../scripts/diagnostics/rpi5-self-kexec/README.md) | Retained file-handoff/SMP observations and their narrow limits |
 
