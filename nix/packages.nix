@@ -466,6 +466,28 @@ let
     };
   };
 
+  stableCampaignQualificationTool = pkgs.buildGoModule {
+    pname = "kaiba-rpi5-stable-campaign-qualify";
+    inherit version;
+    src = runtimeGoSource;
+    env.CGO_ENABLED = 0;
+    vendorHash = null;
+    subPackages = [ "cmd/kaiba-rpi5-stable-campaign-qualify" ];
+    ldflags = [
+      "-s"
+      "-w"
+    ];
+    doCheck = false;
+    meta = {
+      mainProgram = "kaiba-rpi5-stable-campaign-qualify";
+      description = "Validate independently reviewed public witnesses without device or signing access";
+      platforms = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
+    };
+  };
+
   stableCampaignGPTInspector = pkgs.buildGoModule {
     pname = "kaiba-rpi5-stable-campaign-gpt-inspect";
     inherit version;
@@ -2703,6 +2725,7 @@ in
     stableCampaignSandboxTool
     stableCampaignStagingTool
     stableCampaignStagingPlanCheck
+    stableCampaignQualificationTool
     stableCampaignPacketTool
     mkRpi5StableCampaignStaging
     mkRpi5StableCampaignStagingDescriptor

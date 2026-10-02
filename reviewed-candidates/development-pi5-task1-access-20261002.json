@@ -1,0 +1,312 @@
+{
+  "schema_version": "kaiba.provisioning.rpi5-task1-access-observation/v1alpha1",
+  "assurance": "read-only-development-access-and-public-artifact-inventory",
+  "observed_date": "2026-10-02",
+  "campaign_id": "development-pi5-fc3652e-98999517",
+  "device": {
+    "serial": "e03fbfb95a4265ae",
+    "board_revision": "a04171",
+    "model": "Raspberry Pi 5 Model B Rev 1.1",
+    "hostname": "kaiba-rpi5-provisioner",
+    "architecture": "aarch64",
+    "bootloader_release": "a8698392",
+    "bootloader_release_date": "2026-09-12",
+    "boot_id": "c6f95a8e-786e-404d-b86f-3d86cec4c3d0",
+    "observed_bootloader_configuration": {
+      "BOOT_UART": "1",
+      "BOOT_ORDER": "0xf261",
+      "ENABLE_SELF_UPDATE": "0"
+    }
+  },
+  "access": {
+    "transport": "usb-gadget-ethernet",
+    "target_address": "10.0.0.2",
+    "host_address": "10.0.0.1/24",
+    "hub_path": "3-4",
+    "pi_port": 2,
+    "probe_port": 3,
+    "probe_serial": "E663B035973F3F26",
+    "uart_baud": 115200,
+    "uart_bytes": 81766,
+    "uart_sha256": "sha256:3ba85572804d140158a38c5147563c3fb467986693cb0e70212f9311e49a8800",
+    "uart_ssh_fingerprint_matched": true,
+    "ssh_host_key_ephemeral": true,
+    "current_boot_image_digest": "sha256:24fb925328ce67697d85d44379d9d695941dedd633c327ab3886795a193f6020",
+    "current_boot_image_signature_reverified": true
+  },
+  "storage": {
+    "sd_capacity_bytes": 31268536320,
+    "nvme_capacity_bytes": 256060514304,
+    "nvme_serial": "IB26AG0256P00078",
+    "current_nvme_disk_guid": "b268f110-7d11-47c7-9bcc-2c4b480e4404",
+    "current_nvme_partition_names": [
+      "KAIBA_BOOT",
+      "KAIBA_ROOT",
+      "KAIBA_VERITY",
+      "KAIBA_LUKS_DEV",
+      "KAIBA_OFFLINE_DEV"
+    ],
+    "root_mount": "/dev/mapper/root",
+    "root_mount_read_only": true,
+    "original_layout_reconciliation_required": true
+  },
+  "clock": {
+    "reported_system_time": "2026-03-17T20:05:31Z",
+    "reported_rtc_time": "1970-01-01T00:50:02Z",
+    "ntp_synchronized": false,
+    "rtc_qualified": false,
+    "last_reported_system_time": "2026-03-18T08:25:03Z"
+  },
+  "authority": {
+    "endpoint": "192.168.8.249:8443",
+    "tls_connection_observation": "connection-refused",
+    "reviewed_ca_not_before": "2026-09-15T04:07:11Z",
+    "reviewed_ca_not_after": "2026-10-16T04:07:11Z",
+    "actual_server_certificate_validity_verified": false
+  },
+  "recovered_verifier": {
+    "path": "/nix/store/327n9wwix9r7wz9v0m7s46ghzzkcrcv1-kaiba-verifier-signed-98999517-public-evidence",
+    "source_revision": "fc3652eca697b0f763be8214abcedf8aa746d5b3",
+    "boot_image_digest": "sha256:a98a841a0c80bb375c714e06a752b2b84b6123d3ab29a0c6ec738a393b17a6e4",
+    "image_and_signature_reverified": true,
+    "authenticated_signing_receipt_reverified": true,
+    "gate_receipt_digest": "sha256:eeea865de397fe0bef917510c3e786e3ca73ad4261a3dc6fac022003110b07e4",
+    "original_native_build_run": "https://github.com/PseudoDesign/kaiba-provisioning/actions/runs/34932062738",
+    "native_archive_sha256": "sha256:30d22ea95212129a75a542e3261f5deae83c5170096a1f8be744fc3486b0d2d8",
+    "archive_and_file_checksums_verified": true,
+    "original_native_build_inputs_match_signing_inputs": true,
+    "native_store_import_completed": false,
+    "native_store_import_failure": "daemon-requires-trusted-store-signature",
+    "new_signing_performed": false,
+    "native_store_import_scope": "system-daemon",
+    "private_native_store_import_completed": true,
+    "private_native_output_nar_hashes_reverified": {
+      "/nix/store/7d4aifqwzqq4kzi6k3vsxb7h4wbfnjgq-kaiba-rpi5-stable-verifier-unsigned-boot": "sha256-vHnVWwS7WKIkuAGmJ6pbO69balow8D5wr4LmUIAN4RI=",
+      "/nix/store/2fff6568mhqd24kh1fsaqhm9zvvdx7ag-kaiba-rpi5-stable-campaign-verifier-signing-plan": "sha256-x6F40ok6wH/+zzP/9IX7RIlI8XqLbQhpQEyl9JKiuos="
+    },
+    "offline_verification_constructor_recovered": true,
+    "offline_verification_constructor_files_byte_identical": 12,
+    "verifier_rebuilt": false
+  },
+  "recovered_release": {
+    "path": "/nix/store/c8a8p6a20m1g773wq8xhzlv4qq76afjr-kaiba-development-pi5-delegated-release-20260915",
+    "source_revision": "206b204d2ddfdce2e1bb2843df5cd5c7c10d6622",
+    "root_data_digest": "sha256:68ebaaad2985e13b445b0d71bc7f3ef16fa064e870ee561f367282f3b4a80313",
+    "root_data_size_bytes": 2418016256,
+    "root_data_bytes_rehashed": true,
+    "offline_variant_verification": [
+      {
+        "manifest_digest": "sha256:89a8d8d711fc854ed2fd7339b209346e56e49a9821346cd885d0cae1d46ac3cf",
+        "policy_digest": "sha256:8b3d95cc2065e80ee703aafb22321b8dd9014af28f4e4e27608426fd939719b9",
+        "status": "verified",
+        "variant": "positive"
+      },
+      {
+        "manifest_digest": "sha256:47275218fe9a10f09b32133aa346baae827ccf3247d57d2482ab0b3228a0c4ca",
+        "policy_digest": "sha256:8b3d95cc2065e80ee703aafb22321b8dd9014af28f4e4e27608426fd939719b9",
+        "status": "verified",
+        "variant": "replacement"
+      },
+      {
+        "reason": "manifest signature uses revoked delegated key \"release-development-revoked-20260915\"",
+        "status": "rejected",
+        "variant": "revoked"
+      }
+    ],
+    "delegated_verification_evidence_digest": "sha256:a681b9485f0dec8a01838494336ebcecabb1019a9499669825e46ad72e56e894"
+  },
+  "protected_evidence_directory": "/home/codex-remote/kaiba-private/task1-physical-acceptance-20261002",
+  "original_ownership_verified": false,
+  "complete_campaign_capture": false,
+  "physical_staging_performed": false,
+  "campaign_runs_completed": 0,
+  "campaign_claims_closed": 0,
+  "complete_power_removal_independently_verified": false,
+  "safe_off_qualified": false,
+  "native_staging_component_provenance_verified": true,
+  "security_applied": false,
+  "production_ready": false,
+  "enrollment_ready": false,
+  "recovered_campaign": {
+    "assurance": "authenticated-public-input-and-candidate-digest-recovery",
+    "campaign_id": "development-pi5-fc3652e-98999517",
+    "plan_digest": "sha256:f913747c6e6959e6e8ce69c7c9974fe0187529eb70355e944c5a3ebcb3b4edbd",
+    "public_input_count": 27,
+    "byte_mutation_target_count": 10,
+    "authenticated_manifest_variant_count": 20,
+    "original_store_paths_restored": false,
+    "complete_materialization_package_verified": false,
+    "artifact_set_content_digest": "sha256:94d48ebe40a7494a294d1ab08b0c8a45b2551bc0a26f68ee65b0d704f75b5088",
+    "artifact_set_digest_recovered": true,
+    "offline_input_validation_completed": true,
+    "run_1_and_2_materializations_validated": true,
+    "retained_staging_plan_bytes_recovered": true,
+    "retained_staging_plan_digest": "sha256:ff0c6a94c29e5529bf7112bc58709246aad91dacfabc94ae019343a8b9aa430e",
+    "run_materialization_digests": {
+      "1": "sha256:7fbb9aa67d673d3d84fceaa22fcc1bdb918b436c824287099e66c65a2296af25",
+      "2": "sha256:d41e0e49c7b799c97a64e4bc2c82ba67f182d66f797197375fe177029920c445"
+    }
+  },
+  "recovered_partition_payloads": [
+    {
+      "role": "boot-filesystem",
+      "size_bytes": 134217728,
+      "sha256": "sha256:b8705f1ce178e6da6874db95cb3f7d46c6ed80a3b71a46dc47c036c0c7adff0f",
+      "candidate_digest_matches": true
+    },
+    {
+      "role": "root-data",
+      "size_bytes": 2418016256,
+      "sha256": "sha256:68ebaaad2985e13b445b0d71bc7f3ef16fa064e870ee561f367282f3b4a80313",
+      "candidate_digest_matches": true
+    },
+    {
+      "role": "root-hash",
+      "size_bytes": 19050496,
+      "sha256": "sha256:91c7c34db1449059d2293858415a0552f1c6b471443280f9303cd5efa3469469",
+      "candidate_digest_matches": true,
+      "verity_verified": true,
+      "whole_partition_sha256": "sha256:f27bfe6e09a466ea8d1a8092702db6c30685cba31402033050d00751716cd952"
+    },
+    {
+      "role": "release-filesystem",
+      "size_bytes": 2548039680,
+      "sha256": "sha256:dac60b6cb2f8e36b36ab708785b8b332c26ea641705311e0516e21b2793f4d8d",
+      "candidate_digest_matches": true,
+      "whole_partition_sha256": "sha256:3636fc8c71dc2316b05cf81364611d9d03fd30a51b0f66dcd9b5245001abe3fe",
+      "dense_source_reconstruction_verified": true,
+      "extracted_components_compared": true
+    }
+  ],
+  "rejected_release_filesystem_recovery": {
+    "size_bytes": 2548039680,
+    "expected_sha256": "sha256:dac60b6cb2f8e36b36ab708785b8b332c26ea641705311e0516e21b2793f4d8d",
+    "pinned_recipe_actual_sha256": "sha256:ff425478f04d90e33a76d23c8e440460555b221db1518158c40a23e5501e5e5a",
+    "candidate_digest_matches": false,
+    "physical_use_authorized": false,
+    "original_image_recovery_required": false,
+    "subsequent_digest_matching_recovery_completed": true
+  },
+  "native_staging_component_attempt": {
+    "source_revision": "93183ee2b13e4633be9e2568007d3d3f87d6c787",
+    "run": "https://github.com/PseudoDesign/kaiba-provisioning/actions/runs/37036428710",
+    "export_status": "rejected-component-binary-digest-or-size-differs",
+    "fix_pull_request": "https://github.com/PseudoDesign/kaiba-provisioning/pull/99",
+    "fix_branch_revision": "6b1ab1abbaae3016cef5411bd7d03f5e5c6680df",
+    "final_arm_package_check_passed": true,
+    "local_arm_check_uses_emulation": true,
+    "native_export_provenance_complete": false,
+    "fix_ci_run": "https://github.com/PseudoDesign/kaiba-provisioning/actions/runs/37041522657",
+    "fix_ci_x86_and_native_arm_checks_passed": true,
+    "fix_ready_for_review": true,
+    "merge_authorized": true,
+    "fix_merged": true,
+    "fix_merge_revision": "36c910c89939bcffa2942d594d37472cb941409d",
+    "subsequent_verified_export_run": "https://github.com/PseudoDesign/kaiba-provisioning/actions/runs/37048987102"
+  },
+  "owned_state_correlation": {
+    "assurance": "historical-public-metadata-and-current-running-os-correlation",
+    "current_public_key_provider": "raspberrypi,bootloader-public-key",
+    "current_public_key_size_bytes": 264,
+    "current_public_key_sha256": "sha256:b8818acea4e71173903ee003e33ed37e969def7d2ea67bec15c0b73cb36c3895",
+    "historical_board_and_key_match": true,
+    "historical_result_stream_hashes_reverified": true,
+    "independent_post_update_eeprom_hash_verified": false,
+    "original_ownership_verified": false,
+    "private_otp_rows_read": false
+  },
+  "historical_media_receipts": {
+    "operator_listed_public_json_files": 5,
+    "original_ownership_evidence": false,
+    "protected_export_received": false,
+    "export_script": "scripts/task1-export-public-media-receipts.sh"
+  },
+  "additional_protected_retention": [
+    {
+      "directory": "recovered-public",
+      "public_file_count": 80,
+      "manifest_sha256": "sha256:88f0960ee98063f0db427e5b9fed153b62279063dc948f829ffdfa9ad2acd463",
+      "copies_independently_reopened_and_synchronized": true
+    },
+    {
+      "directory": "owned-state-correlation",
+      "public_file_count": 14,
+      "manifest_sha256": "sha256:ad3a5be6629fc2bbc7bc89afb4f2fdc400bdc26bac86020178b89748d77b55ad",
+      "copies_independently_reopened_and_synchronized": true
+    },
+    {
+      "directory": "payload-and-gpt-completion",
+      "public_file_count": 7,
+      "manifest_sha256": "sha256:8e7187da9e67260b8f620e3dd15fe387b2d1d5e9fb74c258e416bf09dccd5e26",
+      "copies_independently_reopened_and_synchronized": true
+    },
+    {
+      "directory": "planning-reconciliation",
+      "public_file_count": 16,
+      "manifest_sha256": "sha256:ed695aeb1ccc4d577c99e19e64e5061bbf7714680a2c64c1ecd451e9b612901f",
+      "copies_independently_reopened_and_synchronized": true
+    },
+    {
+      "directory": "native-staging-export-36c910c",
+      "public_file_count": 16,
+      "manifest_sha256": "sha256:e95d19c1771ce6e39a4e424619368936166f638d2f58ca69fc09720dee56e25f",
+      "copies_independently_reopened_and_synchronized": true
+    }
+  ],
+  "fresh_nvme_gpt_capture": {
+    "assurance": "read-only-range-consistency-observation",
+    "schema_version": "kaiba.provisioning.rpi5-stable-verifier-initial-gpt-recovery-envelope/v1alpha2",
+    "capture_id": "capture:9abc7e096bbdd6e2bda3677ccf6ed1f98c0b10fb198800996315b7d665817d15",
+    "envelope_digest": "sha256:4376044f12ad6e52a50d0dbfbc8bac91c4b394875361816ef505efd463344d2a",
+    "selected_disk_guid": "b268f110-7d11-47c7-9bcc-2c4b480e4404",
+    "physical_end_state": "selected-lineage-backup",
+    "partition_count": 5,
+    "recovery_range_count": 6,
+    "original_staging_plan_identity_matches": false,
+    "backup_bytes_captured": false,
+    "tool_path": "/nix/store/mggdyfw81v2agqhj2kkr1b6vnkpisyid-kaiba-rpi5-stable-campaign-gpt-inspect-aarch64-unknown-linux-gnu-0.1.0/bin/kaiba-rpi5-stable-campaign-gpt-inspect",
+    "tool_sha256": "sha256:43b5db06530cce9d04557054427fccf0841a192d3013a9518262cb6157c9e316"
+  },
+  "proposed_storage_reconciliation": {
+    "assurance": "file-only-proposed-storage-identity-reconciliation",
+    "retained_staging_plan_digest": "sha256:ff0c6a94c29e5529bf7112bc58709246aad91dacfabc94ae019343a8b9aa430e",
+    "proposed_staging_plan_digest": "sha256:fab535df53ce4204d99e787c449e072971f0d88eac504a63ee67a470a7d1c766",
+    "unchanged_campaign_plan_digest": "sha256:f913747c6e6959e6e8ce69c7c9974fe0187529eb70355e944c5a3ebcb3b4edbd",
+    "unchanged_artifact_set_content_digest": "sha256:94d48ebe40a7494a294d1ab08b0c8a45b2551bc0a26f68ee65b0d704f75b5088",
+    "retained_nvme_disk_guid": "bb5289ea-2c0b-424f-a4c7-23c8fdf1ebae",
+    "observed_proposed_nvme_disk_guid": "b268f110-7d11-47c7-9bcc-2c4b480e4404",
+    "partition_payloads_and_geometry_unchanged": true,
+    "operator_review_required": true,
+    "sd_capture_pending": true,
+    "backup_bytes_captured": false,
+    "physical_execution_authorized": false,
+    "destructive_staging_ready": false
+  },
+  "sd_fixed_selector_present": false,
+  "native_staging_component_export": {
+    "schema_version": "kaiba.provisioning.task1-native-staging-export-verification/v1alpha1",
+    "assurance": "authenticated-native-ci-and-independent-public-byte-validation",
+    "source_revision": "36c910c89939bcffa2942d594d37472cb941409d",
+    "run": "https://github.com/PseudoDesign/kaiba-provisioning/actions/runs/37048987102",
+    "artifact_id": 11246040718,
+    "artifact_sha256": "sha256:827f40db5929c009722e3a25da42d8d580fe22350c455a7bd597d75ae1e1bc81",
+    "component_path": "/nix/store/dd7vzf8ll7f6yl8vv3cd1xyp72mnfgf6-kaiba-pi-local-nvme-staging-native-component-0.1.0",
+    "component_nar_hash": "sha256-/G7LHh/xkbh7eyYkl9S86+vMNs6gKsh2HE6DoDq01+U=",
+    "binary_sha256": "sha256:3a124b442796099cba095254f9e64ff519d907e27c8500e21f83c61b074ccdd8",
+    "binary_size_bytes": 3508336,
+    "descriptor_sha256": "sha256:366b13b4d4550600de4df4b66b5c2cb8398d6e2539ed2119baacc0bfc55c61e8",
+    "exported_store_path_count": 3,
+    "archive_and_file_checksums_verified": true,
+    "native_runner_and_source_binding_verified": true,
+    "final_executable_manifest_verified": true,
+    "private_store_import_completed": true,
+    "all_exported_nar_hashes_and_sizes_recomputed": true,
+    "complete_staging_runtime_closure": false,
+    "original_payload_paths_restored": false,
+    "component_executed": false,
+    "physical_staging_performed": false,
+    "signing_performed": false,
+    "security_applied": false,
+    "production_ready": false
+  }
+}

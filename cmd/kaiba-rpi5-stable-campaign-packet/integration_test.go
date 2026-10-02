@@ -20,6 +20,7 @@ import (
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/bundle"
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/campaignmedia"
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/campaignpacket"
+	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/campaignqualification"
 	"github.com/ams-tech/nixos-kaiba-network/provisioning/internal/provisioning/stablecampaign"
 )
 
@@ -161,8 +162,10 @@ func TestPublicCampaignPacketIntegration(t *testing.T) {
 		publicPaths[binding.Name] = path
 		arguments = append(arguments, "--public-input", binding.Name+"="+path)
 	}
+	targetPaths := make(map[string]string)
 	for _, recipe := range plan.ByteXORMutations {
 		path := copyInput(filepath.Join(os.Getenv("KAIBA_PACKET_TARGETS"), recipe.Target), "targets/"+recipe.Target)
+		targetPaths[recipe.Target] = path
 		arguments = append(arguments, "--byte-mutation-target", recipe.Target+"="+path)
 	}
 	t.Log("Verifying both real materializations, all public recipe bytes, complete payloads and planned zero tails")
@@ -172,6 +175,69 @@ func TestPublicCampaignPacketIntegration(t *testing.T) {
 	}
 	if stderr.Len() != 0 {
 		t.Fatalf("successful packet produced diagnostics: %s", stderr.String())
+	}
+	// Exercise independent expectation construction with the same real fixture
+	// bytes, not a freely authored readback declaration. No physical evidence or
+	// reviewer key is supplied, so this cannot create an acceptance report.
+	materialization, err := campaignmedia.ParseRunArtifactMaterialization(read(run1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	qualification := campaignqualification.Input{Plan: plan, Baseline: artifacts, Materialization: materialization, Layout: staging,
+		DeviceFingerprint: bundle.Sum([]byte("synthetic-fixture-board")), ProfileDigest: bundle.Sum([]byte("synthetic-fixture-profile")),
+		PublicSources: stablecampaign.PublicArtifactSources{PublicInputs: map[string]stablecampaign.PublicArtifactSource{}, ByteMutationTargets: map[string]stablecampaign.PublicArtifactSource{}},
+		Payloads:      map[campaignmedia.PartitionRole]stablecampaign.PublicArtifactSource{}}
+	openSource := func(path string) stablecampaign.PublicArtifactSource {
+		t.Helper()
+		file, err := os.Open(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { file.Close() })
+		info, err := file.Stat()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return stablecampaign.PublicArtifactSource{ReaderAt: file, SizeBytes: uint64(info.Size())}
+	}
+	for name, path := range publicPaths {
+		qualification.PublicSources.PublicInputs[name] = openSource(path)
+	}
+	for name, path := range targetPaths {
+		qualification.PublicSources.ByteMutationTargets[name] = openSource(path)
+	}
+	for name, path := range payloads {
+		qualification.Payloads[name] = openSource(path)
+	}
+	expectation, err := campaignqualification.Prepare(qualification)
+	if err != nil {
+		t.Fatalf("independently prepared qualification expectation: %v", err)
+	}
+	expectationJSON, err := expectation.CanonicalJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var projected struct {
+		Partitions []stablecampaign.MediaPartitionBinding `json:"media_partitions"`
+	}
+	if err := json.Unmarshal(expectationJSON, &projected); err != nil {
+		t.Fatal(err)
+	}
+	if len(projected.Partitions) != 4 {
+		t.Fatal("qualification expectation omitted a complete partition")
+	}
+	for _, expected := range projected.Partitions {
+		matched := false
+		for _, device := range staging.Devices {
+			for _, partition := range device.Partitions {
+				if string(partition.Role) == string(expected.Role) {
+					matched = expected.Digest == partition.ExpectedWholePartitionSHA256 && expected.SizeBytes == partition.CapacityBytes
+				}
+			}
+		}
+		if !matched {
+			t.Fatal("qualification media hash differed from independently prepared packet")
+		}
 	}
 	encoded := stdout.Bytes()
 	if len(encoded) == 0 || encoded[len(encoded)-1] != '\n' || bytes.Contains(encoded[:len(encoded)-1], []byte{'\n'}) {

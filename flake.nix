@@ -661,6 +661,7 @@
           kaiba-rpi5-stable-campaign-recovery-requirements = built.stableCampaignRecoveryRequirementsTool;
           kaiba-rpi5-stable-campaign-sandbox = built.stableCampaignSandboxTool;
           kaiba-rpi5-stable-campaign-stage = built.stableCampaignStagingTool;
+          kaiba-rpi5-stable-campaign-qualify = built.stableCampaignQualificationTool;
           kaiba-rpi5-stable-campaign-packet = built.stableCampaignPacketTool;
           kaiba-rpi5-stable-campaign-signing = built.stableCampaignSigningTool;
           kaiba-rpi5-stable-verifier-signing = built.stableVerifierSigningTool;
