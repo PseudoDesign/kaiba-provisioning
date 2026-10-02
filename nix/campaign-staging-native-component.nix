@@ -41,6 +41,10 @@ tool.overrideAttrs (old: {
   postInstall = (old.postInstall or "") + ''
     mkdir -p "$out/share/kaiba"
     cp "$descriptorInput" "$out/share/kaiba/descriptor.json"
+  '';
+  # Fixup can strip or rewrite the installed executable. Bind the bytes that
+  # leave the builder, after all inherited fixup hooks have completed.
+  postFixup = (old.postFixup or "") + ''
     python3 ${./campaign-staging-inputs.py} component \
       --plan-validator ${planValidator}/bin/kaiba-rpi5-stable-campaign-staging-plan-check \
       --descriptor "$descriptorInput" --binary "$out/bin/kaiba-rpi5-stable-campaign-stage" \

@@ -28,6 +28,17 @@ let
   };
   importedConfiguration = importedDescriptor.kaibaRpi5StableCampaignStagingDescriptor.configuration;
   importedClosure = pkgs.closureInfo { rootPaths = [ importedConfiguration ]; };
+  # On ARM, inspect the final real package after Nix fixup, including stripping.
+  # The selected descriptor is public metadata only; no payload or device is
+  # opened, and this fixture revision is not native-build provenance.
+  nativeComponent =
+    if pkgs.stdenv.hostPlatform.system == "aarch64-linux" then
+      built.mkRpi5StableCampaignStagingNativeComponent {
+        descriptor = ../reviewed-candidates/development-pi5-staging-20260915/descriptor.json;
+        sourceRevision = "1111111111111111111111111111111111111111";
+      }
+    else
+      null;
 in
 assert refuses {
   leg = "malak-sd";
@@ -66,6 +77,13 @@ pkgs.runCommand "kaiba-campaign-staging-split-contract"
     grep -Fx ${lib.escapeShellArg (toString payload)} ${configurationClosure}/store-paths
     grep -Fx ${lib.escapeShellArg importedPlan} ${importedClosure}/store-paths
     grep -Fx ${lib.escapeShellArg (toString importedPayloadRoot)} ${importedClosure}/store-paths
+    ${lib.optionalString (nativeComponent != null) ''
+      python3 ${../nix/campaign-staging-inputs.py} verify-component \
+        --plan-validator "$KAIBA_STAGING_PLAN_VALIDATOR" \
+        --descriptor ${../reviewed-candidates/development-pi5-staging-20260915/descriptor.json} \
+        --directory ${nativeComponent} \
+        --source-revision 1111111111111111111111111111111111111111
+    ''}
     mkdir "$out"
     printf '%s\n' 'split native staging descriptor and public assembly boundaries: pass' > "$out/result.txt"
   ''
