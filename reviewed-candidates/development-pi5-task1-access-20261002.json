@@ -48,14 +48,26 @@
     ],
     "root_mount": "/dev/mapper/root",
     "root_mount_read_only": true,
-    "original_layout_reconciliation_required": true
+    "original_layout_reconciliation_required": true,
+    "reported_sd_disk_guid": "5625eee2-0c8a-402f-8c2f-5a1347652bb2",
+    "reported_sd_guid_matches_retained_plan": true,
+    "sd_identity_assurance": "current-running-os-correlation-only",
+    "pi_nix_store_read_only": true,
+    "pi_tmp_available_bytes": 509902848,
+    "pi_var_available_bytes": 268025856,
+    "separate_writable_storage_attached": false,
+    "selected_backing_storage_host": "malak",
+    "selected_transport": "isolated-usb-ethernet-10.0.0.1-to-10.0.0.2",
+    "separate_storage_minimum_free_bytes": 25769803776,
+    "network_share_qualified": false,
+    "runtime_deployment_and_storage_qualification_pending": true
   },
   "clock": {
     "reported_system_time": "2026-03-17T20:05:31Z",
     "reported_rtc_time": "1970-01-01T00:50:02Z",
     "ntp_synchronized": false,
     "rtc_qualified": false,
-    "last_reported_system_time": "2026-03-18T08:25:03Z"
+    "last_reported_system_time": "2026-03-18T11:32:42Z"
   },
   "authority": {
     "endpoint": "192.168.8.249:8443",
@@ -251,6 +263,12 @@
       "public_file_count": 16,
       "manifest_sha256": "sha256:e95d19c1771ce6e39a4e424619368936166f638d2f58ca69fc09720dee56e25f",
       "copies_independently_reopened_and_synchronized": true
+    },
+    {
+      "directory": "staging-package-preparation-c4b9dcf",
+      "public_file_count": 16,
+      "manifest_sha256": "sha256:52ce4d75fd5ee9c36c67057d93dc0731dba1e45a8e6b1e820d6fc20eea9bea73",
+      "copies_independently_reopened_and_synchronized": true
     }
   ],
   "fresh_nvme_gpt_capture": {
@@ -307,6 +325,106 @@
     "physical_staging_performed": false,
     "signing_performed": false,
     "security_applied": false,
-    "production_ready": false
+    "production_ready": false,
+    "scope": "original-20260915-descriptor-only",
+    "new_recovered_descriptor_compatible": false
+  },
+  "recovered_staging_package_preparation": {
+    "review_directory": "reviewed-candidates/development-pi5-staging-recovered-20261002",
+    "bindings": {
+      "destructive_staging_ready": false,
+      "nvme_configuration": "/nix/store/47psgvgaqj0mf48f7xh3hzndch32fmsj-kaiba-pi-local-nvme-staging-configuration.json",
+      "nvme_descriptor": "/nix/store/250f4xizd322mpjyx8p3h4m1a8my92k2-kaiba-pi-local-nvme-staging-descriptor.json",
+      "nvme_payloads": {
+        "release-filesystem": "/nix/store/8ql5xf1hg94b592jr8n56j5h5mhjb2hj-kaiba-task1-retained-release-filesystem.img"
+      },
+      "physical_execution_authorized": false,
+      "proposed_storage_plan_operator_review_required": true,
+      "sd_candidate": "/nix/store/xdrihifikpbyx048jac79019rhv5cz4c-kaiba-malak-sd-campaign-stage-0.1.0",
+      "sd_configuration": "/nix/store/vr9fxj6jkqpbg8n7si0r59n8cshs9m0f-kaiba-malak-sd-staging-configuration.json",
+      "sd_payloads": {
+        "boot-filesystem": "/nix/store/nkkf7zgfhs8ar5vzn9cksac6ksyd46mp-kaiba-task1-retained-boot-filesystem.img",
+        "root-data": "/nix/store/3wrh182ninz2j896aa2h7lhdyhfq0mjp-kaiba-task1-retained-root-data.img",
+        "root-hash": "/nix/store/l5dlk0hpp90ikmmgglq0zs1x6xcp1580-kaiba-task1-retained-root-hash.img"
+      },
+      "source_revision": "c4b9dcf9b0460cca889e4555c75a1f9a20f70754",
+      "staging_plan": "/nix/store/wfd8y6sydc8gi6qrbk2aknmn3q7fbxxa-kaiba-task1-proposed-current-nvme-staging-plan.json"
+    },
+    "validation": {
+      "schema_version": "kaiba.provisioning.task1-recovered-staging-package-preparation/v1alpha1",
+      "assurance": "local-native-build-and-independent-public-byte-validation",
+      "source_revision": "c4b9dcf9b0460cca889e4555c75a1f9a20f70754",
+      "build_machine": "x86_64",
+      "staging_plan_digest": "sha256:fab535df53ce4204d99e787c449e072971f0d88eac504a63ee67a470a7d1c766",
+      "staging_plan_sha256": "sha256:942b511f202957e1f470fc7909c2c6be2df273005068177bcedd83cc1796c214",
+      "sd_candidate": "/nix/store/xdrihifikpbyx048jac79019rhv5cz4c-kaiba-malak-sd-campaign-stage-0.1.0",
+      "sd_binary_sha256": "sha256:a7cbe2043e9fd04685334f18b467910c347fb0c8c4c7e4ee9816e4afab46d476",
+      "sd_binary_size_bytes": 3770352,
+      "sd_complete_runtime_closure_verified": true,
+      "sd_required_closure_paths": [
+        "/nix/store/3wrh182ninz2j896aa2h7lhdyhfq0mjp-kaiba-task1-retained-root-data.img",
+        "/nix/store/l5dlk0hpp90ikmmgglq0zs1x6xcp1580-kaiba-task1-retained-root-hash.img",
+        "/nix/store/nkkf7zgfhs8ar5vzn9cksac6ksyd46mp-kaiba-task1-retained-boot-filesystem.img",
+        "/nix/store/vr9fxj6jkqpbg8n7si0r59n8cshs9m0f-kaiba-malak-sd-staging-configuration.json",
+        "/nix/store/wfd8y6sydc8gi6qrbk2aknmn3q7fbxxa-kaiba-task1-proposed-current-nvme-staging-plan.json",
+        "/nix/store/xdrihifikpbyx048jac79019rhv5cz4c-kaiba-malak-sd-campaign-stage-0.1.0"
+      ],
+      "sd_closure_path_count": 8,
+      "nvme_descriptor": "/nix/store/250f4xizd322mpjyx8p3h4m1a8my92k2-kaiba-pi-local-nvme-staging-descriptor.json",
+      "nvme_descriptor_sha256": "sha256:fbe23a7d4443c1ff72b71cc4271bb1dd9d730b05ce964bcfefc815b73a12457e",
+      "payloads": [
+        {
+          "role": "boot-filesystem",
+          "path": "/nix/store/nkkf7zgfhs8ar5vzn9cksac6ksyd46mp-kaiba-task1-retained-boot-filesystem.img",
+          "size_bytes": 134217728,
+          "sha256": "sha256:b8705f1ce178e6da6874db95cb3f7d46c6ed80a3b71a46dc47c036c0c7adff0f",
+          "whole_partition_sha256": "sha256:b8705f1ce178e6da6874db95cb3f7d46c6ed80a3b71a46dc47c036c0c7adff0f"
+        },
+        {
+          "role": "root-data",
+          "path": "/nix/store/3wrh182ninz2j896aa2h7lhdyhfq0mjp-kaiba-task1-retained-root-data.img",
+          "size_bytes": 2418016256,
+          "sha256": "sha256:68ebaaad2985e13b445b0d71bc7f3ef16fa064e870ee561f367282f3b4a80313",
+          "whole_partition_sha256": "sha256:68ebaaad2985e13b445b0d71bc7f3ef16fa064e870ee561f367282f3b4a80313"
+        },
+        {
+          "role": "root-hash",
+          "path": "/nix/store/l5dlk0hpp90ikmmgglq0zs1x6xcp1580-kaiba-task1-retained-root-hash.img",
+          "size_bytes": 19050496,
+          "sha256": "sha256:91c7c34db1449059d2293858415a0552f1c6b471443280f9303cd5efa3469469",
+          "whole_partition_sha256": "sha256:f27bfe6e09a466ea8d1a8092702db6c30685cba31402033050d00751716cd952"
+        },
+        {
+          "role": "release-filesystem",
+          "path": "/nix/store/8ql5xf1hg94b592jr8n56j5h5mhjb2hj-kaiba-task1-retained-release-filesystem.img",
+          "size_bytes": 2548039680,
+          "sha256": "sha256:dac60b6cb2f8e36b36ab708785b8b332c26ea641705311e0516e21b2793f4d8d",
+          "whole_partition_sha256": "sha256:3636fc8c71dc2316b05cf81364611d9d03fd30a51b0f66dcd9b5245001abe3fe"
+        }
+      ],
+      "nvme_typed_inputs_and_whole_partition_verified": true,
+      "old_native_component_rejected_for_new_descriptor": true,
+      "new_nvme_native_component_required": true,
+      "nvme_complete_runtime_closure_verified": false,
+      "original_store_paths_restored": false,
+      "proposed_storage_plan_operator_review_required": true,
+      "sd_capture_pending": true,
+      "backup_bytes_captured": false,
+      "original_ownership_verified": false,
+      "physical_execution_authorized": false,
+      "physical_staging_performed": false,
+      "destructive_staging_ready": false,
+      "security_applied": false,
+      "production_ready": false
+    },
+    "closure_archive_size_bytes": 2559053459,
+    "closure_archive_sha256": "sha256:0b8328513b3e573b04f911731689261bd68c47745399f8b994316631dad4553e",
+    "closure_exported_store_path_count": 11,
+    "all_nar_hashes_sizes_and_references_recomputed": true,
+    "complete_sd_staging_runtime_exported": true,
+    "complete_nvme_staging_inputs_exported": true,
+    "complete_nvme_staging_runtime_exported": false,
+    "new_nvme_native_component_required": true,
+    "physical_staging_performed": false
   }
 }
