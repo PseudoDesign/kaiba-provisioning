@@ -75,7 +75,9 @@ the same tools validated run 1 and run 2 materializations against actual bytes.
 The staging-plan constructor also reproduced the exact embedded plan bytes
 and original `sha256:ff0c6a94c29e5529bf7112bc58709246aad91dacfabc94ae019343a8b9aa430e`.
 These recovered files do not register the six missing original store paths.
-Complete immutable package/path bindings remain open.
+The original immutable package/path bindings remain missing. A separate
+recovered-path proposal below binds the independently validated bytes to
+new explicit immutable paths.
 
 The [native staging export attempt](https://github.com/PseudoDesign/kaiba-provisioning/actions/runs/37036428710)
 selected reviewed main ancestor `93183ee2b13e4633be9e2568007d3d3f87d6c787`.
@@ -97,6 +99,34 @@ and was not executed. Its complete component closure remains an incomplete
 staging runtime: the six original input paths are still missing, and both
 complete staging packages remain required. The approval covers software
 merge/export; physical execution remains unapproved.
+
+PR #100 was subsequently merged as
+`c4b9dcf9b0460cca889e4555c75a1f9a20f70754`, after both build lanes and the
+completion gate passed. The
+[recovered staging proposal](../reviewed-candidates/development-pi5-staging-recovered-20261002/README.md)
+uses its existing constructors with new immutable paths for the four verified
+payloads and proposed current-NVMe plan. The local native x86 SD package is
+complete, and `sd.nix` reproduces the exact package path. The new NVMe descriptor
+passes the typed plan and complete release-partition checks; the previous ARM
+component correctly rejects its changed fixed configuration. A new reviewed
+native ARM export and complete NVMe assembly remain required.
+
+The complete SD runtime and recovered NVMe inputs were exported as 11 store
+paths, then independently reimported into the isolated inspection store.
+Every NAR hash, size and reference was recomputed. The compressed archive is
+2,559,053,459 bytes with digest
+`sha256:0b8328513b3e573b04f911731689261bd68c47745399f8b994316631dad4553e`.
+It does not yet contain the complete NVMe runtime. This packaging retains the
+same signed candidate, campaign plan and all payload digests; it does not
+authorize the proposed NVMe identity reconciliation or physical execution.
+
+The operator selected malak for separate runtime and recovery storage.
+The [storage worksheet](../reviewed-candidates/development-pi5-staging-recovered-20261002/malak-storage.md)
+records the proposed restricted USB NFSv4 setup and actual qualification still
+required. The Pi's Nix store is read-only; `/tmp` and `/var` have only about
+510 MB and 268 MB available. No host export or Pi mount has been activated.
+The current OS reports the retained SD disk and partition GUIDs, but that
+correlation does not replace its inactive independent GPT capture on malak.
 
 The five protected files listed by the operator are historical v0.1.5/v0.1.6
 media receipts, not original ownership completion evidence. The narrow
@@ -170,6 +200,11 @@ plan records, with manifest digest
 The `native-staging-export-36c910c` subdirectory retains 16 export, provenance
 and independent-validation files, with manifest digest
 `sha256:e95d19c1771ce6e39a4e424619368936166f638d2f58ca69fc09720dee56e25f`.
+The `staging-package-preparation-c4b9dcf` subdirectory retains 16 package,
+archive, provenance and validation files, with manifest digest
+`sha256:52ce4d75fd5ee9c36c67057d93dc0731dba1e45a8e6b1e820d6fc20eea9bea73`.
+Its review-file copies record the proposal before the later storage worksheet
+and task/access documentation updates.
 All copies were reopened, compared and synchronized with their directories.
 This access observation
 does not establish complete cold-power removal, safe-off behavior, EEPROM/OTP
