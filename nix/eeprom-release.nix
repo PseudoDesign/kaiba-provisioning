@@ -20,6 +20,46 @@ let
     hash = "sha256-GyPaiVGdc7B97PJuj7j3l4gA1AfSvrIfZsHO75AeTaU=";
   };
 
+  usbbootLicense = pkgs.fetchurl {
+    name = "usbboot-${policy.updateWorkflow.revision}-LICENSE";
+    url = "https://raw.githubusercontent.com/raspberrypi/usbboot/${policy.updateWorkflow.revision}/LICENSE";
+    hash = "sha256-tAkwu8+AdEyGxGoSvJ2gVmQdcicWw3j1ZZueVV74M+E=";
+  };
+
+  firmwareNotices = pkgs.writeText "rpi5-eeprom-firmware-notices.md" ''
+    # Raspberry Pi EEPROM release notices
+
+    Retain this directory with copies of this release's firmware and tools.
+    The complete upstream copyright notices, conditions and disclaimers are in
+    rpi-eeprom-LICENSE; usbboot-LICENSE contains the full Apache-2.0 text for
+    the separately sourced update helper.
+
+    Source: https://github.com/raspberrypi/rpi-eeprom/tree/${policy.source.revision}
+    Firmware release: ${policy.firmware.release}
+
+    | Distributed files | Upstream files | Applicable license entry |
+    | --- | --- | --- |
+    | firmware/pieeprom.original.bin | ${policy.firmware.image.upstreamPath} | rpi-eeprom-LICENSE: firmware-2712/*, custom |
+    | firmware/recovery.original.bin | ${policy.firmware.recovery.upstreamPath} | rpi-eeprom-LICENSE: firmware-2712/*, custom |
+    | firmware/components/bootcode.bin, firmware/components/bootsys | Components extracted from the original EEPROM image | rpi-eeprom-LICENSE: firmware-2712/*, custom |
+    | toolchain/rpi-eeprom-config, toolchain/rpi-eeprom-digest, toolchain/rpi-sign-bootcode, toolchain/rpi-bootloader-key-convert | rpi-eeprom-config, rpi-eeprom-digest, tools/rpi-sign-bootcode, tools/rpi-bootloader-key-convert | rpi-eeprom-LICENSE: *, BSD-3 |
+    | provenance/firmware-2712-release-notes.md, provenance/firmware-2712-versions.txt | firmware-2712/release-notes.md, firmware-2712/versions.txt | Retain the complete rpi-eeprom-LICENSE |
+    | toolchain/update-pieeprom.sh | tools/update-pieeprom.sh at usbboot revision ${policy.updateWorkflow.revision} | usbboot-LICENSE: Apache-2.0 |
+
+    Update-helper source and license:
+    https://github.com/raspberrypi/usbboot/tree/${policy.updateWorkflow.revision}
+
+    The firmware is copyright 2024 Raspberry Pi (Trading) Ltd. Its custom
+    terms restrict use to developing for, running or using a Raspberry Pi
+    device and grant binary redistribution without modification. The complete
+    license also retains the uIP and QR Code generator notices. Extracted
+    components retain the firmware terms; BSD-3 covers the listed tools.
+
+    This output contains public upstream firmware and tools. These notices
+    do not establish permission to redistribute later configured or signed
+    variants; clarify how the vendor grant applies before that redistribution.
+  '';
+
   verifier = pkgs.writeShellApplication {
     name = "kaiba-verify-rpi5-eeprom-release";
     runtimeInputs = with pkgs; [
@@ -361,6 +401,7 @@ let
             eepromSource
             releaseManifest
             releaseManifestDigest
+            usbbootLicense
             updatePieeprom
             verifier
             ;
@@ -393,6 +434,7 @@ let
 
         mkdir -p \
           "$out/firmware/components" \
+          "$out/notices" \
           "$out/provenance" \
           "$out/toolchain" \
           "$TMPDIR/extracted"
@@ -415,6 +457,10 @@ let
         install -m 0444 \
           ${eepromSource}/tools/rpi-bootloader-key-convert \
           "$out/${policy.tools.rpiBootloaderKeyConvert.path}"
+
+        install -m 0444 ${eepromSource}/LICENSE "$out/notices/rpi-eeprom-LICENSE"
+        install -m 0444 ${usbbootLicense} "$out/notices/usbboot-LICENSE"
+        install -m 0444 ${firmwareNotices} "$out/notices/README.md"
 
         (
           cd "$TMPDIR/extracted"
@@ -462,6 +508,9 @@ let
           firmware/components/bootsys \
           firmware/pieeprom.original.bin \
           firmware/recovery.original.bin \
+          notices/README.md \
+          notices/rpi-eeprom-LICENSE \
+          notices/usbboot-LICENSE \
           provenance/firmware-2712-release-notes.md \
           provenance/firmware-2712-versions.txt \
           release.json \
