@@ -88,8 +88,39 @@ let
         };
       }
       ''
-        mkdir -p "$out/bundle"
+        mkdir -p "$out/bundle" "$out/notices"
+        # The recovery payload is EEPROM firmware; the host tool's Apache
+        # license does not replace its custom firmware terms. Bind that origin
+        # before copying the notices supplied by the pinned submodule.
+        cmp ${rpibootBase.src}/recovery5/bootcode5.bin \
+          ${rpibootBase.src}/rpi-eeprom/firmware-2712/latest/recovery.bin
         install -m 0444 ${rpibootBase.src}/recovery5/bootcode5.bin "$out/bundle/bootcode5.bin"
+        install -m 0444 ${rpibootBase.src}/rpi-eeprom/LICENSE "$out/notices/rpi-eeprom-LICENSE"
+        install -m 0444 ${rpibootBase.src}/LICENSE "$out/notices/usbboot-LICENSE"
+        install -m 0444 ${rpibootBase.src}/debian/copyright "$out/notices/usbboot-copyright"
+        cat > "$out/notices/README.md" <<'EOF'
+        # Raspberry Pi probe firmware notices
+
+        Retain this directory with copies of the probe firmware, including
+        when extracting bundle/ for use with RPIBOOT.
+
+        bundle/bootcode5.bin is an unchanged copy of recovery5/bootcode5.bin
+        from usbboot ${rpibootBase.version}. It is byte-identical to the pinned
+        rpi-eeprom submodule's firmware-2712/latest/recovery.bin. The complete
+        rpi-eeprom-LICENSE supplies the firmware copyright notices, conditions
+        and disclaimers, including the uIP and QR Code generator notices.
+        Its firmware-2712/* entry assigns the custom firmware terms:
+        copyright 2024 Raspberry Pi (Trading) Ltd., binary redistribution
+        without modification, and use only for developing for, running or
+        using a Raspberry Pi device.
+
+        Source: https://github.com/raspberrypi/usbboot/tree/${rpibootBase.version}
+
+        usbboot-LICENSE and usbboot-copyright retain the separate host-tool
+        notices. Apache-2.0 does not replace the custom firmware terms.
+        bundle/config.txt is Kaiba's recovery_metadata=1 configuration.
+        EOF
+        chmod 0444 "$out/notices/README.md"
         printf '%s\n' 'recovery_metadata=1' > "$out/bundle/config.txt"
         chmod 0444 "$out/bundle/config.txt"
 
@@ -2617,6 +2648,7 @@ let
           "$out/share/kaiba/schemas/rpi5-unfused-runtime-facts-v1alpha1.schema.json"
         ln -s ${rpi5ProbeBundle}/bundle "$out/share/kaiba/rpi5-probe-bundle"
         ln -s ${rpi5ProbeBundle}/manifest.json "$out/share/kaiba/rpi5-probe-bundle-manifest.json"
+        ln -s ${rpi5ProbeBundle}/notices "$out/share/kaiba/rpi5-probe-notices"
       '';
 
   stationDemo =

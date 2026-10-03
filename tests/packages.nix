@@ -2237,6 +2237,12 @@ let
         test ! -L ${built.rpi5ProbeBundle}/bundle/config.txt
         cmp ${built.rpi5ProbeBundle}/bundle/bootcode5.bin \
           ${pkgs.rpiboot.src}/recovery5/bootcode5.bin
+        cmp ${built.rpi5ProbeBundle}/notices/rpi-eeprom-LICENSE \
+          ${pkgs.rpiboot.src}/rpi-eeprom/LICENSE
+        cmp ${built.rpi5ProbeBundle}/notices/usbboot-LICENSE ${pkgs.rpiboot.src}/LICENSE
+        cmp ${built.rpi5ProbeBundle}/notices/usbboot-copyright \
+          ${pkgs.rpiboot.src}/debian/copyright
+        test -f ${built.provision}/share/kaiba/rpi5-probe-notices/rpi-eeprom-LICENSE
         test "$(cat ${built.rpi5ProbeBundle}/bundle/config.txt)" = 'recovery_metadata=1'
         test "$(wc -c < ${built.rpi5ProbeBundle}/bundle/config.txt)" -eq 20
         test "$(jq -r .schema ${built.rpi5ProbeBundle}/manifest.json)" = 'kaiba.rpi5-probe-bundle/v1alpha1'
@@ -2599,6 +2605,14 @@ let
         readonly source=${built.rpi5EEPROMRelease.kaibaRpi5EEPROMRelease.eepromSource}
         readonly update_script=${built.rpi5EEPROMRelease.kaibaRpi5EEPROMRelease.updatePieeprom}
         readonly verifier=${built.rpi5EEPROMReleaseVerifier}/bin/kaiba-verify-rpi5-eeprom-release
+
+        cmp "$release/notices/rpi-eeprom-LICENSE" "$source/LICENSE"
+        cmp "$release/notices/usbboot-LICENSE" \
+          ${built.rpi5EEPROMRelease.kaibaRpi5EEPROMRelease.usbbootLicense}
+        cmp ${historicalEEPROMRelease}/notices/rpi-eeprom-LICENSE \
+          ${historicalEEPROMRelease.kaibaRpi5EEPROMRelease.eepromSource}/LICENSE
+        test -f "$release/notices/README.md"
+        test -f ${historicalEEPROMRelease}/notices/README.md
 
         check-jsonschema --check-metaschema "$schema"
         check-jsonschema --schemafile "$schema" "$manifest"
