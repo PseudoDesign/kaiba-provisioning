@@ -669,7 +669,17 @@ jobs:
 
   pages:
     name: Deploy GitHub Pages
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    # Optional ARM backends can be skipped while the required aggregate passes.
+    # Override the implicit status check and require successful direct dependencies.
+    if: >-
+      ${{
+        !cancelled() &&
+        github.ref == 'refs/heads/main' &&
+        (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+        needs.fast-checks.result == 'success' &&
+        needs.x86_64.result == 'success' &&
+        needs.aarch64.result == 'success'
+      }}
     needs:
       - fast-checks
       - x86_64
