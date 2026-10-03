@@ -192,9 +192,12 @@ fused customer root.
 
 The next implementation work is the management-credential and update-service
 contract and its tested producer/consumer path. Routine production updates use
-the device's normal network, as selected by the operator. Specify authenticated
-transport and the recovery mechanism before implementing writes; fixture staging
-alone is not a remote updater.
+the device's normal network, as selected by the operator, with two complete A/B
+system slots on NVMe so the previous image remains available for recovery. The
+[management and remote-update design](production-management-updates.md) records
+the credential boundary and selected recovery model. Qualify boot selection and
+power-loss recovery before implementing physical writes; retaining two images
+alone does not establish unattended recovery.
 
 ## Evidence, completion, and remaining gates
 

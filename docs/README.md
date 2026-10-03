@@ -16,6 +16,7 @@ archived proposals do not add requirements to the first fleet.
 | [Ace adoption and first fleet bootstrap](ace-adoption-plan.md) | Later full qualification, target-specific existing-secret reuse and gated service transfer to Ace; malak CLI, GUI deferred |
 | [Enrollment implementation handoff](enrollment-handoff.md) | Pinned shared contracts, implemented producer/consumer rehearsal and remaining production integration |
 | [First production provisioning plan](production-provisioning-plan.md) | Agreed production-preserving qualification procedure, bounded station automation, and management/update prerequisites |
+| [Production management and remote updates](production-management-updates.md) | Proposed production credential boundary, selected A/B recovery, component ownership and implementation checkpoints |
 | [Production readiness](production-readiness.md) | What exists, what has been observed, and what still prevents fleet admission |
 
 Normal device operation must work offline. Copied storage must not disclose
