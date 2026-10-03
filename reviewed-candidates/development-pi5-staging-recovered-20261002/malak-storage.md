@@ -5,11 +5,68 @@ recovery evidence. The provisioner has a read-only Nix store, about 510 MB
 free in `/tmp`, about 268 MB in `/var`, and no separate writable disk.
 The selected NVMe cannot hold its own runtime or recovery backups.
 
-This is a setup proposal. No export, service, Pi mount or physical attempt
-has been activated or qualified. Administrator setup is required because
-the malak account has no passwordless sudo.
+## Current state: October 3
 
-## Proposed scope
+The complete SD and NVMe staging runtimes were assembled and independently
+verified after the native ARM export from main revision
+`733bc29ecbf0a003f03b7eebf1cf3e882ba0110d`. All seven copied NVMe runtime objects
+matched their retained NAR hashes and sizes. The NFSv4 listener is active only
+at `10.0.0.1:2049/tcp`, with three peer-restricted exports, four server threads
+and active stable client tracking. The evidence resides on malak's ext4
+`/dev/nvme0n1p5`, separate from the Pi's selected SD and NVMe.
+
+The operator completed the narrow UFW repair after the first client mount timed
+out. Its rule permits only incoming `usb0`, source `10.0.0.2`, destination
+`10.0.0.1`, TCP port 2049. The completion check preserved all other firewall
+rules and policies. Both Pi NFSv4.2 mounts are now qualified: runtime is
+read-only; evidence is read/write with protected root-owned ancestors. Every
+one of the 1,214 runtime files and 1,340 nodes matched the independently derived
+inventory. A synchronized 1 MiB challenge matched independent server readback.
+
+The native ARM staging command ran successfully through its exact fixed Nix
+paths in a private, read-only mount namespace. All runtime files were rehashed
+through that view, and the global Nix store was identical before and after.
+Keep the original store first in the overlay's lower-layer order to preserve
+its directory permissions. `findmnt` reports both the original ext4 mount and
+the stacked overlay; the qualification checked both records. Each later
+invocation must reconstruct and revalidate its own private view.
+
+A separate synthetic qualification exercised protected traversal, exclusive
+creation, sparse sizing, mode changes, file/directory synchronization and
+stable reopen. It also rejected duplicate creates, symlinks, hardlinks and
+unprotected ancestors. The complete 64 MiB snapshot matched a fresh client
+mount with a separate NFS cache and independent malak readback:
+`sha256:0060b9f84af430eb69fdb97afab03fad135209da6f37b9d88619bd60dc85b1d7`.
+Malak independently reopened all ten qualification files and verified their
+sizes, digests, ownership, modes and single-link identities.
+
+The final readback and five historical public media receipts are retained in
+`/home/codex-remote/kaiba-private/task1-physical-acceptance-20261002/storage-qualification-closeout-733bc29`.
+The retention manifest digest is
+`sha256:ed2cd5c58acf2ce800f09428f36ae70fb2aee298b1c209522118ed3d98c013b5`.
+The [current status record](status-20261003.json) distinguishes these completed
+storage checks from the remaining physical gates.
+
+The subsequent public discovery and qualification exports also completed.
+Their 40 copies, four offline-verified owned-recovery bundles, independent
+receipt associations and historical hardware correlation are retained in a
+separate protected closeout. The [task record](../../docs/task1-physical-acceptance.md)
+and [status record](status-20261003.json) preserve their exact assurance limits.
+These signing and pre-ownership records cannot close physical ownership,
+recovery or current-lane qualification.
+
+Preserve the original failed activation, listener and client/runtime attempts
+alongside their separate reconciliation and completion journals. Do not rerun
+their one-shot helpers. Network storage, the private Nix view and staging file
+operations are qualified for the observed setup; revalidate attachment,
+capacity, runtime and transport immediately before preparation. Actual recovery
+range backups, inactive SD capture, original ownership, approved hardware and
+witness bindings, authority/RTC/power qualification and physical execution
+approval remain open. No target media was staged, and no campaign run or claim
+has completed. The historical pre-activation observations below remain retained
+with their original scope.
+
+## Selected scope
 
 | Item | Selected scope |
 | --- | --- |
@@ -22,19 +79,18 @@ the malak account has no passwordless sudo.
 
 Malak reported 140,907,233,280 available bytes on the backing filesystem during
 preparation. This observation is not a reservation or a qualification result.
-The host currently has no NFS export or listener. Pinned native x86 NFS helpers
-were built at
+Before activation, the host had no NFS export or listener. Pinned native x86
+NFS helpers were built at
 `/nix/store/bkj4vw2fnz0idzj6vy32m37pcja2pxzh-nfs-utils-2.9.2`;
-only their help interface was used.
+their help interfaces were checked before activation; the retained completion
+records bind their subsequent server use.
 
-## Administrator setup packet
+## Setup and runtime constraints
 
-After the new ARM export and complete NVMe assembly have been independently
-verified, bind the setup record to that closure's complete path/NAR inventory,
-the selected campaign, plan digest, authenticated Pi boot and malak filesystem.
-The currently retained archive has all recovered inputs and the complete SD
-runtime, but it lacks the new ARM component and complete NVMe runtime. It is
-not the final Pi runtime export.
+The activated setup record binds the complete NVMe closure's path/NAR
+inventory, selected campaign, plan digest, authenticated Pi boot and malak
+filesystem. The final retained archive contains both complete staging runtimes.
+Retain these bindings and revalidate them before each physical preparation.
 
 Create a new root-owned namespace with protected ancestors. Copy only the
 verified runtime closure into a frozen runtime tree, preserve exact filenames
@@ -70,9 +126,10 @@ lower layers; modifying those layers while mounted has undefined behavior.
 Check overlapping store names byte-for-byte before constructing that view.
 Pin all layer identities, freeze their contents, verify the overlay and
 read-only mount flags, then rehash the executable, fixed configuration, plan
-and payloads through their actual `/nix/store` paths on the Pi. This temporary
-mount arrangement needs on-device qualification; no signed provisioner rebuild
-or change to Nix trust is implied.
+and payloads through their actual `/nix/store` paths on the Pi. The private
+arrangement passed on-device qualification; reuse requires a new private
+namespace and fresh checks. The signed provisioner and Nix trust
+configuration were retained.
 
 ## Qualification before recovery capture
 

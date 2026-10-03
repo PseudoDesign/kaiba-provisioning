@@ -79,61 +79,100 @@ The original immutable package/path bindings remain missing. A separate
 recovered-path proposal below binds the independently validated bytes to
 new explicit immutable paths.
 
-The [native staging export attempt](https://github.com/PseudoDesign/kaiba-provisioning/actions/runs/37036428710)
-selected reviewed main ancestor `93183ee2b13e4633be9e2568007d3d3f87d6c787`.
-Its ARM build completed, but the export rejected a component manifest that
-hashed the executable before Nix stripped it. [PR #99](https://github.com/PseudoDesign/kaiba-provisioning/pull/99)
-moves manifest hashing after fixup and adds inspection of the final real ARM
-package. The focused ARM package check and 11 Python export tests passed. That
-local check uses emulation. The subsequent [PR CI run](https://github.com/PseudoDesign/kaiba-provisioning/actions/runs/37041522657)
-passed both x86 and native ARM checks. With explicit software merge/export
-authorization, PR #99 was merged as
-`36c910c89939bcffa2942d594d37472cb941409d`. The subsequent
-[native ARM export](https://github.com/PseudoDesign/kaiba-provisioning/actions/runs/37048987102)
-completed successfully from that exact main revision. The downloaded artifact
-matches GitHub's `sha256:827f40db5929c009722e3a25da42d8d580fe22350c455a7bd597d75ae1e1bc81`.
-Its checksums, committed descriptor, native runner/source binding, final ARM
-executable manifest and all three exported NAR hashes/sizes were independently
-verified. The component was imported only into the separate inspection store
-and was not executed. Its complete component closure remains an incomplete
-staging runtime: the six original input paths are still missing, and both
-complete staging packages remain required. The approval covers software
-merge/export; physical execution remains unapproved.
+The initial native export identified a manifest generated before Nix stripped
+the executable. [PR #99](https://github.com/PseudoDesign/kaiba-provisioning/pull/99)
+corrected final-package hashing; its focused checks and x86/native ARM CI passed.
+PR #100 added authenticated independent witness validation and passed both build
+lanes. [PR #101](https://github.com/PseudoDesign/kaiba-provisioning/pull/101)
+then committed the recovered immutable input bindings and merged as
+`733bc29ecbf0a003f03b7eebf1cf3e882ba0110d`. The subsequent
+[native ARM export](https://github.com/PseudoDesign/kaiba-provisioning/actions/runs/37085920334)
+passed from that exact main revision. Its downloaded archive, committed
+descriptor, runner/source provenance, final executable manifest and every
+exported NAR hash, size and reference were independently verified.
 
-PR #100 was subsequently merged as
-`c4b9dcf9b0460cca889e4555c75a1f9a20f70754`, after both build lanes and the
-completion gate passed. The
-[recovered staging proposal](../reviewed-candidates/development-pi5-staging-recovered-20261002/README.md)
-uses its existing constructors with new immutable paths for the four verified
-payloads and proposed current-NVMe plan. The local native x86 SD package is
-complete, and `sd.nix` reproduces the exact package path. The new NVMe descriptor
-passes the typed plan and complete release-partition checks; the previous ARM
-component correctly rejects its changed fixed configuration. A new reviewed
-native ARM export and complete NVMe assembly remain required.
+The [recovered staging proposal](../reviewed-candidates/development-pi5-staging-recovered-20261002/README.md)
+now has both complete staging runtimes. The accepted ARM assembly retains the
+native CI component bytes and exact ARM dependency references. Its seven-object
+closure was independently reimported and verified. The combined SD/NVMe and
+descriptor archive contains 15 store paths, is 2,561,338,555 bytes and has digest
+`sha256:9a6794e3886370194a5f0e9553eb7bd71f8c9783564f4cabd376140a746fde06`.
+This packaging preserves the signed candidate, campaign and all payload digests.
+The proposed current-NVMe identity still requires physical-plan review; software
+merge/export approval does not authorize physical staging.
 
-The complete SD runtime and recovered NVMe inputs were exported as 11 store
-paths, then independently reimported into the isolated inspection store.
-Every NAR hash, size and reference was recomputed. The compressed archive is
-2,559,053,459 bytes with digest
-`sha256:0b8328513b3e573b04f911731689261bd68c47745399f8b994316631dad4553e`.
-It does not yet contain the complete NVMe runtime. This packaging retains the
-same signed candidate, campaign plan and all payload digests; it does not
-authorize the proposed NVMe identity reconciliation or physical execution.
-
-The operator selected malak for separate runtime and recovery storage.
+The operator selected and activated malak as separate runtime/recovery storage.
 The [storage worksheet](../reviewed-candidates/development-pi5-staging-recovered-20261002/malak-storage.md)
-records the proposed restricted USB NFSv4 setup and actual qualification still
-required. The Pi's Nix store is read-only; `/tmp` and `/var` have only about
-510 MB and 268 MB available. No host export or Pi mount has been activated.
-The current OS reports the retained SD disk and partition GUIDs, but that
-correlation does not replace its inactive independent GPT capture on malak.
+records the USB-restricted NFSv4 server and completed client/server checks.
+All 1,214 runtime files and 1,340 nodes were checked through the Pi mounts, and
+the native ARM command ran through its exact fixed paths in a private read-only
+Nix view. The global store was preserved. Staging-specific file operations
+passed with a synthetic 64 MiB snapshot; its complete digest matched a fresh
+client cache and independent server readback of all ten qualification files.
+These results qualify backing storage and runtime access, not recovery backups
+or hardware claim closure. Revalidate the observed setup before preparation.
 
-The five protected files listed by the operator are historical v0.1.5/v0.1.6
-media receipts, not original ownership completion evidence. The narrow
-`scripts/task1-export-public-media-receipts.sh` copies and rehashes only those
-five public JSON files into the protected evidence directory. Its administrator
-execution is pending because their source directories are root-only. Original
-ownership operation and terminal records still require recovery and review.
+The five protected public media receipts were exported, independently rehashed
+and reconciled. Their stage/verification receipt digests and paired bindings
+are internally consistent, but their historical plans are not this campaign's
+plan. The v0.1.6 geometry matches the current SD; v0.1.5 uses a different size.
+All records describe media operations with no one-time settings changes or
+cold-power observation. They cannot establish original ownership completion or
+current campaign acceptance. The bounded root filename inventory found no
+ownership directory beneath `/var/lib/kaiba-provisioning`; it does not establish
+absence from other retained locations. Original ownership operation and
+terminal records still require recovery and independent review. The earlier
+receipt-export helper is superseded by this completed export and need not run.
+
+A subsequent operator filename search listed 547 files within the protected
+signing/review homes, signing exports and retired registry. It exposed public
+signing inventories and files for four signed owned-recovery bundles, but no
+original ownership completion record or actual authority TLS server certificate
+in that depth-limited listing. These are filename observations; signing and
+recovery artifacts do not establish that an ownership operation completed.
+The administrator completed two separately retained public exports: the first
+copied 36 listed artifacts and inventoried deeper handoffs without following
+symlinks; the second copied three newly located public qualification records
+and the v0.1.4 boot-signing result. All 40 copies were independently reopened
+and rehashed against their protected source observations; both exports report
+zero source errors. No private probes, synthetic fixtures or private keys were
+exported, and neither helper accessed the Pi or authorized media/power operations.
+
+Offline review verified all four owned-recovery signatures, their fresh EEPROM's
+three embedded customer signatures, and exact plan/result/image/metadata
+bindings. The v0.1.5, v0.1.6 and v0.1.15 exports each authenticate all five
+receipts against an independent registry and the receipt digests from the
+separate boot, EEPROM and owned-recovery signing results. The v0.1.4 boot result
+was recovered, but its independent registry snapshot remains unlocated; its
+full receipt-export validation stays open. This historical limitation does not
+invalidate the verified v0.1.15 recovery artifacts. Twenty-five focused negative
+checks rejected truncated/altered recovery, wrong keys/plans, and missing,
+wrong or altered receipt evidence. No signing, candidate rebuild or updater
+replay was repeated. These checks establish artifact validity, not physical
+ownership or recovery success.
+
+The historical v0.1.5/v0.1.6 hardware records describe an unset customer key,
+no successful mutation and no independent EEPROM hash. Their target fingerprint
+matches one independently derived by the existing metadata parser from the
+retained September 18 owned readbacks; those readbacks also correlate with the
+current authenticated serial suffix, board revision and customer-key hash.
+That connects historical observations to this board without proving the
+original ownership operation. The v0.1.6 lane record binds its hardware record's
+exact digest and describes an operator-attested manual development rehearsal;
+it explicitly lacks automated fail-off and electrical measurements. Its earlier
+topology does not qualify the current shared USB hub. Approved campaign hardware
+and witness bindings, original ownership and current safe-off remain open.
+
+The complete public review is retained at
+`/home/codex-remote/kaiba-private/task1-physical-acceptance-20261002/public-recovery-review-closeout-20261003`.
+Its 163-file manifest includes all exports, 111 exact verification source files,
+review results and tool provenance, under digest
+`sha256:d350bdcce0c4647fa971b6e7549efd8a507a7b417bce5fc401686f5e2b917d8e`.
+The separate historical target-correlation manifest is
+`sha256:ceeab969629fbce377aa3f4819ab845466794ca6fdd950f4e7da8d60e04e9a90`.
+See the [October 3 status record](../reviewed-candidates/development-pi5-staging-recovered-20261002/status-20261003.json)
+for exact export and retention bindings. Keep original preparation manifests
+and all reconciliation records; do not rerun the completed one-shot collectors.
 
 The operator authorized and performed a power cycle with UART capture active.
 The capture identified serial `e03fbfb95a4265ae`, revision `a04171`, and the
@@ -205,6 +244,19 @@ archive, provenance and validation files, with manifest digest
 `sha256:52ce4d75fd5ee9c36c67057d93dc0731dba1e45a8e6b1e820d6fc20eea9bea73`.
 Its review-file copies record the proposal before the later storage worksheet
 and task/access documentation updates.
+The `native-staging-export-733bc29` subdirectory retains the final native export
+with manifest digest
+`sha256:0ffbe9c3b7a0c6cd7bd9cc7466af37b7927119f81c0e8ff88171e3607dcdfe63`.
+The `complete-staging-runtime-733bc29` subdirectory retains the verified complete
+runtime archive with manifest digest
+`sha256:e8c89d8c22ee7b1c41d89ad5ebaba6fef85f3924af77251b1afbbea81958281b`.
+Its never-activated draft storage packet is superseded by the separate retained
+activation/completion packets. The `storage-qualification-closeout-733bc29`
+subdirectory retains seven final readback, historical receipt and reconciliation
+files, with manifest digest
+`sha256:ed2cd5c58acf2ce800f09428f36ae70fb2aee298b1c209522118ed3d98c013b5`.
+The [October 3 status](../reviewed-candidates/development-pi5-staging-recovered-20261002/status-20261003.json)
+binds completed preparation and outstanding physical gates.
 All copies were reopened, compared and synchronized with their directories.
 This access observation
 does not establish complete cold-power removal, safe-off behavior, EEPROM/OTP
