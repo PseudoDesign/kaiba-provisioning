@@ -117,7 +117,7 @@ def build_ordinary(repository):
 
 
 def require_results(environment):
-    for name in ("CORE_RESULT", "ARM_RESULT", "DEVELOPMENT_RESULT", "PLAN_RESULT"):
+    for name in ("FAST_RESULT", "CORE_RESULT", "ARM_RESULT", "DEVELOPMENT_RESULT", "PLAN_RESULT"):
         if environment.get(name) != "success":
             raise ValueError(f"{name} must succeed, got {environment.get(name)!r}")
     for lane in ("VERIFIER",):

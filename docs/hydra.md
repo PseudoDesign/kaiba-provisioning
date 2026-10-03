@@ -97,7 +97,8 @@ backend and does not apply the rollback. Leave the flags off until queue health,
 service operation, and an exact-commit Hydra qualification run pass.
 
 The `main` ruleset requires the GitHub Actions `x86_64 Nix checks` aggregate. That
-aggregate requires the backend chosen by the planner, including each selected
+aggregate requires formatting/deployment checks and the backend chosen by the
+planner, including each selected
 GitHub ARM result or the full validated Hydra bundle. A successful core x86 job
 alone does not satisfy the merge gate.
 

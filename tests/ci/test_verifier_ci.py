@@ -126,7 +126,7 @@ class SelectionTests(unittest.TestCase):
 class RequiredResultTests(unittest.TestCase):
     def setUp(self):
         self.results = dict.fromkeys(
-            ("CORE_RESULT", "ARM_RESULT", "DEVELOPMENT_RESULT", "PLAN_RESULT"), "success"
+            ("FAST_RESULT", "CORE_RESULT", "ARM_RESULT", "DEVELOPMENT_RESULT", "PLAN_RESULT"), "success"
         ) | {"VERIFIER_REQUIRED": "false", "VERIFIER_RESULT": "skipped",
              "HEAVY_REQUIRED": "false", "HEAVY_RESULT": "skipped",
              "HEAVY_BACKEND": "github", "HYDRA_RESULT": "skipped"}
@@ -176,7 +176,7 @@ class RequiredResultTests(unittest.TestCase):
         ci.require_results(self.results | {"VERIFIER_REQUIRED": "true", "VERIFIER_RESULT": "success"})
 
     def test_every_required_lane_must_succeed(self):
-        for lane in ("CORE_RESULT", "ARM_RESULT", "DEVELOPMENT_RESULT", "PLAN_RESULT"):
+        for lane in ("FAST_RESULT", "CORE_RESULT", "ARM_RESULT", "DEVELOPMENT_RESULT", "PLAN_RESULT"):
             for result in ("failure", "cancelled", "skipped", ""):
                 with self.subTest(lane=lane, result=result), self.assertRaises(ValueError):
                     ci.require_results(self.results | {lane: result})

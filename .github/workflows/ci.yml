@@ -337,6 +337,7 @@ jobs:
     name: x86_64 Nix checks
     if: always()
     needs:
+      - fast-checks
       - x86_64_core
       - aarch64
       - device-secret-development
@@ -355,6 +356,7 @@ jobs:
           persist-credentials: false
       - name: Require the x86_64 and native ARM64 lanes
         env:
+          FAST_RESULT: ${{ needs.fast-checks.result }}
           CORE_RESULT: ${{ needs.x86_64_core.result }}
           ARM_RESULT: ${{ needs.aarch64.result }}
           DEVELOPMENT_RESULT: ${{ needs.device-secret-development.result }}
