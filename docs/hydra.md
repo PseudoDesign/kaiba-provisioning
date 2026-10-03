@@ -34,8 +34,11 @@ builds on subsequent workflow runs.
 
 After the `kaiba-hydra-ci-runs` service is deployed on Ace, set the repository
 variable `HYDRA_CI_ENABLED=true`. It independently routes the same ten heavy
-checks on `pull_request` and CI `workflow_dispatch` runs to Hydra. Setting it
-back to `false` restores their GitHub ARM matrix on subsequent runs.
+checks on CI `workflow_dispatch` runs and on PRs that select all ten heavy
+checks to Hydra. A PR that selects fewer heavy checks keeps its exact selection
+on GitHub ARM; unchanged checks stay skipped. The immutable Hydra run contract
+still requires all ten checks and never broadens a partial PR selection. Setting
+the variable back to `false` restores the GitHub ARM matrix on subsequent runs.
 
 Ace polls the GitHub API every minute for running Hydra waiter jobs in this
 repository's CI workflow. A queued or unapproved run cannot schedule work.
@@ -61,8 +64,42 @@ Its GitHub summary links to all ten Hydra builds.
 
 The waiter allows nearly six hours for queued work and uncached builds on Ace,
 within GitHub's [hosted job limit](https://docs.github.com/en/actions/reference/limits).
+While results are pending, it also reads `/queue-runner-status`. An `up` response
+requires a timestamp no older than five minutes and no more than one minute in
+the future. Five consecutive minutes of unavailable or stale queue health fail
+with an infrastructure diagnostic. Run discovery or evaluation absent for ten
+minutes also fails early. Healthy queued builds retain the original build
+deadline. Complete, validated results can still pass while the queue is down;
+queue health alone never establishes a passing result.
+
 A timeout fails the required gate while Hydra may continue building. Rerun the
-workflow after those builds finish to verify and reuse their results.
+complete workflow after those builds finish to verify and reuse their results.
+
+## Outage handling and alerts
+
+The `Hydra queue health` workflow runs on `main` every fifteen minutes and can
+also be dispatched there. It observes the public endpoint without Hydra
+administration credentials. Three failed probes over one minute create one
+GitHub issue; subsequent unchanged failures add no comments. A fresh healthy
+observation closes the bot-created incident. The workflow's GitHub token can
+read repository contents and write issues, and is sent only to the fixed GitHub
+repository API. Pull requests do not run this issue-writing workflow.
+
+For a stalled queue, inspect Ace's queue-runner and space-guard journals and
+available space on `/nix/store` before restarting the existing service. Preserve
+the configured disk reserve and diagnose other service failures before retrying.
+Follow the infrastructure runbook for host access and bounded repair.
+
+To unblock PRs independently of that repair, set both `HYDRA_CI_ENABLED` and
+`HYDRA_MAIN_ENABLED` to `false`, cancel stalled CI workflows, and rerun each
+**complete workflow**. Rerunning only the Hydra job retains the old planner's
+backend and does not apply the rollback. Leave the flags off until queue health,
+service operation, and an exact-commit Hydra qualification run pass.
+
+The `main` ruleset requires the GitHub Actions `x86_64 Nix checks` aggregate. That
+aggregate requires the backend chosen by the planner, including each selected
+GitHub ARM result or the full validated Hydra bundle. A successful core x86 job
+alone does not satisfy the merge gate.
 
 Historical run results remain visible. Run jobsets do not poll automatically,
 and their outputs are disposable under normal retention. A build

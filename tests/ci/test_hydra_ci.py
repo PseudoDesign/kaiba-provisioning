@@ -185,5 +185,53 @@ class RunEvaluationTests(unittest.TestCase):
                 ci.run_jobset(env | change)
 
 
+class QueueHealthTests(unittest.TestCase):
+    def test_health_requires_a_fresh_valid_timestamp(self):
+        for state in ("down", "unknown", "unreachable"):
+            self.assertEqual(ci.queue_health(lambda _: {"status": state}, now=1000), state)
+        self.assertEqual(ci.queue_health(lambda _: {"status": "up", "time": 700}, now=1000), "up")
+        for timestamp in (None, True, "1000", 0, 699, 1061):
+            with self.subTest(timestamp=timestamp):
+                self.assertEqual(ci.queue_health(lambda _: {"status": "up", "time": timestamp}, now=1000), "stale")
+        for value in (None, [], {}, {"status": []}, {"status": "other"}):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                ci.queue_health(lambda _: value, now=1000)
+
+    def test_unhealthy_grace_resets_on_recovery(self):
+        health = ci.PendingHealth()
+        health.observe(0, "down", "builds")
+        health.observe(299, "stale", "builds")
+        health.observe(300, "up", "builds")
+        health.observe(301, "down", "builds")
+        health.observe(600, "unknown", "builds")
+        with self.assertRaisesRegex(RuntimeError, "queue runner unavailable"):
+            health.observe(601, "down", "builds")
+
+    def test_missing_discovery_and_evaluation_fail_early_but_builds_can_wait(self):
+        for phase in ("discovery", "evaluation"):
+            health = ci.PendingHealth()
+            health.observe(0, "up", phase)
+            health.observe(599, "up", phase)
+            with self.subTest(phase=phase), self.assertRaisesRegex(RuntimeError, phase + " absent"):
+                health.observe(600, "up", phase)
+        health = ci.PendingHealth()
+        health.observe(0, "up", "discovery")
+        health.observe(599, "up", "evaluation")
+        health.observe(1198, "up", "evaluation")
+        health.observe(1199, "up", "builds")
+        health.observe(20000, "up", "builds")
+
+    def test_complete_validated_results_do_not_depend_on_queue_health(self):
+        env = {"GITHUB_SHA": SHA, "HYDRA_EXPECTED_DERIVATIONS": json.dumps(expected()),
+               "GITHUB_EVENT_NAME": "push", "GITHUB_REF": "refs/heads/main"}
+        with patch.dict(os.environ, env), patch.object(ci, "statuses_for_commit", return_value=statuses()), patch.object(
+            ci, "completed_builds", return_value=[("validated", "url")]
+        ) as validation, patch.object(ci, "queue_health") as health, patch.object(ci, "report") as report:
+            self.assertEqual(ci.main(), 0)
+        validation.assert_called_once_with(statuses(), expected())
+        health.assert_not_called()
+        report.assert_called_once_with(SHA, [("validated", "url")])
+
+
 if __name__ == "__main__":
     unittest.main()

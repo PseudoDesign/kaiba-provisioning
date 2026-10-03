@@ -197,16 +197,31 @@ class RequiredResultTests(unittest.TestCase):
 
 
 class OutputTests(unittest.TestCase):
-    def test_hydra_checks_all_ten_and_retains_ordinary_image_selection(self):
-        for selected in ([], [ci.HEAVY_CHECKS[0]], [ci.VERIFIER_CHECKS[0]]):
+    def test_partial_pr_selection_keeps_github_and_does_not_add_hydra_jobs(self):
+        for selected in ([], [ci.HEAVY_CHECKS[0]], [ci.VERIFIER_CHECKS[0]],
+                         [ci.VERIFIER_CHECKS[0], ci.HEAVY_CHECKS[0]]):
             output, summary = io.StringIO(), io.StringIO()
             ci.write_plan({"checks": selected, "before": identities(), "after": identities("b")},
+                          output, summary, "hydra")
+            values = dict(line.split("=", 1) for line in output.getvalue().splitlines())
+            self.assertEqual(values["heavy_backend"], "github")
+            heavy = [n for n in selected if n in ci.HEAVY_CHECKS]
+            self.assertEqual(values["heavy_required"], str(bool(heavy)).lower())
+            self.assertEqual(json.loads(values["heavy_checks"]), heavy)
+            self.assertEqual(json.loads(values["checks"]), [n for n in selected if n in ci.VERIFIER_CHECKS])
+            self.assertIn("Heavy checks use `github`", summary.getvalue())
+
+    def test_full_bundle_retains_opted_in_hydra_and_other_image_selection(self):
+        for before in (None, identities()):
+            selected = list(ci.HEAVY_CHECKS) + [ci.VERIFIER_CHECKS[0]]
+            output, summary = io.StringIO(), io.StringIO()
+            ci.write_plan({"checks": selected, "before": before, "after": identities("b")},
                           output, summary, "hydra")
             values = dict(line.split("=", 1) for line in output.getvalue().splitlines())
             self.assertEqual(values["heavy_backend"], "hydra")
             self.assertEqual(values["heavy_required"], "true")
             self.assertEqual(json.loads(values["heavy_checks"]), list(ci.HEAVY_CHECKS))
-            self.assertEqual(json.loads(values["checks"]), [n for n in selected if n in ci.VERIFIER_CHECKS])
+            self.assertEqual(json.loads(values["checks"]), [ci.VERIFIER_CHECKS[0]])
 
     def test_matrices_partition_selection_and_report_every_identity(self):
         for selected in ([], list(ci.VERIFIER_CHECKS), list(ci.HEAVY_CHECKS),
