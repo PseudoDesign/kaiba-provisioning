@@ -197,6 +197,11 @@ class QueueHealthTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 ci.queue_health(lambda _: value, now=1000)
 
+    def test_transport_failure_uses_the_outage_grace(self):
+        for error in (OSError("connection refused"), RuntimeError("HTTP 503")):
+            with self.subTest(error=error):
+                self.assertEqual(ci.queue_health(request=unittest.mock.Mock(side_effect=error)), "unreachable")
+
     def test_unhealthy_grace_resets_on_recovery(self):
         health = ci.PendingHealth()
         health.observe(0, "down", "builds")

@@ -167,7 +167,11 @@ def report(sha, builds):
 
 def queue_health(request=get, now=None):
     """Observe availability only; this never establishes a passing build."""
-    value = request(HYDRA + "/queue-runner-status")
+    try:
+        value = request(HYDRA + "/queue-runner-status")
+    except (OSError, RuntimeError):
+        # Give transient transport failures the same bounded outage grace.
+        return "unreachable"
     if (not isinstance(value, dict) or not isinstance(value.get("status"), str)
             or value["status"] not in {"up", "down", "unknown", "unreachable"}):
         raise ValueError("invalid Hydra queue-runner health response")
