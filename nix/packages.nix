@@ -1910,6 +1910,12 @@ let
         cp "$out/fresh-readback/config.txt" "$out/owned-readback/config.txt"
         cp "$release/operational-payload-manifest.json" "$out/manifest.json"
 
+        # Carry redistribution materials outside the canonical RPIBOOT trees.
+        mkdir "$out/notices"
+        install -m 0444 "$release/notices/README.md" "$out/notices/README.md"
+        install -m 0444 "$release/notices/rpi-eeprom-LICENSE" \
+          "$out/notices/rpi-eeprom-LICENSE"
+
         find "$out" -type f -printf '%P\n' | sort > actual-files
         printf '%s\n' \
           fresh-commit/bootcode5.bin \
@@ -1921,6 +1927,8 @@ let
           owned-readback/bootcode5.bin \
           owned-readback/config.txt \
           manifest.json \
+          notices/README.md \
+          notices/rpi-eeprom-LICENSE \
           | sort > expected-files
         cmp expected-files actual-files
 
