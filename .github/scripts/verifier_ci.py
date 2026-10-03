@@ -117,7 +117,7 @@ def build_ordinary(repository):
 
 
 def require_results(environment):
-    for name in ("CORE_RESULT", "ARM_RESULT", "DEVELOPMENT_RESULT", "PLAN_RESULT"):
+    for name in ("FAST_RESULT", "CORE_RESULT", "ARM_RESULT", "DEVELOPMENT_RESULT", "PLAN_RESULT"):
         if environment.get(name) != "success":
             raise ValueError(f"{name} must succeed, got {environment.get(name)!r}")
     for lane in ("VERIFIER",):
@@ -163,10 +163,12 @@ def write_plan(result, output, summary, backend="github"):
         raise ValueError("unexpected selected checks")
     if backend not in {"github", "hydra"}:
         raise ValueError("unknown heavy backend")
-    if backend == "hydra":
-        # Evaluate the full qualified bundle; Hydra reuses unchanged derivations.
-        # The other selective image checks retain their ordinary PR selection.
-        selected = [name for name in SELECTIVE_CHECKS if name in selected or name in HEAVY_CHECKS]
+    if (backend == "hydra" and result.get("before") is not None
+            and not set(HEAVY_CHECKS).issubset(selected)):
+        # Hydra's immutable run contract covers all ten jobs. Keep a partial PR
+        # selection on GitHub instead of making unrelated jobs block its gate.
+        # Main/manual plans have no base comparison and retain the full bundle.
+        backend = "github"
     output.write(f"heavy_backend={backend}\n")
     output.write("heavy_derivations=" + json.dumps({name: result["after"][name] for name in HEAVY_CHECKS}) + "\n")
     for prefix, checks in (("", VERIFIER_CHECKS), ("heavy_", HEAVY_CHECKS)):

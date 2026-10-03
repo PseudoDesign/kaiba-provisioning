@@ -165,6 +165,48 @@ def report(sha, builds):
     print(f"All {len(builds)} Hydra checks match commit {sha}'s derivations")
 
 
+def queue_health(request=get, now=None):
+    """Observe availability only; this never establishes a passing build."""
+    try:
+        value = request(HYDRA + "/queue-runner-status")
+    except (OSError, RuntimeError):
+        # Give transient transport failures the same bounded outage grace.
+        return "unreachable"
+    if (not isinstance(value, dict) or not isinstance(value.get("status"), str)
+            or value["status"] not in {"up", "down", "unknown", "unreachable"}):
+        raise ValueError("invalid Hydra queue-runner health response")
+    state = value["status"]
+    if state == "up":
+        timestamp = value.get("time")
+        now = time.time() if now is None else now
+        if (type(timestamp) is not int or timestamp <= 0
+                or timestamp > now + 60 or now - timestamp > 300):
+            return "stale"
+    return state
+
+
+class PendingHealth:
+    """Bound infrastructure waits without imposing a build-speed threshold."""
+    def __init__(self):
+        self.unhealthy_since = None
+        self.phase = None
+        self.phase_since = None
+
+    def observe(self, now, state, phase):
+        if state == "up":
+            self.unhealthy_since = None
+        elif self.unhealthy_since is None:
+            self.unhealthy_since = now
+        elif now - self.unhealthy_since >= 300:
+            raise RuntimeError("Hydra queue runner unavailable for five minutes; "
+                               "inspect Ace or restore the GitHub ARM backend")
+        if phase != self.phase:
+            self.phase, self.phase_since = phase, now
+        elif phase != "builds" and now - self.phase_since >= 600:
+            raise RuntimeError("Hydra " + phase + " absent for ten minutes; "
+                               "inspect run discovery/evaluation before retrying")
+
+
 def main():
     sha = os.environ["GITHUB_SHA"]
     expected = json.loads(os.environ["HYDRA_EXPECTED_DERIVATIONS"])
@@ -177,15 +219,19 @@ def main():
         raise ValueError("only main pushes use the main jobset")
     # Leave five minutes for checkout/cleanup within the six-hour job limit.
     deadline = time.monotonic() + 355 * 60
+    pending_health = PendingHealth()
     while time.monotonic() < deadline:
         if name:
             path = f"{HYDRA}/jobset/kaiba-provisioning/{name}"
             jobset = get(path)
             evaluations = get(path + "/evals") if jobset is not None else None
             builds = completed_evaluation(jobset, evaluations, expected, sha, name)
+            phase = "discovery" if jobset is None else (
+                "evaluation" if not evaluations or not evaluations.get("evals") else "builds")
         else:
             statuses = statuses_for_commit(sha)
             builds = completed_builds(statuses, expected)
+            phase = "evaluation" if not statuses else "builds"
         if builds is not None:
             report(sha, builds)
             return 0
@@ -193,7 +239,10 @@ def main():
             head = get(API + "/git/ref/heads/main")
             if head.get("object", {}).get("sha") != sha:
                 raise RuntimeError("main advanced before Hydra evaluated this commit; no success is assumed")
-        print(f"Waiting for Hydra results for {sha} in {name or 'main'}", flush=True)
+        health = queue_health()
+        pending_health.observe(time.monotonic(), health, phase)
+        print(f"Waiting for Hydra results for {sha} in {name or 'main'}; "
+              f"phase={phase}, queue_runner={health}", flush=True)
         time.sleep(30)
     raise RuntimeError("timed out waiting for Hydra; missing results cannot pass CI")
 

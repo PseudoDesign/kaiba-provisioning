@@ -1,0 +1,29 @@
+name: Hydra queue health
+
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: hydra-queue-health
+  cancel-in-progress: false
+
+jobs:
+  health:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out the trusted default branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Report queue health without repeating unchanged incidents
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 -B .github/scripts/hydra_health.py --alert
