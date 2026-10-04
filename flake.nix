@@ -898,6 +898,7 @@
           boot-image-hash-decoder = bootImageHashDecoderCheck;
           public-input-key-scan = import ./tests/public-input-key-scan.nix { inherit lib pkgs; };
           unit = provisioning.goUnitTests;
+          appliance-updates = import ./nix/appliance-update-checks.nix { inherit pkgs lib; };
           device-enrollment-client = built.deviceEnrollment;
           enrollment-storage = (import ./nix/enrollment-storage.nix { inherit pkgs; }).check;
           enrollment-storage-vm = import ./tests/enrollment-storage-vm.nix {

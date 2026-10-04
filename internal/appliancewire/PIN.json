@@ -1,0 +1,16 @@
+{
+  "schema_version": "kaiba.appliance-wire-pin/v1",
+  "contract_version": "0.7.0-draft.1",
+  "source_repository": "https://github.com/pd-codex/kaiba-contracts",
+  "source_revision": "2aebc205f25a0f69ee3b700014a159912e63fd15",
+  "source_path": "runtime/appliancewire",
+  "files": {
+    "canonical.go": "sha256:d584ed48f099b9d47662bdbaaacca2741a96292c1db13866f8c8922020d1defb",
+    "conformance_test.go": "sha256:3a198b8a3aac40b72e372ea7b86009b14e1aaecd4c64269907f5ec6a861db94b",
+    "credential.go": "sha256:05f4e61e866581b517cbce313cc80f1e2fc190e5656b912103b159f484337fde",
+    "credential_test.go": "sha256:2ed072d0931b010e4c2c1ed8f6f6366e1837c0389946a8602eea8789eead1fb8",
+    "public.go": "sha256:a3f82626e1b905da7d02f1ca6ee6a2be3e958dbbf7973fa2c3a976fd0d8632d4",
+    "types.go": "sha256:d3195d828fed1288ef85d182aad04af2cd39469effac21dfa21b4c3ef429d4ec",
+    "types_test.go": "sha256:4fd68eb3b8ba793103e9616d4638d8db83abf64416b755e50426b6b4fdf001cf"
+  }
+}
