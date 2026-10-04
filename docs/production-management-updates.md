@@ -1,6 +1,6 @@
 # Production management credentials and remote updates
 
-Status: proposed implementation design, 2026-10-03. The operator selected remote
+Status: approved design with [software reference implementation](autonomous-appliance-updates-implementation.md), 2026-10-03. The operator selected remote
 network updates and A/B system slots. No production credential, installed update
 service, remote update execution, or hardware qualification is claimed.
 This follows the [agreed provisioning plan](production-provisioning-plan.md).
